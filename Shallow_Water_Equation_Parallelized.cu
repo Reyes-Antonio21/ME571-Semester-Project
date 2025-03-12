@@ -572,16 +572,16 @@ __global__ void compute_fluxes(float *fh, float *fuh, float *fvh, float *gh, flo
   for (idx = 0; idx < nx + 2; idx++ )
     for (jdx = 0; jdx < ny + 2; jdx++)
     {
-      *fh[id] = *uh[id]; //flux for the height equation: u*h
+      fh[id] = uh[id]; //flux for the height equation: u*h
 
-      *fuh[id] = *uh[id] * *uh[id] / *h[id] + 0.5 * g * *h[id] * *h[id]; //flux for the momentum equation: u^2*h + 0.5*g*h^2
+      fuh[id] = uh[id] * uh[id] / h[id] + 0.5 * g * h[id] * h[id]; //flux for the momentum equation: u^2*h + 0.5*g*h^2
 
-      *fvh[id] = *uh[id] * *vh[id] / *h[id]; //flux for the momentum equation: u*v**h
+      fvh[id] = uh[id] * vh[id] / h[id]; //flux for the momentum equation: u*v**h
 
-      *gh[id] = *vh[id]; //flux for the height equation: v*h
+      gh[id] = vh[id]; //flux for the height equation: v*h
 
-      *guh[id] = *uh[id] * *vh[id] / *h[id]; //flux for the momentum equation: u*v**h
+      guh[id] = uh[id] * vh[id] / h[id]; //flux for the momentum equation: u*v**h
 
-      *gvh[id] = *vh[id] * *vh[id] / *h[id] + 0.5 * g * *h[id] * *h[id]; //flux for the momentum equation: v^2*h + 0.5*g*h^2
+      gvh[id] = vh[id] * vh[id] / h[id] + 0.5 * g * h[id] * h[id]; //flux for the momentum equation: v^2*h + 0.5*g*h^2
     }
 }
