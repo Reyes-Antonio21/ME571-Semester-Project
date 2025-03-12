@@ -1,3 +1,4 @@
+# include "common.h"
 # include <stdlib.h>
 # include <stdio.h>
 # include <math.h>
@@ -8,14 +9,37 @@
 
 #define ID_2D(i,j,nx) ((i)*(nx+2)+(j))
 
-int main ( int argc, char *argv[] );
+//utilities
 void initial_conditions ( int nx, int ny, float dx, float dy,  float x_length, float x[],float y[], float h[], float uh[] ,float vh[]);
 
-//utilities
 void getArgs(int *nx, float *dt, float *x_length, float *t_final, int argc, char *argv[]);
 
 void write_results ( char *output_filename, int nx, int ny, float x[], float y[], float h[], float uh[], float vh[]);
 
+__global__ void compute_fluxes(float *fh, float *fuh, float *fvh, float *gh, float *guh, float *gvh, float *h, float *uh, float *vh, int nx, int ny)
+{
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int jdx = blockIdx.y * blockDim.y + threadIdx.y;
+  int id = ID_2D(idx, jdx, nx);
+
+  float g = 9.81; //[m^2/s] gravitational constant
+
+  for (idx = 0; idx < nx + 2; idx++ )
+    for (jdx = 0; jdx < ny + 2; jdx++)
+    {
+      fh[id] = uh[id]; //flux for the height equation: u*h
+
+      fuh[id] = uh[id] * uh[id] / h[id] + 0.5 * g * h[id] * h[id]; //flux for the momentum equation: u^2*h + 0.5*g*h^2
+
+      fvh[id] = uh[id] * vh[id] / h[id]; //flux for the momentum equation: u*v**h
+
+      gh[id] = vh[id]; //flux for the height equation: v*h
+
+      guh[id] = uh[id] * vh[id] / h[id]; //flux for the momentum equation: u*v**h
+
+      gvh[id] = vh[id] * vh[id] / h[id] + 0.5 * g * h[id] * h[id]; //flux for the momentum equation: v^2*h + 0.5*g*h^2
+    }
+}
 /******************************************************************************/
 /*
   Purpose:
@@ -77,14 +101,6 @@ int main ( int argc, char *argv[] )
   printf ( "\n" );
   printf ( "SHALLOW_WATER_2D\n" );
   printf ( "\n" );
-
-  //get command line arguments
-  getArgs(&nx, &dt, &x_length, &t_final, argc, argv);
-
-  printf ( "  NX = %d\n", nx );
-  printf ( "  DT = %g\n", dt );
-  printf ( "  X_LENGTH = %g\n", x_length );
-  printf ( "  T_FINAL = %g\n", t_final );
 
   // **** VARIABLES ****
   int i, j, k; // loop variables
@@ -154,6 +170,14 @@ int main ( int argc, char *argv[] )
   CHECK(cudaMalloc((void **)&d_gh, (nx+2)*(ny+2) * sizeof ( float )));
   CHECK(cudaMalloc((void **)&d_guh, (nx+2)*(ny+2) * sizeof ( float )));
   CHECK(cudaMalloc((void **)&d_gvh, (nx+2)*(ny+2) * sizeof ( float )));
+
+  //get command line arguments
+  getArgs(&nx, &dt, &x_length, &t_final, argc, argv);
+
+  printf ( "  NX = %d\n", nx );
+  printf ( "  DT = %g\n", dt );
+  printf ( "  X_LENGTH = %g\n", x_length );
+  printf ( "  T_FINAL = %g\n", t_final );
 
   // **** CALCULATIONS ****
   // Loop over 5 iterations of the calculation
@@ -560,28 +584,4 @@ void getArgs(int *nx, float *dt, float *x_length, float *t_final, int argc, char
     *t_final = atof ( argv[4] );
   }
 }
-
-__global__ void compute_fluxes(float *fh, float *fuh, float *fvh, float *gh, float *guh, float *gvh, float *h, float *uh, float *vh, int nx, int ny)
-{
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  int jdx = blockIdx.y * blockDim.y + threadIdx.y;
-  int id = ID_2D(idx, jdx, nx);
-
-  float g = 9.81; //[m^2/s] gravitational constant
-
-  for (idx = 0; idx < nx + 2; idx++ )
-    for (jdx = 0; jdx < ny + 2; jdx++)
-    {
-      fh[id] = uh[id]; //flux for the height equation: u*h
-
-      fuh[id] = uh[id] * uh[id] / h[id] + 0.5 * g * h[id] * h[id]; //flux for the momentum equation: u^2*h + 0.5*g*h^2
-
-      fvh[id] = uh[id] * vh[id] / h[id]; //flux for the momentum equation: u*v**h
-
-      gh[id] = vh[id]; //flux for the height equation: v*h
-
-      guh[id] = uh[id] * vh[id] / h[id]; //flux for the momentum equation: u*v**h
-
-      gvh[id] = vh[id] * vh[id] / h[id] + 0.5 * g * h[id] * h[id]; //flux for the momentum equation: v^2*h + 0.5*g*h^2
-    }
-}
+/******************************************************************************/
