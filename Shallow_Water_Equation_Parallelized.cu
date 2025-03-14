@@ -126,6 +126,8 @@ int main ( int argc, char *argv[] )
   float *hm;
   float *uhm;
   float *vhm;
+  float *h_fh, *h_fuh, *h_fvh;
+  float *h_gh, *h_guh, *h_gvh;
   float *x;
   float *y;
 
