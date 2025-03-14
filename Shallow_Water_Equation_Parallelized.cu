@@ -4,7 +4,6 @@
 # include <math.h>
 # include <string.h>
 # include <time.h>
-# include <stdio.h>
 # include <cuda_runtime.h>
 
 #define ID_2D(i,j,nx) ((i)*(nx+2)+(j))
@@ -16,30 +15,30 @@ void getArgs(int *nx, float *dt, float *x_length, float *t_final, int argc, char
 
 void write_results ( char *output_filename, int nx, int ny, float x[], float y[], float h[], float uh[], float vh[]);
 
-__global__ void compute_fluxes(float *fh, float *fuh, float *fvh, float *gh, float *guh, float *gvh, float *h, float *uh, float *vh, int nx, int ny)
+__global__ void computeFluxesGPU(float *h,  float *uh,  float *vh, float *fh, float *fuh, float *fvh, float *gh, float *guh, float *gvh, int nx, int ny)
 {
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  int jdx = blockIdx.y * blockDim.y + threadIdx.y;
-  int id = ID_2D(idx, jdx, nx);
+unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
+unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
+unsigned int id;
 
-  float g = 9.81; //[m^2/s] gravitational constant
+float g = 9.81;
 
-  for (idx = 0; idx < nx + 2; idx++ )
-    for (jdx = 0; jdx < ny + 2; jdx++)
-    {
-      fh[id] = uh[id]; //flux for the height equation: u*h
+id = ID_2D(i, j, nx);
 
-      fuh[id] = uh[id] * uh[id] / h[id] + 0.5 * g * h[id] * h[id]; //flux for the momentum equation: u^2*h + 0.5*g*h^2
+// **** COMPUTE FLUXES ****
+//Compute fluxes (including ghosts) 
 
-      fvh[id] = uh[id] * vh[id] / h[id]; //flux for the momentum equation: u*v**h
-
-      gh[id] = vh[id]; //flux for the height equation: v*h
-
-      guh[id] = uh[id] * vh[id] / h[id]; //flux for the momentum equation: u*v**h
-
-      gvh[id] = vh[id] * vh[id] / h[id] + 0.5 * g * h[id] * h[id]; //flux for the momentum equation: v^2*h + 0.5*g*h^2
-    }
+if (i < nx + 2 && j < ny + 2)
+  {
+  fh[id] = uh[id]; //flux for the height equation: u*h
+  fuh[id] = uh[id]*uh[id]/h[id] + 0.5*g*h[id]*h[id]; //flux for the momentum equation: u^2*h + 0.5*g*h^2
+  fvh[id] = uh[id]*vh[id]/h[id]; //flux for the momentum equation: u*v**h 
+  gh[id] = vh[id]; //flux for the height equation: v*h
+  guh[id] = uh[id]*vh[id]/h[id]; //flux for the momentum equation: u*v**h 
+  gvh[id] = vh[id]*vh[id]/h[id] + 0.5*g*h[id]*h[id]; //flux for the momentum equation: v^2*h + 0.5*g*h^2
+  }
 }
+
 /******************************************************************************/
 /*
   Purpose:
@@ -130,8 +129,6 @@ int main ( int argc, char *argv[] )
   float *x;
   float *y;
 
-  ny = nx; // we assume this, does not have to be this way
-
   // **** MEMORY ALLOCATIONS ****
 
   // **** Allocate memory on host ****
@@ -141,6 +138,8 @@ int main ( int argc, char *argv[] )
   hm = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
   fh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
   gh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
+  h_fh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
+  h_gh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
   
   //x momentum array
   uh  = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
@@ -148,19 +147,24 @@ int main ( int argc, char *argv[] )
   fuh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
   guh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
 
+  h_fuh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
+  h_guh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
+
   //y momentum array
   vh  = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
   vhm = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
   fvh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
   gvh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
   
+  h_fvh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
+  h_gvh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
+
   // location arrays
   x = ( float * ) malloc ( nx * sizeof ( float ) );
   y = ( float * ) malloc ( ny * sizeof ( float ) );
 
   // **** Allocate memory on device ****
   //Allocate space (nx+2)((nx+2) long, to account for ghosts
-  //height array
   CHECK(cudaMalloc((void **)&d_h, (nx+2)*(ny+2) * sizeof ( float )));
   CHECK(cudaMalloc((void **)&d_uh, (nx+2)*(ny+2) * sizeof ( float )));
   CHECK(cudaMalloc((void **)&d_vh, (nx+2)*(ny+2) * sizeof ( float )));
@@ -174,10 +178,23 @@ int main ( int argc, char *argv[] )
   //get command line arguments
   getArgs(&nx, &dt, &x_length, &t_final, argc, argv);
 
+  ny = nx; // we assume this, does not have to be this way
+
   printf ( "  NX = %d\n", nx );
   printf ( "  DT = %g\n", dt );
   printf ( "  X_LENGTH = %g\n", x_length );
   printf ( "  T_FINAL = %g\n", t_final );
+
+  //Define the locations of the nodes and time steps and the spacing.
+  dx = x_length / ( float ) ( nx );
+  dy = x_length / ( float ) ( nx );
+
+  //Define the grid and block dimensions for device calculations.
+  //We will use a 2D grid of blocks, where each block is dimx by dimy threads.
+  int dimx = 32;
+  int dimy = 32;
+  dim3 block(dimx, dimy);
+  dim3 grid((nx + block.x - 1) / block.x, (ny + block.y - 1) / block.y);
 
   // **** CALCULATIONS ****
   // Loop over 5 iterations of the calculation
@@ -192,16 +209,6 @@ int main ( int argc, char *argv[] )
       //Write initial condition to a file
       printf("Before write results\n");
       write_results("sw2d_init.dat", nx, ny, x, y, h, uh, vh);
-
-      //Define the locations of the nodes and time steps and the spacing.
-      dx = x_length / ( float ) ( nx );
-      dy = x_length / ( float ) ( nx );
-
-      //Define the grid and block dimensions
-      int dimx = 32;
-      int dimy = 32;
-      dim3 block(dimx, dimy);
-      dim3 grid((nx + block.x - 1) / block.x, (ny + block.y - 1) / block.y);
 
       // **** TIME LOOP ****
       float lambda_x = 0.5 * dt/dx;
@@ -232,7 +239,9 @@ int main ( int argc, char *argv[] )
           CHECK(cudaMemcpy(d_uh, uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
           CHECK(cudaMemcpy(d_vh, vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
 
-          compute_fluxes<<<grid, block>>>(d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, d_h, d_uh, d_vh, nx, ny);
+          computeFluxesGPU<<<grid, block>>>(d_h, d_uh, d_vh, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, nx, ny);
+          
+          CHECK(cudaGetLastError());
 
           //Move fluxes back to the host
           CHECK(cudaMemcpy(fh, d_fh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
@@ -432,6 +441,13 @@ int main ( int argc, char *argv[] )
   free ( gh );
   free ( guh );
   free ( gvh );
+
+  free ( h_fh );
+  free ( h_fuh );
+  free ( h_fvh ); 
+  free ( h_gh );
+  free ( h_guh );
+  free ( h_gvh );
 
   free ( x );
   free ( y );
