@@ -421,6 +421,17 @@ int main ( int argc, char *argv[] )
   CHECK(cudaFree(d_gvh));
 
   //Free host memory.
+  free ( h );
+  free ( uh );
+  free ( vh );
+
+  free ( fh );
+  free ( fuh );
+  free ( fvh );
+  
+  free ( gh );
+  free ( guh );
+  free ( gvh );
 
   free ( x );
   free ( y );
