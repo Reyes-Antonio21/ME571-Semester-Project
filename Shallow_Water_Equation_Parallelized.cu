@@ -138,7 +138,7 @@ int main ( int argc, char *argv[] )
   printf ( "  DT = %g\n", dt );
   printf ( "  X_LENGTH = %g\n", x_length );
   printf ( "  T_FINAL = %g\n", t_final );
-  
+
   // **** MEMORY ALLOCATIONS ****
 
   // **** Allocate memory on host ****
@@ -226,8 +226,6 @@ int main ( int argc, char *argv[] )
         {
           //Take a time step
           time = time + dt;
-
-          printf("time = %f\n", time);
 
           // **** COMPUTE FLUXES ****
           //Compute fluxes (including ghosts)
