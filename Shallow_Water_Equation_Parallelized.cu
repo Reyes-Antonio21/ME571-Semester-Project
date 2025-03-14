@@ -117,20 +117,28 @@ int main ( int argc, char *argv[] )
   float *h, *d_h;
   float *uh, *d_uh;
   float *vh, *d_vh;
-  float *fh, *d_fh;
-  float *fuh, *d_fuh;
-  float *fvh, *d_fvh;
-  float *gh, *d_gh;
-  float *guh, *d_guh;
-  float *gvh, *d_gvh;
+  float *fh, *h_fh, *d_fh;
+  float *fuh, *h_fuh, *d_fuh;
+  float *fvh, *h_fvh, *d_fvh;
+  float *gh, *h_gh, *d_gh;
+  float *guh, *h_guh, *d_guh;
+  float *gvh, *h_gvh, *d_gvh;
   float *hm;
   float *uhm;
   float *vhm;
-  float *h_fh, *h_fuh, *h_fvh;
-  float *h_gh, *h_guh, *h_gvh;
   float *x;
   float *y;
 
+  //get command line arguments
+  getArgs(&nx, &dt, &x_length, &t_final, argc, argv);
+
+  ny = nx; // we assume this, does not have to be this way
+
+  printf ( "  NX = %d\n", nx );
+  printf ( "  DT = %g\n", dt );
+  printf ( "  X_LENGTH = %g\n", x_length );
+  printf ( "  T_FINAL = %g\n", t_final );
+  
   // **** MEMORY ALLOCATIONS ****
 
   // **** Allocate memory on host ****
@@ -176,16 +184,6 @@ int main ( int argc, char *argv[] )
   CHECK(cudaMalloc((void **)&d_gh, (nx+2)*(ny+2) * sizeof ( float )));
   CHECK(cudaMalloc((void **)&d_guh, (nx+2)*(ny+2) * sizeof ( float )));
   CHECK(cudaMalloc((void **)&d_gvh, (nx+2)*(ny+2) * sizeof ( float )));
-
-  //get command line arguments
-  getArgs(&nx, &dt, &x_length, &t_final, argc, argv);
-
-  ny = nx; // we assume this, does not have to be this way
-
-  printf ( "  NX = %d\n", nx );
-  printf ( "  DT = %g\n", dt );
-  printf ( "  X_LENGTH = %g\n", x_length );
-  printf ( "  T_FINAL = %g\n", t_final );
 
   //Define the locations of the nodes and time steps and the spacing.
   dx = x_length / ( float ) ( nx );
