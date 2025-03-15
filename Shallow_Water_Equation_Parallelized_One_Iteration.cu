@@ -101,7 +101,7 @@ int main ( int argc, char *argv[] )
   printf ( "\n" );
 
   // **** VARIABLES ****
-  int i, j, k; // loop variables
+  int i, j; // loop variables
   int id, id_left, id_right, id_bottom, id_top; //boundary indices
   int nx, ny; //step size
 
@@ -204,7 +204,7 @@ int main ( int argc, char *argv[] )
 
   //Write initial condition to a file
   printf("Before write results\n");
-  write_results("sw2d_init.dat", nx, ny, x, y, h, uh, vh);
+  write_results("swep_2d_oi_init.dat", nx, ny, x, y, h, uh, vh);
 
   // **** TIME LOOP ****
   float lambda_x = 0.5 * dt/dx;
@@ -405,7 +405,7 @@ int main ( int argc, char *argv[] )
 
   // **** POSTPROCESSING ****
   // Write data to file
-  write_results("sw2d_final.dat", nx, ny, x, y, h, uh, vh);
+  write_results("swep_2d_oi_final.dat", nx, ny, x, y, h, uh, vh);
 
   // **** CLEANUP ****
   //Free device memory
