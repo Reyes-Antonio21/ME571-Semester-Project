@@ -39,7 +39,6 @@ if (i < nx + 2 && j < ny + 2)
   }
 }
 
-/******************************************************************************/
 /*
   Purpose:
     MAIN is the main program for SHALLOW_WATER_2D.
