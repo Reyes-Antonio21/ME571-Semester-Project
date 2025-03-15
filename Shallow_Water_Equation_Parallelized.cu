@@ -145,6 +145,8 @@ int main ( int argc, char *argv[] )
   float t_final;
   float x_length;
   float time;
+  float lambda_x;
+  float lambda_y;
   float dx;
   float dy;
   float dt;
@@ -221,6 +223,12 @@ int main ( int argc, char *argv[] )
   dx = x_length / ( float ) ( nx );
   dy = x_length / ( float ) ( nx );
 
+  __constant__ float d_lambda_x = 0.5 * dt/dx;
+  __constant__ float d_lambda_y = 0.5 * dt/dy;
+
+  cudaMemcpyToSymbol(lambda_x, &d_lambda_x, sizeof(float));
+  cudaMemcpyToSymbol(lambda_y, &d_lambda_y, sizeof(float));
+
   //Define the grid and block dimensions for device calculations.
   //We will use a 2D grid of blocks, where each block is dimx by dimy threads.
   int dimx = 32;
@@ -243,8 +251,6 @@ int main ( int argc, char *argv[] )
       write_results("swep_2d_init.dat", nx, ny, x, y, h, uh, vh);
 
       // **** TIME LOOP ****
-      float lambda_x = 0.5 * dt/dx;
-      float lambda_y = 0.5 * dt/dy;
 
       float total_flux_time = 0.0;
       float total_compute_variables_time = 0.0;
@@ -448,7 +454,7 @@ int main ( int argc, char *argv[] )
   CHECK(cudaFree(d_hm));
   CHECK(cudaFree(d_uhm));
   CHECK(cudaFree(d_vhm));
-  
+
 
   //Free host memory.
   free ( h );
