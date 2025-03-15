@@ -44,7 +44,7 @@ if (i < nx + 2 && j < ny + 2)
   }
 }
 
-__global__ void computeVariablesGPU(float *hm, float *h, float *fh, float *gh, float *uhm, float *uh, float *fuh, float *guh, float *vhm, float *vh, float *fvh, int nx, int ny)
+__global__ void computeVariablesGPU(float *hm, float *uhm, float *vhm, float *fh, float *fuh, float *fvh, float *gh, float *guh, float *gvh, float *h, float *uh, float *vh, int nx, int ny)
 {
   unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
   unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
@@ -213,6 +213,9 @@ int main ( int argc, char *argv[] )
   CHECK(cudaMalloc((void **)&d_gh, (nx+2)*(ny+2) * sizeof ( float )));
   CHECK(cudaMalloc((void **)&d_guh, (nx+2)*(ny+2) * sizeof ( float )));
   CHECK(cudaMalloc((void **)&d_gvh, (nx+2)*(ny+2) * sizeof ( float )));
+  CHECK(cudaMalloc((void **)&d_hm, (nx+2)*(ny+2) * sizeof ( float )));
+  CHECK(cudaMalloc((void **)&d_uhm, (nx+2)*(ny+2) * sizeof ( float )));
+  CHECK(cudaMalloc((void **)&d_vhm, (nx+2)*(ny+2) * sizeof ( float )));
 
   //Define the locations of the nodes and time steps and the spacing.
   dx = x_length / ( float ) ( nx );
@@ -270,14 +273,6 @@ int main ( int argc, char *argv[] )
           
           CHECK(cudaGetLastError());
 
-          //Move fluxes back to the host
-          CHECK(cudaMemcpy(fh, d_fh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-          CHECK(cudaMemcpy(fuh, d_fuh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-          CHECK(cudaMemcpy(fvh, d_fvh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-          CHECK(cudaMemcpy(gh, d_gh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-          CHECK(cudaMemcpy(guh, d_guh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-          CHECK(cudaMemcpy(gvh, d_gvh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-
           // End timing the compute fluxes section
           clock_t flux_end = clock();
           total_flux_time += (double)(flux_end - flux_start) / CLOCKS_PER_SEC;
@@ -288,36 +283,30 @@ int main ( int argc, char *argv[] )
           // Start timing compute variables section
           clock_t compute_variables_start = clock();
 
-          for ( i = 1; i < nx + 1; i++ )
-            for ( j = 1; j < ny + 1; j++ )
-              {
+          //Move data to the device
+          CHECK(cudaMemcpy(d_hm, hm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
+          CHECK(cudaMemcpy(d_uhm, uhm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
+          CHECK(cudaMemcpy(d_vhm, vhm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
 
-                id = ID_2D(i, j, nx);
-
-                id_left = ID_2D(i, j - 1, nx);
-
-                id_right = ID_2D(i, j + 1, nx);
-
-                id_bottom = ID_2D(i - 1, j, nx);
-
-                id_top = ID_2D(i + 1, j, nx);
-
-                hm[id] = 0.25 * (h[id_left] + h[id_right] + h[id_bottom] + h[id_top])
-                  - lambda_x * ( fh[id_right] - fh[id_left] )
-                  - lambda_y * ( gh[id_top] - gh[id_bottom] );
-
-                uhm[id] = 0.25 * (uh[id_left] + uh[id_right] + uh[id_bottom] + uh[id_top])
-                  - lambda_x * ( fuh[id_right] - fuh[id_left] )
-                  - lambda_y * ( guh[id_top] - guh[id_bottom] );
-
-                vhm[id] = 0.25 * (vh[id_left] + vh[id_right] + vh[id_bottom] + vh[id_top])
-                  - lambda_x * ( fvh[id_right] - fvh[id_left] )
-                  - lambda_y * ( gvh[id_top] - gvh[id_bottom] );
-              }
+          computeVariablesGPU<<<grid, block>>>(d_hm, d_uhm, d_vhm, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, d_h, d_uh, d_vh, nx, ny);
 
           // End timing the compute variables section
           clock_t compute_variables_end = clock();
           total_compute_variables_time += (double)(compute_variables_end - compute_variables_start) / CLOCKS_PER_SEC;
+
+          //Move fluxes back to the host
+          CHECK(cudaMemcpy(hm, d_hm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+          CHECK(cudaMemcpy(uhm, d_uhm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+          CHECK(cudaMemcpy(vhm, d_vhm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+          CHECK(cudaMemcpy(fh, d_fh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+          CHECK(cudaMemcpy(fuh, d_fuh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+          CHECK(cudaMemcpy(fvh, d_fvh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+          CHECK(cudaMemcpy(gh, d_gh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+          CHECK(cudaMemcpy(guh, d_guh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+          CHECK(cudaMemcpy(gvh, d_gvh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+          CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+          CHECK(cudaMemcpy(uh, d_uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+          CHECK(cudaMemcpy(vh, d_vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
 
           // **** UPDATE VARIABLES ****
           //update interior state variables
