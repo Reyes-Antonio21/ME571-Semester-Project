@@ -76,6 +76,11 @@ __global__ void computeVariablesGPU(float *hm, float *uhm, float *vhm, float *fh
     }
   }
 
+// variables accessible to the GPU kernel
+//these are constant for the entire run, so we can use __constant__ memory
+__constant__ float lambda_x;
+__constant__ float lambda_y;
+
 /*
   Purpose:
     MAIN is the main program for SHALLOW_WATER_2D.
@@ -138,10 +143,6 @@ int main ( int argc, char *argv[] )
   printf ( "\n" );
 
   // **** VARIABLES ****
-  // variables accessible to the GPU kernel
-  //these are constant for the entire run, so we can use __constant__ memory
-  __constant__ float lambda_x;
-  __constant__ float lambda_y;
 
   int i, j, k; // loop variables
   int id, id_left, id_right, id_bottom, id_top; //boundary indices
@@ -226,8 +227,8 @@ int main ( int argc, char *argv[] )
   dx = x_length / ( float ) ( nx );
   dy = x_length / ( float ) ( nx );
 
-  float d_lambda_x = 0.5 * dt/dx;
-  float d_lambda_y = 0.5 * dt/dy;
+  float d_lambda_x = 0.5 * dt / dx;
+  float d_lambda_y = 0.5 * dt / dy;
 
   cudaMemcpyToSymbol(lambda_x, &d_lambda_x, sizeof(float));
   cudaMemcpyToSymbol(lambda_y, &d_lambda_y, sizeof(float));
