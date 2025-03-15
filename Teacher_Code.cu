@@ -8,6 +8,7 @@
 
 #define ID_2D(i,j,nx) ((i)*(nx+2)+(j))
 
+int main ( int argc, char *argv[] );
 void initial_conditions ( int nx, int ny, float dx, float dy,  float x_length, float x[],float y[], float h[], float uh[] ,float vh[]);
 
 //utilities
@@ -17,9 +18,9 @@ void write_results ( char *output_filename, int nx, int ny, float x[], float y[]
 
 
 __global__ void computeFluxesGPU(float *h,  float *uh,  float *vh, 
-    float *fh, float *fuh, float *fvh,
-    float *gh, float *guh, float *gvh,
-    int nx, int ny)
+				 float *fh, float *fuh, float *fvh,
+				 float *gh, float *guh, float *gvh,
+				 int nx, int ny)
 {
     unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
     unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
