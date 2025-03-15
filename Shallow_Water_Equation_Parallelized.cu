@@ -445,6 +445,11 @@ int main ( int argc, char *argv[] )
   CHECK(cudaFree(d_guh));
   CHECK(cudaFree(d_gvh));
 
+  CHECK(cudaFree(d_hm));
+  CHECK(cudaFree(d_uhm));
+  CHECK(cudaFree(d_vhm));
+  
+
   //Free host memory.
   free ( h );
   free ( uh );
