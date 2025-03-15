@@ -44,7 +44,7 @@ if (i < nx + 2 && j < ny + 2)
   }
 }
 
-__global__ void computeVariablesGPU(float *hm, float *uhm, float *vhm, float *fh, float *fuh, float *fvh, float *gh, float *guh, float *gvh, float *h, float *uh, float *vh, int nx, int ny)
+__global__ void computeVariablesGPU(float *hm, float *uhm, float *vhm, float *fh, float *fuh, float *fvh, float *gh, float *guh, float *gvh, float *h, float *uh, float *vh, float lambda_x, float lambda_y, int nx, int ny)
 {
   unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
   unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
@@ -75,11 +75,6 @@ __global__ void computeVariablesGPU(float *hm, float *uhm, float *vhm, float *fh
         - lambda_y * ( gvh[id_top] - gvh[id_bottom] );
     }
   }
-
-// variables accessible to the GPU kernel
-//these are constant for the entire run, so we can use __constant__ memory
-__constant__ float lambda_x;
-__constant__ float lambda_y;
 
 /*
   Purpose:
@@ -147,9 +142,12 @@ int main ( int argc, char *argv[] )
   int i, j, k; // loop variables
   int id, id_left, id_right, id_bottom, id_top; //boundary indices
   int nx, ny; //step size
+  int dimx, dimy; //block dimensions
 
   float t_final;
   float x_length;
+  float lambda_x;
+  float lambda_y;
   float time;
   float dx;
   float dy;
@@ -227,16 +225,13 @@ int main ( int argc, char *argv[] )
   dx = x_length / ( float ) ( nx );
   dy = x_length / ( float ) ( nx );
 
-  float d_lambda_x = 0.5 * dt / dx;
-  float d_lambda_y = 0.5 * dt / dy;
-
-  cudaMemcpyToSymbol(lambda_x, &d_lambda_x, sizeof(float));
-  cudaMemcpyToSymbol(lambda_y, &d_lambda_y, sizeof(float));
+  lambda_x = 0.5 * dt / dx;
+  lambda_y = 0.5 * dt / dy;
 
   //Define the grid and block dimensions for device calculations.
   //We will use a 2D grid of blocks, where each block is dimx by dimy threads.
-  int dimx = 32;
-  int dimy = 32;
+  dimx = 32;
+  dimy = 32;
   dim3 block(dimx, dimy);
   dim3 grid((nx + block.x - 1) / block.x, (ny + block.y - 1) / block.y);
 
@@ -298,7 +293,7 @@ int main ( int argc, char *argv[] )
           CHECK(cudaMemcpy(d_uhm, uhm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
           CHECK(cudaMemcpy(d_vhm, vhm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
 
-          computeVariablesGPU<<<grid, block>>>(d_hm, d_uhm, d_vhm, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, d_h, d_uh, d_vh, nx, ny);
+          computeVariablesGPU<<<grid, block>>>(d_hm, d_uhm, d_vhm, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, d_h, d_uh, d_vh, lambda_x, lambda_y, nx, ny);
 
           // End timing the compute variables section
           clock_t compute_variables_end = clock();
