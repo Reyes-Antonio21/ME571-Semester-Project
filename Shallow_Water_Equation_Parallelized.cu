@@ -48,6 +48,7 @@ __global__ void computeVariablesGPU(float *hm, float *uhm, float *vhm, float *fh
 {
   unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
   unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
+  unsigned int id, id_left, id_right, id_bottom, id_top;
 
   if (i >= 1 && i < nx && j >= 1 && j < ny)  // Ensure proper bounds
   {
@@ -271,7 +272,6 @@ int main ( int argc, char *argv[] )
           CHECK(cudaMemcpy(d_vh, vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
 
           computeFluxesGPU<<<grid, block>>>(d_h, d_uh, d_vh, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, nx, ny);
-          __synchthreads();
 
           CHECK(cudaGetLastError());
 
@@ -291,7 +291,6 @@ int main ( int argc, char *argv[] )
           CHECK(cudaMemcpy(d_vhm, vhm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
 
           computeVariablesGPU<<<grid, block>>>(d_hm, d_uhm, d_vhm, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, d_h, d_uh, d_vh, lambda_x, lambda_y, nx, ny);
-          __synchthreads();
 
           CHECK(cudaGetLastError());
 
