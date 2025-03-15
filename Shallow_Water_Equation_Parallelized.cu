@@ -153,15 +153,15 @@ int main ( int argc, char *argv[] )
   float *h, *d_h;
   float *uh, *d_uh;
   float *vh, *d_vh;
-  float *fh, *h_fh, *d_fh;
-  float *fuh, *h_fuh, *d_fuh;
-  float *fvh, *h_fvh, *d_fvh;
-  float *gh, *h_gh, *d_gh;
-  float *guh, *h_guh, *d_guh;
-  float *gvh, *h_gvh, *d_gvh;
-  float *hm;
-  float *uhm;
-  float *vhm;
+  float *fh, *d_fh;
+  float *fuh, *d_fuh;
+  float *fvh, *d_fvh;
+  float *gh, *d_gh;
+  float *guh, *d_guh;
+  float *gvh, *d_gvh;
+  float *hm, *d_hm; 
+  float *uhm, *d_uhm;
+  float *vhm, *d_vhm;
   float *x;
   float *y;
 
@@ -184,26 +184,19 @@ int main ( int argc, char *argv[] )
   hm = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
   fh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
   gh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
-  h_fh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
-  h_gh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
-  
+
   //x momentum array
   uh  = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
   uhm = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
   fuh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
   guh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
 
-  h_fuh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
-  h_guh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
 
   //y momentum array
   vh  = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
   vhm = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
   fvh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
   gvh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
-  
-  h_fvh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
-  h_gvh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
 
   // location arrays
   x = ( float * ) malloc ( nx * sizeof ( float ) );
@@ -475,13 +468,6 @@ int main ( int argc, char *argv[] )
   free ( gh );
   free ( guh );
   free ( gvh );
-
-  free ( h_fh );
-  free ( h_fuh );
-  free ( h_fvh ); 
-  free ( h_gh );
-  free ( h_guh );
-  free ( h_gvh );
 
   free ( x );
   free ( y );
