@@ -138,6 +138,11 @@ int main ( int argc, char *argv[] )
   printf ( "\n" );
 
   // **** VARIABLES ****
+  // variables accessible to the GPU kernel
+  //these are constant for the entire run, so we can use __constant__ memory
+  __constant__ float lambda_x;
+  __constant__ float lambda_y;
+
   int i, j, k; // loop variables
   int id, id_left, id_right, id_bottom, id_top; //boundary indices
   int nx, ny; //step size
@@ -145,8 +150,6 @@ int main ( int argc, char *argv[] )
   float t_final;
   float x_length;
   float time;
-  float lambda_x;
-  float lambda_y;
   float dx;
   float dy;
   float dt;
@@ -223,8 +226,8 @@ int main ( int argc, char *argv[] )
   dx = x_length / ( float ) ( nx );
   dy = x_length / ( float ) ( nx );
 
-  __constant__ float d_lambda_x = 0.5 * dt/dx;
-  __constant__ float d_lambda_y = 0.5 * dt/dy;
+  float d_lambda_x = 0.5 * dt/dx;
+  float d_lambda_y = 0.5 * dt/dy;
 
   cudaMemcpyToSymbol(lambda_x, &d_lambda_x, sizeof(float));
   cudaMemcpyToSymbol(lambda_y, &d_lambda_y, sizeof(float));
