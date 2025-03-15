@@ -31,13 +31,50 @@ id = ID_2D(i, j, nx);
 if (i < nx + 2 && j < ny + 2)
   {
   fh[id] = uh[id]; //flux for the height equation: u*h
+
   fuh[id] = uh[id]*uh[id]/h[id] + 0.5*g*h[id]*h[id]; //flux for the momentum equation: u^2*h + 0.5*g*h^2
+
   fvh[id] = uh[id]*vh[id]/h[id]; //flux for the momentum equation: u*v**h 
+
   gh[id] = vh[id]; //flux for the height equation: v*h
+
   guh[id] = uh[id]*vh[id]/h[id]; //flux for the momentum equation: u*v**h 
+
   gvh[id] = vh[id]*vh[id]/h[id] + 0.5*g*h[id]*h[id]; //flux for the momentum equation: v^2*h + 0.5*g*h^2
   }
 }
+
+__global__ void computeVariablesGPU(float *hm, float *h, float *fh, float *gh, float *uhm, float *uh, float *fuh, float *guh, float *vhm, float *vh, float *fvh, int nx, int ny)
+{
+  unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
+  unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
+  unsigned int id, id_left, id_right, id_bottom, id_top;
+
+  if( i < nx + 1 && j < ny + 1)
+    {
+      id = ID_2D(i, j, nx);
+
+      id_left = ID_2D(i, j - 1, nx);
+
+      id_right = ID_2D(i, j + 1, nx);
+
+      id_bottom = ID_2D(i - 1, j, nx);
+
+      id_top = ID_2D(i + 1, j, nx);
+
+      hm[id] = 0.25 * (h[id_left] + h[id_right] + h[id_bottom] + h[id_top])
+        - lambda_x * ( fh[id_right] - fh[id_left] )
+        - lambda_y * ( gh[id_top] - gh[id_bottom] );
+
+      uhm[id] = 0.25 * (uh[id_left] + uh[id_right] + uh[id_bottom] + uh[id_top])
+        - lambda_x * ( fuh[id_right] - fuh[id_left] )
+        - lambda_y * ( guh[id_top] - guh[id_bottom] );
+
+      vhm[id] = 0.25 * (vh[id_left] + vh[id_right] + vh[id_bottom] + vh[id_top])
+        - lambda_x * ( fvh[id_right] - fvh[id_left] )
+        - lambda_y * ( gvh[id_top] - gvh[id_bottom] );
+    }
+  }
 
 /*
   Purpose:
@@ -258,8 +295,8 @@ int main ( int argc, char *argv[] )
           // Start timing compute variables section
           clock_t compute_variables_start = clock();
 
-          for ( i = 1; i < ny + 1; i++ )
-            for ( j = 1; j < nx + 1; j++ )
+          for ( i = 1; i < nx + 1; i++ )
+            for ( j = 1; j < ny + 1; j++ )
               {
 
                 id = ID_2D(i, j, nx);
