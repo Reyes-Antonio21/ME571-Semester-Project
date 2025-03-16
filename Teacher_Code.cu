@@ -16,43 +16,82 @@ void write_results ( char *output_filename, int nx, int ny, float x[], float y[]
 
 void initial_conditions ( int nx, int ny, float dx, float dy,  float x_length, float x[],float y[], float h[], float uh[] ,float vh[]);
 
+__global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int nx, int ny, int bc_type) 
+{
+  int i = threadIdx.x + blockIdx.x * blockDim.x;
+  int j = threadIdx.y + blockIdx.y * blockDim.y;
+
+  if (i >= nx + 2 || j >= ny + 2) return; // Ensure we are within valid bounds
+
+  int id = ID_2D(i, j, nx);
+
+  // Apply boundary conditions based on type
+  if (bc_type == 0) {  // Dirichlet (Fixed Value)
+      if (i == 0 || i == nx+1) { h[id] = 1.0f; uh[id] = 0.0f; vh[id] = 0.0f; }
+      if (j == 0 || j == ny+1) { h[id] = 1.0f; uh[id] = 0.0f; vh[id] = 0.0f; }
+  }
+  else if (bc_type == 1) {  // Neumann (Zero Gradient)
+      if (i == 0) { h[id] = h[ID_2D(1, j, nx)]; uh[id] = uh[ID_2D(1, j, nx)]; vh[id] = vh[ID_2D(1, j, nx)]; }
+      if (i == nx+1) { h[id] = h[ID_2D(nx, j, nx)]; uh[id] = uh[ID_2D(nx, j, nx)]; vh[id] = vh[ID_2D(nx, j, nx)]; }
+      if (j == 0) { h[id] = h[ID_2D(i, 1, nx)]; uh[id] = uh[ID_2D(i, 1, nx)]; vh[id] = vh[ID_2D(i, 1, nx)]; }
+      if (j == ny+1) { h[id] = h[ID_2D(i, ny, nx)]; uh[id] = uh[ID_2D(i, ny, nx)]; vh[id] = vh[ID_2D(i, ny, nx)]; }
+  }
+  else if (bc_type == 2) {  // Periodic
+      if (i == 0) { h[id] = h[ID_2D(nx, j, nx)]; uh[id] = uh[ID_2D(nx, j, nx)]; vh[id] = vh[ID_2D(nx, j, nx)]; }
+      if (i == nx+1) { h[id] = h[ID_2D(1, j, nx)]; uh[id] = uh[ID_2D(1, j, nx)]; vh[id] = vh[ID_2D(1, j, nx)]; }
+      if (j == 0) { h[id] = h[ID_2D(i, ny, nx)]; uh[id] = uh[ID_2D(i, ny, nx)]; vh[id] = vh[ID_2D(i, ny, nx)]; }
+      if (j == ny+1) { h[id] = h[ID_2D(i, 1, nx)]; uh[id] = uh[ID_2D(i, 1, nx)]; vh[id] = vh[ID_2D(i, 1, nx)]; }
+  }
+  else if (bc_type == 3) {  // Reflective Boundary Conditions
+      if (i == 0) {  
+          h[id] = h[ID_2D(1, j, nx)];  // Mirror h
+          uh[id] = -uh[ID_2D(1, j, nx)];  // Reflect normal velocity (x-direction)
+          vh[id] = vh[ID_2D(1, j, nx)];   // Tangential velocity unchanged
+      }
+      if (i == nx+1) {  
+          h[id] = h[ID_2D(nx, j, nx)];
+          uh[id] = -uh[ID_2D(nx, j, nx)];
+          vh[id] = vh[ID_2D(nx, j, nx)];
+      }
+      if (j == 0) {  
+          h[id] = h[ID_2D(i, 1, nx)];
+          vh[id] = -vh[ID_2D(i, 1, nx)];  // Reflect normal velocity (y-direction)
+          uh[id] = uh[ID_2D(i, 1, nx)];   // Tangential velocity unchanged
+      }
+      if (j == ny+1) {  
+          h[id] = h[ID_2D(i, ny, nx)];
+          vh[id] = -vh[ID_2D(i, ny, nx)];
+          uh[id] = uh[ID_2D(i, ny, nx)];
+      }
+  }
+}
+/******************************************************************************/
+
 __global__ void computeFluxesGPU(float *h,  float *uh,  float *vh, float *fh, float *fuh, float *fvh, float *gh, float *guh, float *gvh, int nx, int ny)
 {
   unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
   unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
-  unsigned int id;
 
-  float g = 9.81;
+  if (i >= nx || j >= ny) return; // Ensure we stay inside computational domain
 
-  id = ID_2D(i, j, nx);
+  unsigned int id = ID_2D(i+1, j+1, nx); // Offset to skip ghost cells
 
-  // **** COMPUTE FLUXES ****
-  //Compute fluxes (including ghosts) 
+  float g = 9.81; // Gravitational acceleration
 
-  if (i < nx + 2 && j < ny + 2) // Ensure proper bounds
-    {
-    fh[id] = uh[id]; //flux for the height equation: u*h
+  // Compute fluxes
+  fh[id] = uh[id];  // flux for height equation: u*h
+  fuh[id] = uh[id] * uh[id] / h[id] + 0.5 * g * h[id] * h[id]; // momentum equation: u²h + 0.5*g*h²
+  fvh[id] = uh[id] * vh[id] / h[id]; // momentum equation: u*v*h
 
-    fuh[id] = uh[id]*uh[id]/h[id] + 0.5*g*h[id]*h[id]; //flux for the momentum equation: u^2*h + 0.5*g*h^2
+  gh[id] = vh[id];  // flux for height equation: v*h
+  guh[id] = uh[id] * vh[id] / h[id]; // momentum equation: u*v*h
+  gvh[id] = vh[id] * vh[id] / h[id] + 0.5 * g * h[id] * h[id]; // momentum equation: v²h + 0.5*g*h²
 
-    fvh[id] = uh[id]*vh[id]/h[id]; //flux for the momentum equation: u*v**h 
-
-    gh[id] = vh[id]; //flux for the height equation: v*h
-
-    guh[id] = uh[id]*vh[id]/h[id]; //flux for the momentum equation: u*v**h 
-
-    gvh[id] = vh[id]*vh[id]/h[id] + 0.5*g*h[id]*h[id]; //flux for the momentum equation: v^2*h + 0.5*g*h^2
-    }
-
-    __syncthreads(); // Ensure all threads have completed  
+  __syncthreads(); 
 }
-
-
 /******************************************************************************/
 
 int main ( int argc, char *argv[] )
-
-/******************************************************************************/
 {
   float dx;
   float dy;
@@ -171,34 +210,37 @@ int main ( int argc, char *argv[] )
       // **** COMPUTE FLUXES ****
       //Compute fluxes (including ghosts) 
       /*for ( i = 0; i < ny+2; i++ )
-	    for ( j = 0; j < nx+2; j++){
-      id=ID_2D(i,j,nx);
+	    for ( j = 0; j < nx+2; j++)
+      {
+        id=ID_2D(i,j,nx);
 
-      fh[id] = uh[id]; //flux for the height equation: u*h
-      fuh[id] = uh[id]*uh[id]/h[id] + 0.5*g*h[id]*h[id]; //flux for the momentum equation: u^2*h + 0.5*g*h^2
-      fvh[id] = uh[id]*vh[id]/h[id]; //flux for the momentum equation: u*v**h 
-      gh[id] = vh[id]; //flux for the height equation: v*h
-      guh[id] = uh[id]*vh[id]/h[id]; //flux for the momentum equation: u*v**h 
-      gvh[id] = vh[id]*vh[id]/h[id] + 0.5*g*h[id]*h[id]; //flux for the momentum equation: v^2*h + 0.5*g*h^2
-	  }
+        fh[id] = uh[id]; //flux for the height equation: u*h
+        fuh[id] = uh[id]*uh[id]/h[id] + 0.5*g*h[id]*h[id]; //flux for the momentum equation: u^2*h + 0.5*g*h^2
+        fvh[id] = uh[id]*vh[id]/h[id]; //flux for the momentum equation: u*v**h 
+        gh[id] = vh[id]; //flux for the height equation: v*h
+        guh[id] = uh[id]*vh[id]/h[id]; //flux for the momentum equation: u*v**h 
+        gvh[id] = vh[id]*vh[id]/h[id] + 0.5*g*h[id]*h[id]; //flux for the momentum equation: v^2*h + 0.5*g*h^2
+	    }
       */
+
       //Move data to the device
       CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
       CHECK(cudaMemcpy(d_uh, uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
       CHECK(cudaMemcpy(d_vh, vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
 
-      
-      int dimx = 32;S
+      //Define the block and grid sizes
+      int dimx = 32;
       int dimy = 32;
-      dim3 block(dimx, dimy);
-      dim3 grid((nx + block.x - 1) / block.x, (ny + block.y - 1) / block.y);
+      dim3 blockSize(dimx, dimy);
+      dim3 gridSize((nx + block.x - 1) / block.x, (ny + block.y - 1) / block.y);
 
-      computeFluxesGPU<<<grid, block>>>(d_h, d_uh, d_vh,
-			    d_fh, d_fuh, d_fvh,
-					d_gh, d_guh, d_gvh,
-					nx, ny);
+      // Apply boundary conditions first (bc_type = 3 for reflective)
+      applyBoundaryConditions<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, nx, ny, 3);
+      cudaDeviceSynchronize();
 
-      CHECK(cudaGetLastError());
+      // Compute fluxes after boundary conditions are enforced
+      computeFluxesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, nx, ny);
+      cudaDeviceSynchronize();
 
       //Move fluxes back - for now
       CHECK(cudaMemcpy(fh, d_fh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
@@ -226,7 +268,7 @@ int main ( int argc, char *argv[] )
           uhm[id] = 0.25*(uh[id_left]+uh[id_right]+uh[id_bottom]+uh[id_top]) 
             - lambda_x * ( fuh[id_right] - fuh[id_left] ) 
             - lambda_y * ( guh[id_top] - guh[id_bottom] );
-            
+
           vhm[id] = 0.25*(vh[id_left]+vh[id_right]+vh[id_bottom]+vh[id_top]) 
             - lambda_x * ( fvh[id_right] - fvh[id_left] ) 
             - lambda_y * ( gvh[id_top] - gvh[id_bottom] );
@@ -242,62 +284,16 @@ int main ( int argc, char *argv[] )
         uh[id] = uhm[id];
         vh[id] = vhm[id];
         }
-
-      // **** APPLY BOUNDARY CONDITIONS ****
-      //Update the ghosts (boundary conditions)
-      //left
-      j=1;
-      for(i=1; i<ny+1; i++)
-      {
-        id = ID_2D(i,j,nx);
-        id_left = ID_2D(i,j-1,nx);
-        h[id_left]  =   h[id];
-        uh[id_left] = - uh[id];
-        vh[id_left] =   vh[id];
-      }
-
-      //right
-      j=nx;
-      for(i=1; i<ny+1; i++)
-      {
-        id = ID_2D(i,j,nx);
-        id_right = ID_2D(i,j+1,nx);
-        h[id_right]  =   h[id];
-        uh[id_right] = - uh[id];
-        vh[id_right] =   vh[id];
-      }
-
-      //bottom
-      i=1;
-      for(j=1; j<nx+1; j++)
-      {
-        id = ID_2D(i,j,nx);
-        id_bottom = ID_2D(i-1,j,nx);
-        h[id_bottom]  =   h[id];
-        uh[id_bottom] =   uh[id];
-        vh[id_bottom] = - vh[id];
-      }
-
-      //top
-      i=ny;
-      for(j=1; j<nx+1; j++)
-      {
-        id = ID_2D(i,j,nx);
-        id_top = ID_2D(i+1,j,nx);
-        h[id_top]  =   h[id];
-        uh[id_top] =   uh[id];
-        vh[id_top] = - vh[id];
-      }
     } //end time loop
 
-clock_t time_end = clock();
-double time_elapsed = (double)(time_end - time_start) / CLOCKS_PER_SEC;
-  
- printf("Problem size: %d, time steps taken: %d,  elapsed time: %f s\n", nx,k,time_elapsed);
-  
+  clock_t time_end = clock();
+  double time_elapsed = (double)(time_end - time_start) / CLOCKS_PER_SEC;
+    
+  printf("Problem size: %d, time steps taken: %d,  elapsed time: %f s\n", nx,k,time_elapsed);
+
   // **** POSTPROCESSING ****
   // Write data to file
-  write_results("tc2d_final.dat",nx,ny,x,y,h,uh,vh);
+  write_results("tc2d_final.dat", nx, ny, x, y, h, uh, vh);
 
   CHECK(cudaFree(d_h));
   CHECK(cudaFree(d_uh));
@@ -331,7 +327,7 @@ double time_elapsed = (double)(time_end - time_start) / CLOCKS_PER_SEC;
   free ( x );
   free ( y );
 
- //Terminate.
+  //Terminate.
 
   //printf ( "\n" );
   //printf ( "SHALLOW_WATER_2D:\n" );
@@ -353,20 +349,20 @@ void initial_conditions ( int nx, int ny, float dx, float dy,  float x_length, f
 
   for ( i = 1; i < nx+1; i++ )
     for( j = 1; j < ny+1; j++)
-      {
-	float xx = x[j-1];
-	float yy = y[i-1];
-	id=ID_2D(i,j,nx);
-	h[id] = 1.0 + 0.4*exp ( -5 * ( xx*xx + yy*yy) );
-      }
+    {
+      float xx = x[j-1];
+      float yy = y[i-1];
+      id=ID_2D(i,j,nx);
+      h[id] = 1.0 + 0.4*exp ( -5 * ( xx*xx + yy*yy) );
+    }
   
   for ( i = 1; i < nx+1; i++ )
     for( j = 1; j < ny+1; j++)
-      {
-	id=ID_2D(i,j,nx);
-	uh[id] = 0.0;
-	vh[id] = 0.0;
-      }
+    {
+      id=ID_2D(i,j,nx);
+      uh[id] = 0.0;
+      vh[id] = 0.0;
+    }
 
   //set boundaries
   //bottom
@@ -421,10 +417,7 @@ void initial_conditions ( int nx, int ny, float dx, float dy,  float x_length, f
 }
 /******************************************************************************/
 
-
 void write_results ( char *output_filename, int nx, int ny, float x[], float y[], float h[], float uh[], float vh[])
-/******************************************************************************/
-
 {
   int i,j, id;
   FILE *output;
@@ -432,7 +425,8 @@ void write_results ( char *output_filename, int nx, int ny, float x[], float y[]
   //Open the file.
   output = fopen ( output_filename, "wt" );
     
-  if ( !output ){
+  if ( !output )
+  {
     fprintf ( stderr, "\n" );
     fprintf ( stderr, "WRITE_RESULTS - Fatal error!\n" );
     fprintf ( stderr, "  Could not open the output file.\n" );
@@ -441,10 +435,11 @@ void write_results ( char *output_filename, int nx, int ny, float x[], float y[]
     
   //Write the data.
   for ( i = 0; i < ny; i++ ) 
-    for ( j = 0; j < nx; j++ ){
+    for ( j = 0; j < nx; j++ )
+    {
         id=ID_2D(i+1,j+1,nx);
-	fprintf ( output, "  %24.16g\t%24.16g\t%24.16g\t %24.16g\t %24.16g\n", x[j], y[i],h[id], uh[id], vh[id]);
-      }
+	      fprintf ( output, "  %24.16g\t%24.16g\t%24.16g\t %24.16g\t %24.16g\n", x[j], y[i],h[id], uh[id], vh[id]);
+    }
     
   //Close the file.
   fclose ( output );
@@ -455,7 +450,6 @@ void write_results ( char *output_filename, int nx, int ny, float x[], float y[]
 
 void getArgs(int *nx, float *dt, float *x_length, float *t_final, int argc, char *argv[])
 {
-
   /*
     Get the quadrature file root name:
   */
