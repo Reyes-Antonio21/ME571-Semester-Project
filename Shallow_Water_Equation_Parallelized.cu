@@ -17,31 +17,31 @@ void write_results ( char *output_filename, int nx, int ny, float x[], float y[]
 
 __global__ void computeFluxesGPU(float *h,  float *uh,  float *vh, float *fh, float *fuh, float *fvh, float *gh, float *guh, float *gvh, int nx, int ny)
 {
-unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
-unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
-unsigned int id;
+  unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
+  unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
+  unsigned int id;
 
-float g = 9.81;
+  float g = 9.81;
 
-id = ID_2D(i, j, nx);
+  id = ID_2D(i, j, nx);
 
-// **** COMPUTE FLUXES ****
-//Compute fluxes (including ghosts) 
+  // **** COMPUTE FLUXES ****
+  //Compute fluxes (including ghosts) 
 
-if (i < nx + 2 && j < ny + 2)
-  {
-  fh[id] = uh[id]; //flux for the height equation: u*h
+  if (i < nx + 2 && j < ny + 2)
+    {
+    fh[id] = uh[id]; //flux for the height equation: u*h
 
-  fuh[id] = uh[id]*uh[id]/h[id] + 0.5*g*h[id]*h[id]; //flux for the momentum equation: u^2*h + 0.5*g*h^2
+    fuh[id] = uh[id]*uh[id]/h[id] + 0.5*g*h[id]*h[id]; //flux for the momentum equation: u^2*h + 0.5*g*h^2
 
-  fvh[id] = uh[id]*vh[id]/h[id]; //flux for the momentum equation: u*v**h 
+    fvh[id] = uh[id]*vh[id]/h[id]; //flux for the momentum equation: u*v**h 
 
-  gh[id] = vh[id]; //flux for the height equation: v*h
+    gh[id] = vh[id]; //flux for the height equation: v*h
 
-  guh[id] = uh[id]*vh[id]/h[id]; //flux for the momentum equation: u*v**h 
+    guh[id] = uh[id]*vh[id]/h[id]; //flux for the momentum equation: u*v**h 
 
-  gvh[id] = vh[id]*vh[id]/h[id] + 0.5*g*h[id]*h[id]; //flux for the momentum equation: v^2*h + 0.5*g*h^2
-  }
+    gvh[id] = vh[id]*vh[id]/h[id] + 0.5*g*h[id]*h[id]; //flux for the momentum equation: v^2*h + 0.5*g*h^2
+    }
 }
 
 __global__ void computeVariablesGPU(float *hm, float *uhm, float *vhm, float *fh, float *fuh, float *fvh, float *gh, float *guh, float *gvh, float *h, float *uh, float *vh, float lambda_x, float lambda_y, int nx, int ny)
@@ -154,15 +154,19 @@ int main ( int argc, char *argv[] )
   float *h, *d_h;
   float *uh, *d_uh;
   float *vh, *d_vh;
+
   float *fh, *d_fh;
   float *fuh, *d_fuh;
   float *fvh, *d_fvh;
+
   float *gh, *d_gh;
   float *guh, *d_guh;
   float *gvh, *d_gvh;
+
   float *hm, *d_hm; 
   float *uhm, *d_uhm;
   float *vhm, *d_vhm;
+
   float *x;
   float *y;
 
@@ -208,19 +212,22 @@ int main ( int argc, char *argv[] )
   CHECK(cudaMalloc((void **)&d_h, (nx+2)*(ny+2) * sizeof ( float )));
   CHECK(cudaMalloc((void **)&d_uh, (nx+2)*(ny+2) * sizeof ( float )));
   CHECK(cudaMalloc((void **)&d_vh, (nx+2)*(ny+2) * sizeof ( float )));
+
   CHECK(cudaMalloc((void **)&d_fh, (nx+2)*(ny+2) * sizeof ( float )));
   CHECK(cudaMalloc((void **)&d_fuh, (nx+2)*(ny+2) * sizeof ( float )));
   CHECK(cudaMalloc((void **)&d_fvh, (nx+2)*(ny+2) * sizeof ( float )));
+
   CHECK(cudaMalloc((void **)&d_gh, (nx+2)*(ny+2) * sizeof ( float )));
   CHECK(cudaMalloc((void **)&d_guh, (nx+2)*(ny+2) * sizeof ( float )));
   CHECK(cudaMalloc((void **)&d_gvh, (nx+2)*(ny+2) * sizeof ( float )));
+
   CHECK(cudaMalloc((void **)&d_hm, (nx+2)*(ny+2) * sizeof ( float )));
   CHECK(cudaMalloc((void **)&d_uhm, (nx+2)*(ny+2) * sizeof ( float )));
   CHECK(cudaMalloc((void **)&d_vhm, (nx+2)*(ny+2) * sizeof ( float )));
 
   //Define the locations of the nodes and time steps and the spacing.
   dx = x_length / ( float ) ( nx );
-  dy = x_length / ( float ) ( nx );
+  dy = x_length / ( float ) ( ny );
 
   lambda_x = 0.5 * dt / dx;
   lambda_y = 0.5 * dt / dy;
@@ -302,12 +309,15 @@ int main ( int argc, char *argv[] )
           CHECK(cudaMemcpy(hm, d_hm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
           CHECK(cudaMemcpy(uhm, d_uhm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
           CHECK(cudaMemcpy(vhm, d_vhm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+
           CHECK(cudaMemcpy(fh, d_fh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
           CHECK(cudaMemcpy(fuh, d_fuh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
           CHECK(cudaMemcpy(fvh, d_fvh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+
           CHECK(cudaMemcpy(gh, d_gh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
           CHECK(cudaMemcpy(guh, d_guh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
           CHECK(cudaMemcpy(gvh, d_gvh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+
           CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
           CHECK(cudaMemcpy(uh, d_uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
           CHECK(cudaMemcpy(vh, d_vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));

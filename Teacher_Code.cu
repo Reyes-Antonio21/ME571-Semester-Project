@@ -528,6 +528,4 @@ void getArgs(int *nx, float *dt, float *x_length, float *t_final, int argc, char
   }else{
     *t_final = atof ( argv[4] );
   }
-    
-  
 }
