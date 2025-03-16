@@ -28,7 +28,7 @@ __global__ void computeFluxesGPU(float *h,  float *uh,  float *vh, float *fh, fl
   // **** COMPUTE FLUXES ****
   //Compute fluxes (including ghosts) 
 
-  if (i < nx + 2 && j < ny + 2)
+  if (i >= 0 && i < nx + 2 && j >= 0 && j < ny + 2) // Ensure proper bounds
     {
     fh[id] = uh[id]; //flux for the height equation: u*h
 
@@ -50,7 +50,7 @@ __global__ void computeVariablesGPU(float *hm, float *uhm, float *vhm, float *fh
   unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
   unsigned int id, id_left, id_right, id_bottom, id_top;
 
-  if (i >= 1 && i < nx && j >= 1 && j < ny)  // Ensure proper bounds
+  if (i >= 1 && i < nx + 1 && j >= 1 && j < ny + 1)  // Ensure proper bounds
   {
       id = ID_2D(i, j, nx);
 
@@ -279,6 +279,8 @@ int main ( int argc, char *argv[] )
           CHECK(cudaMemcpy(d_vh, vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
 
           computeFluxesGPU<<<grid, block>>>(d_h, d_uh, d_vh, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, nx, ny);
+
+          __syncthreads(); // Ensure all threads have completed
 
           CHECK(cudaGetLastError());
 

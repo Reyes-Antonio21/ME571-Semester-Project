@@ -264,23 +264,23 @@ int main ( int argc, char *argv[] )
       // **** COMPUTE VARIABLES ****
       //Compute updated variables
       for ( i = 1; i < ny+1; i++ )
-	for ( j = 1; j < nx+1; j++ )
-	  {
-	    id=ID_2D(i,j,nx);
-	    id_left=ID_2D(i,j-1,nx);
-	    id_right=ID_2D(i,j+1,nx);
-	    id_bottom=ID_2D(i-1,j,nx);
-	    id_top=ID_2D(i+1,j,nx);
-	    hm[id] = 0.25*(h[id_left]+h[id_right]+h[id_bottom]+h[id_top]) 
-	      - lambda_x * ( fh[id_right] - fh[id_left] ) 
-	      - lambda_y * ( gh[id_top] - gh[id_bottom] );
-	    uhm[id] = 0.25*(uh[id_left]+uh[id_right]+uh[id_bottom]+uh[id_top]) 
-	      - lambda_x * ( fuh[id_right] - fuh[id_left] ) 
-	      - lambda_y * ( guh[id_top] - guh[id_bottom] );
-	    vhm[id] = 0.25*(vh[id_left]+vh[id_right]+vh[id_bottom]+vh[id_top]) 
-	      - lambda_x * ( fvh[id_right] - fvh[id_left] ) 
-	      - lambda_y * ( gvh[id_top] - gvh[id_bottom] );
-	  }
+	      for ( j = 1; j < nx+1; j++ )
+        {
+          id=ID_2D(i,j,nx);
+          id_left=ID_2D(i,j-1,nx);
+          id_right=ID_2D(i,j+1,nx);
+          id_bottom=ID_2D(i-1,j,nx);
+          id_top=ID_2D(i+1,j,nx);
+          hm[id] = 0.25*(h[id_left]+h[id_right]+h[id_bottom]+h[id_top]) 
+            - lambda_x * ( fh[id_right] - fh[id_left] ) 
+            - lambda_y * ( gh[id_top] - gh[id_bottom] );
+          uhm[id] = 0.25*(uh[id_left]+uh[id_right]+uh[id_bottom]+uh[id_top]) 
+            - lambda_x * ( fuh[id_right] - fuh[id_left] ) 
+            - lambda_y * ( guh[id_top] - guh[id_bottom] );
+          vhm[id] = 0.25*(vh[id_left]+vh[id_right]+vh[id_bottom]+vh[id_top]) 
+            - lambda_x * ( fvh[id_right] - fvh[id_left] ) 
+            - lambda_y * ( gvh[id_top] - gvh[id_bottom] );
+        }
 
       // **** UPDATE VARIABLES ****
       //update interior state variables
