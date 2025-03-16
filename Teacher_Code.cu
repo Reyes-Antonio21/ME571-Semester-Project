@@ -57,7 +57,6 @@ int main ( int argc, char *argv[] )
   float dx;
   float dy;
   float dt;
-  float g = 9.81; //[m^2/s] gravitational constant
   float *h;
   float *fh, *h_fh;
   float *gh, *h_gh;
@@ -171,17 +170,17 @@ int main ( int argc, char *argv[] )
       //printf("time = %f\n",time);
       // **** COMPUTE FLUXES ****
       //Compute fluxes (including ghosts) 
-      /*      for ( i = 0; i < ny+2; i++ )
-	for ( j = 0; j < nx+2; j++){
-	  id=ID_2D(i,j,nx);
+      /*for ( i = 0; i < ny+2; i++ )
+	    for ( j = 0; j < nx+2; j++){
+      id=ID_2D(i,j,nx);
 
-	  fh[id] = uh[id]; //flux for the height equation: u*h
-	  fuh[id] = uh[id]*uh[id]/h[id] + 0.5*g*h[id]*h[id]; //flux for the momentum equation: u^2*h + 0.5*g*h^2
-	  fvh[id] = uh[id]*vh[id]/h[id]; //flux for the momentum equation: u*v**h 
-	  gh[id] = vh[id]; //flux for the height equation: v*h
-	  guh[id] = uh[id]*vh[id]/h[id]; //flux for the momentum equation: u*v**h 
-	  gvh[id] = vh[id]*vh[id]/h[id] + 0.5*g*h[id]*h[id]; //flux for the momentum equation: v^2*h + 0.5*g*h^2
-	}
+      fh[id] = uh[id]; //flux for the height equation: u*h
+      fuh[id] = uh[id]*uh[id]/h[id] + 0.5*g*h[id]*h[id]; //flux for the momentum equation: u^2*h + 0.5*g*h^2
+      fvh[id] = uh[id]*vh[id]/h[id]; //flux for the momentum equation: u*v**h 
+      gh[id] = vh[id]; //flux for the height equation: v*h
+      guh[id] = uh[id]*vh[id]/h[id]; //flux for the momentum equation: u*v**h 
+      gvh[id] = vh[id]*vh[id]/h[id] + 0.5*g*h[id]*h[id]; //flux for the momentum equation: v^2*h + 0.5*g*h^2
+	  }
       */
       //Move data to the device
       CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
@@ -189,15 +188,16 @@ int main ( int argc, char *argv[] )
       CHECK(cudaMemcpy(d_vh, vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
 
       
-      int dimx = 32;
+      int dimx = 32;S
       int dimy = 32;
       dim3 block(dimx, dimy);
       dim3 grid((nx + block.x - 1) / block.x, (ny + block.y - 1) / block.y);
 
       computeFluxesGPU<<<grid, block>>>(d_h, d_uh, d_vh,
-					d_fh, d_fuh, d_fvh,
+			    d_fh, d_fuh, d_fvh,
 					d_gh, d_guh, d_gvh,
 					nx, ny);
+
       CHECK(cudaGetLastError());
 
       //Move fluxes back - for now
@@ -208,8 +208,6 @@ int main ( int argc, char *argv[] )
       CHECK(cudaMemcpy(guh, d_guh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
       CHECK(cudaMemcpy(gvh, d_gvh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
       
-
-
       // **** COMPUTE VARIABLES ****
       //Compute updated variables
       for ( i = 1; i < ny+1; i++ )
