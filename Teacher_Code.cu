@@ -153,7 +153,7 @@ __global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int n
   }
 
   __syncthreads();
-  
+
 }
 /******************************************************************************/
 
@@ -180,6 +180,37 @@ __global__ void computeFluxesGPU(float *h,  float *uh,  float *vh, float *fh, fl
   __syncthreads(); 
 }
 /******************************************************************************/
+
+__global__ void computeVariablesGPU(float *hm, float *uhm, float *vhm, float *fh, float *fuh, float *fvh, float *gh, float *guh, float *gvh, float *h, float *uh, float *vh, float lambda_x, float lambda_y, int nx, int ny)
+{
+  unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
+  unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
+  unsigned int id, id_left, id_right, id_bottom, id_top;
+
+  if (i >= 1 && i < nx + 1 && j >= 1 && j < ny + 1)  // Ensure proper bounds
+  {
+    id = ID_2D(i, j, nx);
+
+    id_left   = (j > 0) ? ID_2D(i, j - 1, nx) : id;
+    id_right  = (j < ny - 1) ? ID_2D(i, j + 1, nx) : id;
+    id_bottom = (i > 0) ? ID_2D(i - 1, j, nx) : id;
+    id_top    = (i < nx - 1) ? ID_2D(i + 1, j, nx) : id;
+
+    hm[id] = 0.25 * (h[id_left] + h[id_right] + h[id_bottom] + h[id_top])
+          - lambda_x * (fh[id_right] - fh[id_left])
+          - lambda_y * (gh[id_top] - gh[id_bottom]);
+
+    uhm[id] = 0.25 * (uh[id_left] + uh[id_right] + uh[id_bottom] + uh[id_top])
+            - lambda_x * (fuh[id_right] - fuh[id_left])
+            - lambda_y * (guh[id_top] - guh[id_bottom]);
+
+    vhm[id] = 0.25 * (vh[id_left] + vh[id_right] + vh[id_bottom] + vh[id_top])
+            - lambda_x * (fvh[id_right] - fvh[id_left])
+            - lambda_y * (gvh[id_top] - gvh[id_bottom]);
+  }
+
+  __syncthreads(); // Ensure all threads have completed
+}
 
 int main ( int argc, char *argv[] )
 {
@@ -257,15 +288,23 @@ int main ( int argc, char *argv[] )
   float *d_fh, *d_fuh, *d_fvh;
   float *d_gh, *d_guh, *d_gvh;
 
+  // **** Allocate memory on device ****
+  //Allocate space (nx+2)((nx+2) long, to account for ghosts
   CHECK(cudaMalloc((void **)&d_h, (nx+2)*(ny+2) * sizeof ( float )));
   CHECK(cudaMalloc((void **)&d_uh, (nx+2)*(ny+2) * sizeof ( float )));
   CHECK(cudaMalloc((void **)&d_vh, (nx+2)*(ny+2) * sizeof ( float )));
+
   CHECK(cudaMalloc((void **)&d_fh, (nx+2)*(ny+2) * sizeof ( float )));
   CHECK(cudaMalloc((void **)&d_fuh, (nx+2)*(ny+2) * sizeof ( float )));
   CHECK(cudaMalloc((void **)&d_fvh, (nx+2)*(ny+2) * sizeof ( float )));
+
   CHECK(cudaMalloc((void **)&d_gh, (nx+2)*(ny+2) * sizeof ( float )));
   CHECK(cudaMalloc((void **)&d_guh, (nx+2)*(ny+2) * sizeof ( float )));
   CHECK(cudaMalloc((void **)&d_gvh, (nx+2)*(ny+2) * sizeof ( float )));
+
+  CHECK(cudaMalloc((void **)&d_hm, (nx+2)*(ny+2) * sizeof ( float )));
+  CHECK(cudaMalloc((void **)&d_uhm, (nx+2)*(ny+2) * sizeof ( float )));
+  CHECK(cudaMalloc((void **)&d_vhm, (nx+2)*(ny+2) * sizeof ( float )));
 
   //Define the locations of the nodes and time steps and the spacing.
   dx = x_length / ( float ) ( nx );
@@ -284,6 +323,12 @@ int main ( int argc, char *argv[] )
   // **** TIME LOOP ****
   float lambda_x = 0.5*dt/dx;
   float lambda_y = 0.5*dt/dy;
+
+  //Define the block and grid sizes
+  int dimx = 32;
+  int dimy = 32;
+  dim3 blockSize(dimx, dimy);
+  dim3 gridSize((nx + blockSize.x - 1) / blockSize.x, (ny + blockSize.y - 1) / blockSize.y);
 
   time=0;
   int k=0; //time-step counter
@@ -312,56 +357,46 @@ int main ( int argc, char *argv[] )
 	    }
       */
 
-      //Move data to the device
+      //Move data to the device for applyBoundaryConditionsGPU & computeFluxesGPU
       CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
       CHECK(cudaMemcpy(d_uh, uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
       CHECK(cudaMemcpy(d_vh, vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
 
-      //Define the block and grid sizes
-      int dimx = 32;
-      int dimy = 32;
-      dim3 blockSize(dimx, dimy);
-      dim3 gridSize((nx + blockSize.x - 1) / blockSize.x, (ny + blockSize.y - 1) / blockSize.y);
-
       // Apply boundary conditions first (bc_type = 3 for reflective)
       applyBoundaryConditionsGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, nx, ny, 3);
       cudaDeviceSynchronize();
+      CHECK(cudaGetLastError());
 
       // Compute fluxes after boundary conditions are enforced
       computeFluxesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, nx, ny);
       cudaDeviceSynchronize();
+      CHECK(cudaGetLastError());
 
-      //Move fluxes back - for now
+      //Move data to the device for computeVariablesGPU
+      CHECK(cudaMemcpy(d_hm, hm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
+      CHECK(cudaMemcpy(d_uhm, uhm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
+      CHECK(cudaMemcpy(d_vhm, vhm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
+
+      computeVariablesGPU<<<gridSize, blockSize>>>(d_hm, d_uhm, d_vhm, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, d_h, d_uh, d_vh, lambda_x, lambda_y, nx, ny);
+      cudaDeviceSynchronize();
+      CHECK(cudaGetLastError()); 
+
+      //Move data back to the host
+      CHECK(cudaMemcpy(hm, d_hm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+      CHECK(cudaMemcpy(uhm, d_uhm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+      CHECK(cudaMemcpy(vhm, d_vhm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+
       CHECK(cudaMemcpy(fh, d_fh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
       CHECK(cudaMemcpy(fuh, d_fuh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
       CHECK(cudaMemcpy(fvh, d_fvh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+
       CHECK(cudaMemcpy(gh, d_gh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
       CHECK(cudaMemcpy(guh, d_guh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
       CHECK(cudaMemcpy(gvh, d_gvh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-      
-      // **** COMPUTE VARIABLES ****
-      //Compute updated variables
-      for ( i = 1; i < ny+1; i++ )
-	      for ( j = 1; j < nx+1; j++ )
-        {
-          id=ID_2D(i,j,nx);
-          id_left=ID_2D(i,j-1,nx);
-          id_right=ID_2D(i,j+1,nx);
-          id_bottom=ID_2D(i-1,j,nx);
-          id_top=ID_2D(i+1,j,nx);
 
-          hm[id] = 0.25*(h[id_left]+h[id_right]+h[id_bottom]+h[id_top]) 
-            - lambda_x * ( fh[id_right] - fh[id_left] ) 
-            - lambda_y * ( gh[id_top] - gh[id_bottom] );
-
-          uhm[id] = 0.25*(uh[id_left]+uh[id_right]+uh[id_bottom]+uh[id_top]) 
-            - lambda_x * ( fuh[id_right] - fuh[id_left] ) 
-            - lambda_y * ( guh[id_top] - guh[id_bottom] );
-
-          vhm[id] = 0.25*(vh[id_left]+vh[id_right]+vh[id_bottom]+vh[id_top]) 
-            - lambda_x * ( fvh[id_right] - fvh[id_left] ) 
-            - lambda_y * ( gvh[id_top] - gvh[id_bottom] );
-        }
+      CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+      CHECK(cudaMemcpy(uh, d_uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+      CHECK(cudaMemcpy(vh, d_vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
 
       // **** UPDATE VARIABLES ****
       //update interior state variables
