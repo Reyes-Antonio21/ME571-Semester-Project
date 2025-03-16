@@ -23,47 +23,137 @@ __global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int n
 
   if (i >= nx + 2 || j >= ny + 2) return; // Ensure we are within valid bounds
 
-  int id = ID_2D(i, j, nx);
+  int id, id_ghost;
+  if (bc_type == 1) // Dirichlet Boundary Conditions
+  {  
+    // Left Boundary (j = 0)
+    if (j == 0 && i >= 1 && i <= ny) 
+    {
+      id = ID_2D(i, 1, nx);
+      id_ghost = ID_2D(i, 0, nx);
+      h[id_ghost]  = h[id];
+      uh[id_ghost] = uh[id];
+      vh[id_ghost] = vh[id];
+    }
 
-  // Apply boundary conditions based on type
-  if (bc_type == 0) {  // Dirichlet (Fixed Value)
-      if (i == 0 || i == nx+1) { h[id] = 1.0f; uh[id] = 0.0f; vh[id] = 0.0f; }
-      if (j == 0 || j == ny+1) { h[id] = 1.0f; uh[id] = 0.0f; vh[id] = 0.0f; }
+    // Right Boundary (j = nx + 1)
+    if (j == nx + 1 && i >= 1 && i <= ny) 
+    {
+      id = ID_2D(i, nx, nx);
+      id_ghost = ID_2D(i, nx + 1, nx);
+      h[id_ghost]  = h[id];
+      uh[id_ghost] = uh[id];
+      vh[id_ghost] = vh[id];
+    }
+
+    // Bottom Boundary (i = 0)
+    if (i == 0 && j >= 1 && j <= nx) 
+    {
+      id = ID_2D(1, j, nx);
+      id_ghost = ID_2D(0, j, nx);
+      h[id_ghost]  = h[id];
+      uh[id_ghost] = uh[id];
+      vh[id_ghost] = vh[id];
+    }
+
+    // Top Boundary (i = ny + 1)
+    if (i == ny + 1 && j >= 1 && j <= nx) 
+    {
+      id = ID_2D(ny, j, nx);
+      id_ghost = ID_2D(ny + 1, j, nx);
+      h[id_ghost]  = h[id];
+      uh[id_ghost] = uh[id];
+      vh[id_ghost] = vh[id];
+    }
   }
-  else if (bc_type == 1) {  // Neumann (Zero Gradient)
-      if (i == 0) { h[id] = h[ID_2D(1, j, nx)]; uh[id] = uh[ID_2D(1, j, nx)]; vh[id] = vh[ID_2D(1, j, nx)]; }
-      if (i == nx+1) { h[id] = h[ID_2D(nx, j, nx)]; uh[id] = uh[ID_2D(nx, j, nx)]; vh[id] = vh[ID_2D(nx, j, nx)]; }
-      if (j == 0) { h[id] = h[ID_2D(i, 1, nx)]; uh[id] = uh[ID_2D(i, 1, nx)]; vh[id] = vh[ID_2D(i, 1, nx)]; }
-      if (j == ny+1) { h[id] = h[ID_2D(i, ny, nx)]; uh[id] = uh[ID_2D(i, ny, nx)]; vh[id] = vh[ID_2D(i, ny, nx)]; }
+
+  else if (bc_type == 2) // Periodic Boundary Conditions
+  {  
+    // Left to Right Periodic Boundary (wraps leftmost to rightmost)
+    if (j == 0 && i >= 1 && i <= ny) 
+    {
+      id = ID_2D(i, nx, nx);
+      id_ghost = ID_2D(i, 0, nx);
+      h[id_ghost]  = h[id];
+      uh[id_ghost] = uh[id];
+      vh[id_ghost] = vh[id];
+    }
+
+    // Right to Left Periodic Boundary (wraps rightmost to leftmost)
+    if (j == nx + 1 && i >= 1 && i <= ny) 
+    {
+      id = ID_2D(i, 1, nx);
+      id_ghost = ID_2D(i, nx + 1, nx);
+      h[id_ghost]  = h[id];
+      uh[id_ghost] = uh[id];
+      vh[id_ghost] = vh[id];
+    }
+
+    // Bottom to Top Periodic Boundary (wraps bottom to top)
+    if (i == 0 && j >= 1 && j <= nx) 
+    {
+      id = ID_2D(ny, j, nx);
+      id_ghost = ID_2D(0, j, nx);
+      h[id_ghost]  = h[id];
+      uh[id_ghost] = uh[id];
+      vh[id_ghost] = vh[id];
+    }
+
+    // Top to Bottom Periodic Boundary (wraps top to bottom)
+    if (i == ny + 1 && j >= 1 && j <= nx) 
+    {
+      id = ID_2D(1, j, nx);
+      id_ghost = ID_2D(ny + 1, j, nx);
+      h[id_ghost]  = h[id];
+      uh[id_ghost] = uh[id];
+      vh[id_ghost] = vh[id];
+    }  
   }
-  else if (bc_type == 2) {  // Periodic
-      if (i == 0) { h[id] = h[ID_2D(nx, j, nx)]; uh[id] = uh[ID_2D(nx, j, nx)]; vh[id] = vh[ID_2D(nx, j, nx)]; }
-      if (i == nx+1) { h[id] = h[ID_2D(1, j, nx)]; uh[id] = uh[ID_2D(1, j, nx)]; vh[id] = vh[ID_2D(1, j, nx)]; }
-      if (j == 0) { h[id] = h[ID_2D(i, ny, nx)]; uh[id] = uh[ID_2D(i, ny, nx)]; vh[id] = vh[ID_2D(i, ny, nx)]; }
-      if (j == ny+1) { h[id] = h[ID_2D(i, 1, nx)]; uh[id] = uh[ID_2D(i, 1, nx)]; vh[id] = vh[ID_2D(i, 1, nx)]; }
+  else if (bc_type == 3) // Reflective Boundary Conditions
+  {  
+    // Left Boundary (j = 0) - Reflective
+    if (j == 0 && i >= 1 && i <= ny) 
+    {
+      id = ID_2D(i, 1, nx);
+      id_ghost = ID_2D(i, 0, nx);
+      h[id_ghost]  = h[id];
+      uh[id_ghost] = -uh[id];  // Flip normal velocity
+      vh[id_ghost] = vh[id];   // Keep tangential velocity
+    }
+
+    // Right Boundary (j = nx + 1) - Reflective
+    if (j == nx + 1 && i >= 1 && i <= ny) 
+    {
+      id = ID_2D(i, nx, nx);
+      id_ghost = ID_2D(i, nx + 1, nx);
+      h[id_ghost]  = h[id];
+      uh[id_ghost] = -uh[id];  // Flip normal velocity
+      vh[id_ghost] = vh[id];   // Keep tangential velocity
+    }
+
+    // Bottom Boundary (i = 0) - Reflective
+    if (i == 0 && j >= 1 && j <= nx) 
+    {
+      id = ID_2D(1, j, nx);
+      id_ghost = ID_2D(0, j, nx);
+      h[id_ghost]  = h[id];
+      uh[id_ghost] = uh[id];   // Keep tangential velocity
+      vh[id_ghost] = -vh[id];  // Flip normal velocity
+    }
+
+    // Top Boundary (i = ny + 1) - Reflective
+    if (i == ny + 1 && j >= 1 && j <= nx) 
+    {
+      id = ID_2D(ny, j, nx);
+      id_ghost = ID_2D(ny + 1, j, nx);
+      h[id_ghost]  = h[id];
+      uh[id_ghost] = uh[id];   // Keep tangential velocity
+      vh[id_ghost] = -vh[id];  // Flip normal velocity
+    }
   }
-  else if (bc_type == 3) {  // Reflective Boundary Conditions
-      if (i == 0) {  
-          h[id] = h[ID_2D(1, j, nx)];  // Mirror h
-          uh[id] = -uh[ID_2D(1, j, nx)];  // Reflect normal velocity (x-direction)
-          vh[id] = vh[ID_2D(1, j, nx)];   // Tangential velocity unchanged
-      }
-      if (i == nx+1) {  
-          h[id] = h[ID_2D(nx, j, nx)];
-          uh[id] = -uh[ID_2D(nx, j, nx)];
-          vh[id] = vh[ID_2D(nx, j, nx)];
-      }
-      if (j == 0) {  
-          h[id] = h[ID_2D(i, 1, nx)];
-          vh[id] = -vh[ID_2D(i, 1, nx)];  // Reflect normal velocity (y-direction)
-          uh[id] = uh[ID_2D(i, 1, nx)];   // Tangential velocity unchanged
-      }
-      if (j == ny+1) {  
-          h[id] = h[ID_2D(i, ny, nx)];
-          vh[id] = -vh[ID_2D(i, ny, nx)];
-          uh[id] = uh[ID_2D(i, ny, nx)];
-      }
-  }
+
+  __syncthreads();
+  
 }
 /******************************************************************************/
 
@@ -127,7 +217,7 @@ int main ( int argc, char *argv[] )
   //printf ( "  X_LENGTH = %g\n", x_length );
   //printf ( "  T_FINAL = %g\n", t_final );
   
-  ny=nx; // we assume this, does not have to be this way
+  ny = nx; // we assume this, does not have to be this way
 
   // **** ALLOCATE MEMORY ****
   
@@ -181,7 +271,7 @@ int main ( int argc, char *argv[] )
   dx = x_length / ( float ) ( nx );
   dy = x_length / ( float ) ( nx );
 
-    // **** INITIAL CONDITIONS ****
+  // **** INITIAL CONDITIONS ****
   //Apply the initial conditions.
   //printf("Before initial conditions\n");
   initial_conditions ( nx, ny, dx, dy, x_length,  x, y, h, uh, vh);
@@ -194,7 +284,6 @@ int main ( int argc, char *argv[] )
   // **** TIME LOOP ****
   float lambda_x = 0.5*dt/dx;
   float lambda_y = 0.5*dt/dy;
-
 
   time=0;
   int k=0; //time-step counter
@@ -476,4 +565,50 @@ void getArgs(int *nx, float *dt, float *x_length, float *t_final, int argc, char
   }else{
     *t_final = atof ( argv[4] );
   }
+}
+
+
+
+__global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int nx, int ny)
+{
+    unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
+    unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
+    
+    int id, id_ghost;
+
+    // Left Boundary (j = 0)
+    if (j == 0 && i >= 1 && i <= ny) {
+        id = ID_2D(i, 1, nx);
+        id_ghost = ID_2D(i, 0, nx);
+        h[id_ghost]  = h[id];
+        uh[id_ghost] = -uh[id];
+        vh[id_ghost] = vh[id];
+    }
+
+    // Right Boundary (j = nx + 1)
+    if (j == nx + 1 && i >= 1 && i <= ny) {
+        id = ID_2D(i, nx, nx);
+        id_ghost = ID_2D(i, nx + 1, nx);
+        h[id_ghost]  = h[id];
+        uh[id_ghost] = -uh[id];
+        vh[id_ghost] = vh[id];
+    }
+
+    // Bottom Boundary (i = 0)
+    if (i == 0 && j >= 1 && j <= nx) {
+        id = ID_2D(1, j, nx);
+        id_ghost = ID_2D(0, j, nx);
+        h[id_ghost]  = h[id];
+        uh[id_ghost] = uh[id];
+        vh[id_ghost] = -vh[id];
+    }
+
+    // Top Boundary (i = ny + 1)
+    if (i == ny + 1 && j >= 1 && j <= nx) {
+        id = ID_2D(ny, j, nx);
+        id_ghost = ID_2D(ny + 1, j, nx);
+        h[id_ghost]  = h[id];
+        uh[id_ghost] = uh[id];
+        vh[id_ghost] = -vh[id];
+    }
 }
