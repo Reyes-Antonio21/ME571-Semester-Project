@@ -378,10 +378,6 @@ int main ( int argc, char *argv[] )
       CHECK(cudaMemcpy(d_uhm, uhm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
       CHECK(cudaMemcpy(d_vhm, vhm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
 
-      computeVariablesGPU<<<gridSize, blockSize>>>(d_hm, d_uhm, d_vhm, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, d_h, d_uh, d_vh, lambda_x, lambda_y, nx, ny);
-      cudaDeviceSynchronize();
-      CHECK(cudaGetLastError()); 
-
       //Move data back to the host
       CHECK(cudaMemcpy(hm, d_hm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
       CHECK(cudaMemcpy(uhm, d_uhm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
@@ -398,6 +394,30 @@ int main ( int argc, char *argv[] )
       CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
       CHECK(cudaMemcpy(uh, d_uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
       CHECK(cudaMemcpy(vh, d_vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+
+       // **** COMPUTE VARIABLES ****
+      //Compute updated variables
+      for ( i = 1; i < ny+1; i++ )
+	      for ( j = 1; j < nx+1; j++ )
+        {
+          id=ID_2D(i,j,nx);
+          id_left=ID_2D(i,j-1,nx);
+          id_right=ID_2D(i,j+1,nx);
+          id_bottom=ID_2D(i-1,j,nx);
+          id_top=ID_2D(i+1,j,nx);
+
+          hm[id] = 0.25*(h[id_left]+h[id_right]+h[id_bottom]+h[id_top]) 
+            - lambda_x * ( fh[id_right] - fh[id_left] ) 
+            - lambda_y * ( gh[id_top] - gh[id_bottom] );
+
+          uhm[id] = 0.25*(uh[id_left]+uh[id_right]+uh[id_bottom]+uh[id_top]) 
+            - lambda_x * ( fuh[id_right] - fuh[id_left] ) 
+            - lambda_y * ( guh[id_top] - guh[id_bottom] );
+
+          vhm[id] = 0.25*(vh[id_left]+vh[id_right]+vh[id_bottom]+vh[id_top]) 
+            - lambda_x * ( fvh[id_right] - fvh[id_left] ) 
+            - lambda_y * ( gvh[id_top] - gvh[id_bottom] );
+        }
 
       // **** UPDATE VARIABLES ****
       //update interior state variables
@@ -420,6 +440,9 @@ int main ( int argc, char *argv[] )
   // Write data to file
   write_results("tc2d_final.dat", nx, ny, x, y, h, uh, vh);
 
+  // **** DEALLOCATE MEMORY ****
+
+  //Free device memory.
   CHECK(cudaFree(d_h));
   CHECK(cudaFree(d_uh));
   CHECK(cudaFree(d_vh));
@@ -429,9 +452,11 @@ int main ( int argc, char *argv[] )
   CHECK(cudaFree(d_gh));
   CHECK(cudaFree(d_guh));
   CHECK(cudaFree(d_gvh));
+  CHECK(cudaFree(d_hm));
+  CHECK(cudaFree(d_uhm));
+  CHECK(cudaFree(d_vhm));
 
-
-  //Free memory.
+  //Free host memory.
   free ( h );
   free ( uh );
   free ( vh ); 
