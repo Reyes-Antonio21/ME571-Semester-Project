@@ -235,7 +235,7 @@ int main ( int argc, char *argv[] )
       dim3 gridSize((nx + blockSize.x - 1) / blockSize.x, (ny + blockSize.y - 1) / blockSize.y);
 
       // Apply boundary conditions first (bc_type = 3 for reflective)
-      applyBoundaryConditionGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, nx, ny, 3);
+      applyBoundaryConditionsGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, nx, ny, 3);
       cudaDeviceSynchronize();
 
       // Compute fluxes after boundary conditions are enforced
