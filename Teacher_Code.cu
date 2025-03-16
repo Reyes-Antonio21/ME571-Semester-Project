@@ -1,47 +1,50 @@
 # include "common.h"
-# include <cuda_runtime.h>
 # include <stdlib.h>
 # include <stdio.h>
 # include <math.h>
 # include <string.h>
 # include <time.h>
+# include <cuda_runtime.h>
 
 #define ID_2D(i,j,nx) ((i)*(nx+2)+(j))
 
-int main ( int argc, char *argv[] );
-void initial_conditions ( int nx, int ny, float dx, float dy,  float x_length, float x[],float y[], float h[], float uh[] ,float vh[]);
 
 //utilities
 void getArgs(int *nx, float *dt, float *x_length, float *t_final, int argc, char *argv[]);
 
 void write_results ( char *output_filename, int nx, int ny, float x[], float y[], float h[], float uh[], float vh[]);
 
+void initial_conditions ( int nx, int ny, float dx, float dy,  float x_length, float x[],float y[], float h[], float uh[] ,float vh[]);
 
-__global__ void computeFluxesGPU(float *h,  float *uh,  float *vh, 
-				 float *fh, float *fuh, float *fvh,
-				 float *gh, float *guh, float *gvh,
-				 int nx, int ny)
+__global__ void computeFluxesGPU(float *h,  float *uh,  float *vh, float *fh, float *fuh, float *fvh, float *gh, float *guh, float *gvh, int nx, int ny)
 {
-    unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
-    unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
-    unsigned int id;
+  unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
+  unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
+  unsigned int id;
 
-    float g=9.81;
+  float g = 9.81;
 
-      // **** COMPUTE FLUXES ****
-      //Compute fluxes (including ghosts) 
+  id = ID_2D(i, j, nx);
 
-    if (i < nx+2 && j < ny+2){
-	  id=ID_2D(i,j,nx);
+  // **** COMPUTE FLUXES ****
+  //Compute fluxes (including ghosts) 
 
-	  fh[id] = uh[id]; //flux for the height equation: u*h
-	  fuh[id] = uh[id]*uh[id]/h[id] + 0.5*g*h[id]*h[id]; //flux for the momentum equation: u^2*h + 0.5*g*h^2
-	  fvh[id] = uh[id]*vh[id]/h[id]; //flux for the momentum equation: u*v**h 
-	  gh[id] = vh[id]; //flux for the height equation: v*h
-	  guh[id] = uh[id]*vh[id]/h[id]; //flux for the momentum equation: u*v**h 
-	  gvh[id] = vh[id]*vh[id]/h[id] + 0.5*g*h[id]*h[id]; //flux for the momentum equation: v^2*h + 0.5*g*h^2
-	}
+  if (i < nx + 2 && j < ny + 2) // Ensure proper bounds
+    {
+    fh[id] = uh[id]; //flux for the height equation: u*h
 
+    fuh[id] = uh[id]*uh[id]/h[id] + 0.5*g*h[id]*h[id]; //flux for the momentum equation: u^2*h + 0.5*g*h^2
+
+    fvh[id] = uh[id]*vh[id]/h[id]; //flux for the momentum equation: u*v**h 
+
+    gh[id] = vh[id]; //flux for the height equation: v*h
+
+    guh[id] = uh[id]*vh[id]/h[id]; //flux for the momentum equation: u*v**h 
+
+    gvh[id] = vh[id]*vh[id]/h[id] + 0.5*g*h[id]*h[id]; //flux for the momentum equation: v^2*h + 0.5*g*h^2
+    }
+
+    __syncthreads(); // Ensure all threads have completed  
 }
 
 
@@ -50,61 +53,6 @@ __global__ void computeFluxesGPU(float *h,  float *uh,  float *vh,
 int main ( int argc, char *argv[] )
 
 /******************************************************************************/
-/*
-  Purpose:
-    MAIN is the main program for SHALLOW_WATER_2D.
-
-  Discussion:
-    SHALLOW_WATER_2D approximates the 2D shallow water equations.
-    The version of the shallow water equations being solved here is in
-    conservative form, and omits the Coriolis force.  The state variables
-    are H (the height) and UH (the mass velocity).
-
-    The equations have the form
-      dH/dt + d UH/dx = 0
-      d UH/dt + d ( U^2 H + 1/2 g H^2 )/dx + d ( U V H             )/dy = 0
-      d VH/dt + d ( U V H             )/dx + d ( V^2 H + 1/2 g H^2 )/dy = 0
-
-    Here U is the ordinary velocity, U = UH/H, and g is the gravitational
-    acceleration.
-    The initial conditions are used to specify ( H, UH ) at an equally
-    spaced set of points, and then the Lax-Friedrichs method is used to advance
-    the solution until a final time t_final, with
-    boundary conditions supplying the first and last spatial values.
-    Some input values will result in an unstable calculation that
-    quickly blows up.  This is related to the Courant-Friedrichs-Levy
-    condition, which requires that DT be small enough, relative to DX and
-    the velocity, that information cannot cross an entire cell.
-
-    A "reasonable" set of input quantities is
-      sw_2d 401 0.002 10.0 0.2
-
-  Licensing:
-    This code is distributed under the GNU LGPL license.
-
-  Modified:
-    26 March 2019 by Michal A. Kopera
-    20 April 2022 by Michal A. Kopera
-
-  Author:
-    John Burkardt
-
-  Reference:
-    Cleve Moler,
-    "The Shallow Water Equations",
-    Experiments with MATLAB.
-
-  Parameters:
-    Input, integer NX, the number of spatial nodes.
-    Input, integer DT, the size of a time step.
-    Input, real X_LENGTH, the length of the region.
-    Input, real T_FINAL, the final time of simulation.
-
-    Output, real X[NX], the X coordinates.
-    Output, real H[NX], the height for all space points at time t_final.
-    Output, real UH[NX], the mass velocity (discharge) for all space points at time t_final.
-*/
-
 {
   float dx;
   float dy;
@@ -136,7 +84,6 @@ int main ( int argc, char *argv[] )
   //get command line arguments
   getArgs(&nx, &dt, &x_length, &t_final, argc, argv);
   
- 
   //printf ( "  NX = %d\n", nx );
   //printf ( "  DT = %g\n", dt );
   //printf ( "  X_LENGTH = %g\n", x_length );
@@ -163,6 +110,7 @@ int main ( int argc, char *argv[] )
 
   h_fuh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
   h_guh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
+
   //y momentum array
   vh  = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
   vhm = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
@@ -171,6 +119,7 @@ int main ( int argc, char *argv[] )
 
   h_fvh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
   h_gvh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
+
   // location arrays
   x = ( float * ) malloc ( nx * sizeof ( float ) );
   y = ( float * ) malloc ( ny * sizeof ( float ) );
@@ -201,7 +150,7 @@ int main ( int argc, char *argv[] )
 
   //printf("Before write results\n");
   //Write initial condition to a file
-  write_results("swe2d_cuda_init.dat",nx,ny,x,y,h,uh,vh);
+  write_results("tc2d_init.dat",nx,ny,x,y,h,uh,vh);
 
 
   // **** TIME LOOP ****
@@ -271,12 +220,15 @@ int main ( int argc, char *argv[] )
           id_right=ID_2D(i,j+1,nx);
           id_bottom=ID_2D(i-1,j,nx);
           id_top=ID_2D(i+1,j,nx);
+
           hm[id] = 0.25*(h[id_left]+h[id_right]+h[id_bottom]+h[id_top]) 
             - lambda_x * ( fh[id_right] - fh[id_left] ) 
             - lambda_y * ( gh[id_top] - gh[id_bottom] );
+
           uhm[id] = 0.25*(uh[id_left]+uh[id_right]+uh[id_bottom]+uh[id_top]) 
             - lambda_x * ( fuh[id_right] - fuh[id_left] ) 
             - lambda_y * ( guh[id_top] - guh[id_bottom] );
+            
           vhm[id] = 0.25*(vh[id_left]+vh[id_right]+vh[id_bottom]+vh[id_top]) 
             - lambda_x * ( fvh[id_right] - fvh[id_left] ) 
             - lambda_y * ( gvh[id_top] - gvh[id_bottom] );
@@ -285,55 +237,59 @@ int main ( int argc, char *argv[] )
       // **** UPDATE VARIABLES ****
       //update interior state variables
       for (i = 1; i < ny+1; i++)
-	for (j = 1; j < nx+1; j++){
-	  id=ID_2D(i,j,nx);
-	  h[id] = hm[id];
-	  uh[id] = uhm[id];
-	  vh[id] = vhm[id];
-      }
+	      for (j = 1; j < nx+1; j++)
+        {
+        id=ID_2D(i,j,nx);
+        h[id] = hm[id];
+        uh[id] = uhm[id];
+        vh[id] = vhm[id];
+        }
 
       // **** APPLY BOUNDARY CONDITIONS ****
       //Update the ghosts (boundary conditions)
       //left
       j=1;
-      for(i=1; i<ny+1; i++){
-	id = ID_2D(i,j,nx);
-	id_left = ID_2D(i,j-1,nx);
-	h[id_left]  =   h[id];
-	uh[id_left] = - uh[id];
-	vh[id_left] =   vh[id];
+      for(i=1; i<ny+1; i++)
+      {
+        id = ID_2D(i,j,nx);
+        id_left = ID_2D(i,j-1,nx);
+        h[id_left]  =   h[id];
+        uh[id_left] = - uh[id];
+        vh[id_left] =   vh[id];
       }
 
       //right
       j=nx;
-      for(i=1; i<ny+1; i++){
-	id = ID_2D(i,j,nx);
-	id_right = ID_2D(i,j+1,nx);
-	h[id_right]  =   h[id];
-	uh[id_right] = - uh[id];
-	vh[id_right] =   vh[id];
+      for(i=1; i<ny+1; i++)
+      {
+        id = ID_2D(i,j,nx);
+        id_right = ID_2D(i,j+1,nx);
+        h[id_right]  =   h[id];
+        uh[id_right] = - uh[id];
+        vh[id_right] =   vh[id];
       }
 
       //bottom
       i=1;
-      for(j=1; j<nx+1; j++){
-	id = ID_2D(i,j,nx);
-	id_bottom = ID_2D(i-1,j,nx);
-	h[id_bottom]  =   h[id];
-	uh[id_bottom] =   uh[id];
-	vh[id_bottom] = - vh[id];
+      for(j=1; j<nx+1; j++)
+      {
+        id = ID_2D(i,j,nx);
+        id_bottom = ID_2D(i-1,j,nx);
+        h[id_bottom]  =   h[id];
+        uh[id_bottom] =   uh[id];
+        vh[id_bottom] = - vh[id];
       }
 
       //top
       i=ny;
-      for(j=1; j<nx+1; j++){
-	id = ID_2D(i,j,nx);
-	id_top = ID_2D(i+1,j,nx);
-	h[id_top]  =   h[id];
-	uh[id_top] =   uh[id];
-	vh[id_top] = - vh[id];
+      for(j=1; j<nx+1; j++)
+      {
+        id = ID_2D(i,j,nx);
+        id_top = ID_2D(i+1,j,nx);
+        h[id_top]  =   h[id];
+        uh[id_top] =   uh[id];
+        vh[id_top] = - vh[id];
       }
-
     } //end time loop
 
 clock_t time_end = clock();
@@ -343,7 +299,7 @@ double time_elapsed = (double)(time_end - time_start) / CLOCKS_PER_SEC;
   
   // **** POSTPROCESSING ****
   // Write data to file
-  write_results("sw2d_cuda_final.dat",nx,ny,x,y,h,uh,vh);
+  write_results("tc2d_final.dat",nx,ny,x,y,h,uh,vh);
 
   CHECK(cudaFree(d_h));
   CHECK(cudaFree(d_uh));

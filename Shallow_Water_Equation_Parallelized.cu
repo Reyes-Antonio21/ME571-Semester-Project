@@ -28,7 +28,7 @@ __global__ void computeFluxesGPU(float *h,  float *uh,  float *vh, float *fh, fl
   // **** COMPUTE FLUXES ****
   //Compute fluxes (including ghosts) 
 
-  if (i >= 0 && i < nx + 2 && j >= 0 && j < ny + 2) // Ensure proper bounds
+  if (i < nx + 2 && j < ny + 2) // Ensure proper bounds
     {
     fh[id] = uh[id]; //flux for the height equation: u*h
 
@@ -73,7 +73,7 @@ __global__ void computeVariablesGPU(float *hm, float *uhm, float *vhm, float *fh
               - lambda_x * (fvh[id_right] - fvh[id_left])
               - lambda_y * (gvh[id_top] - gvh[id_bottom]);
   }
-  
+
   __syncthreads(); // Ensure all threads have completed
 }
 

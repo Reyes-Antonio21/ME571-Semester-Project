@@ -17,26 +17,33 @@ void write_results ( char *output_filename, int nx, int ny, float x[], float y[]
 
 __global__ void computeFluxesGPU(float *h,  float *uh,  float *vh, float *fh, float *fuh, float *fvh, float *gh, float *guh, float *gvh, int nx, int ny)
 {
-unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
-unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
-unsigned int id;
+  unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
+  unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
+  unsigned int id;
 
-float g = 9.81;
+  float g = 9.81;
 
-id = ID_2D(i, j, nx);
+  id = ID_2D(i, j, nx);
 
-// **** COMPUTE FLUXES ****
-//Compute fluxes (including ghosts) 
+  // **** COMPUTE FLUXES ****
+  //Compute fluxes (including ghosts) 
 
-if (i < nx + 2 && j < ny + 2)
-  {
-  fh[id] = uh[id]; //flux for the height equation: u*h
-  fuh[id] = uh[id]*uh[id]/h[id] + 0.5*g*h[id]*h[id]; //flux for the momentum equation: u^2*h + 0.5*g*h^2
-  fvh[id] = uh[id]*vh[id]/h[id]; //flux for the momentum equation: u*v**h 
-  gh[id] = vh[id]; //flux for the height equation: v*h
-  guh[id] = uh[id]*vh[id]/h[id]; //flux for the momentum equation: u*v**h 
-  gvh[id] = vh[id]*vh[id]/h[id] + 0.5*g*h[id]*h[id]; //flux for the momentum equation: v^2*h + 0.5*g*h^2
-  }
+  if (i < nx + 2 && j < ny + 2) // Ensure proper bounds
+    {
+    fh[id] = uh[id]; //flux for the height equation: u*h
+
+    fuh[id] = uh[id]*uh[id]/h[id] + 0.5*g*h[id]*h[id]; //flux for the momentum equation: u^2*h + 0.5*g*h^2
+
+    fvh[id] = uh[id]*vh[id]/h[id]; //flux for the momentum equation: u*v**h 
+
+    gh[id] = vh[id]; //flux for the height equation: v*h
+
+    guh[id] = uh[id]*vh[id]/h[id]; //flux for the momentum equation: u*v**h 
+
+    gvh[id] = vh[id]*vh[id]/h[id] + 0.5*g*h[id]*h[id]; //flux for the momentum equation: v^2*h + 0.5*g*h^2
+    }
+
+    __syncthreads(); // Ensure all threads have completed  
 }
 
 /*
