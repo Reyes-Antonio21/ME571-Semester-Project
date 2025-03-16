@@ -287,6 +287,7 @@ int main ( int argc, char *argv[] )
   float *d_h, *d_uh, *d_vh;
   float *d_fh, *d_fuh, *d_fvh;
   float *d_gh, *d_guh, *d_gvh;
+  float *d_hm, *d_uhm, *d_vhm;
 
   // **** Allocate memory on device ****
   //Allocate space (nx+2)((nx+2) long, to account for ghosts
