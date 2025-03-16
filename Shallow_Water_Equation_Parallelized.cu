@@ -42,6 +42,8 @@ __global__ void computeFluxesGPU(float *h,  float *uh,  float *vh, float *fh, fl
 
     gvh[id] = vh[id]*vh[id]/h[id] + 0.5*g*h[id]*h[id]; //flux for the momentum equation: v^2*h + 0.5*g*h^2
     }
+
+    __syncthreads(); // Ensure all threads have completed  
 }
 
 __global__ void computeVariablesGPU(float *hm, float *uhm, float *vhm, float *fh, float *fuh, float *fvh, float *gh, float *guh, float *gvh, float *h, float *uh, float *vh, float lambda_x, float lambda_y, int nx, int ny)
@@ -71,6 +73,8 @@ __global__ void computeVariablesGPU(float *hm, float *uhm, float *vhm, float *fh
               - lambda_x * (fvh[id_right] - fvh[id_left])
               - lambda_y * (gvh[id_top] - gvh[id_bottom]);
   }
+  
+  __syncthreads(); // Ensure all threads have completed
 }
 
 /*
@@ -279,8 +283,6 @@ int main ( int argc, char *argv[] )
           CHECK(cudaMemcpy(d_vh, vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
 
           computeFluxesGPU<<<grid, block>>>(d_h, d_uh, d_vh, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, nx, ny);
-
-          __syncthreads(); // Ensure all threads have completed
 
           CHECK(cudaGetLastError());
 
