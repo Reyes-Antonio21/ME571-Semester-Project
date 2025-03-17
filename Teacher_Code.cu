@@ -244,41 +244,41 @@ __global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int n
   }
   else if (bc_type == 3) // Reflective Boundary Conditions
   {  
-    // Left Boundary (j = 0) - Reflective
-    if (j == 0 && i >= 0 && i <= ny + 1) 
+    // Left Boundary (j = 1) - Reflective
+    if (j == 1 && i > 0 && i < ny + 1) 
     {
-      id = ID_2D(i, 1, nx);
-      id_ghost = ID_2D(i, 0, nx);
+      id = ID_2D(i, j, nx);
+      id_ghost = ID_2D(i, j - 1, nx);
       h[id_ghost]  = h[id];
       uh[id_ghost] = -uh[id];  // Flip normal velocity
       vh[id_ghost] = vh[id];   // Keep tangential velocity
     }
 
-    // Right Boundary (j = nx + 1) - Reflective
-    if (j == nx + 1 && i >= 0 && i <= ny + 1) 
+    // Right Boundary (j = nx) - Reflective
+    if (j == nx && i > 0 && i < ny + 1) 
     {
-      id = ID_2D(i, nx, nx);
-      id_ghost = ID_2D(i, nx + 1, nx);
+      id = ID_2D(i, j, nx);
+      id_ghost = ID_2D(i, j + 1, nx);
       h[id_ghost]  = h[id];
       uh[id_ghost] = -uh[id];  // Flip normal velocity
       vh[id_ghost] = vh[id];   // Keep tangential velocity
     }
 
-    // Bottom Boundary (i = 0) - Reflective
-    if (i == 0 && j > 0 && j < nx + 1) 
+    // Bottom Boundary (i = 1) - Reflective
+    if (i == 1 && j > 0 && j < nx + 1) 
     {
-      id = ID_2D(1, j, nx);
-      id_ghost = ID_2D(0, j, nx);
+      id = ID_2D(i, j, nx);
+      id_ghost = ID_2D(i - 1, j, nx);
       h[id_ghost]  = h[id];
       uh[id_ghost] = uh[id];   // Keep tangential velocity
       vh[id_ghost] = -vh[id];  // Flip normal velocity
     }
 
-    // Top Boundary (i = ny + 1) - Reflective
-    if (i == ny + 1 && j > 0 && j < nx + 1) 
+    // Top Boundary (i = ny) - Reflective
+    if (i == ny && j > 0 && j < nx + 1) 
     {
-      id = ID_2D(ny, j, nx);
-      id_ghost = ID_2D(ny + 1, j, nx);
+      id = ID_2D(i, j, nx);
+      id_ghost = ID_2D(i + 1, j, nx);
       h[id_ghost]  = h[id];
       uh[id_ghost] = uh[id];   // Keep tangential velocity
       vh[id_ghost] = -vh[id];  // Flip normal velocity
