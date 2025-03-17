@@ -165,7 +165,7 @@ __global__ void computeFluxesGPU(float *h,  float *uh,  float *vh, float *fh, fl
   if (i >= nx || j >= ny) // Ensure we stay inside computational domain
   return; 
 
-  unsigned int id = ID_2D(i+1, j+1, nx); // Offset to skip ghost cells
+  unsigned int id = ID_2D(i + 1, j + 1, nx); // Offset to skip ghost cells
 
   float g = 9.81; // Gravitational acceleration
 
@@ -331,7 +331,7 @@ int main ( int argc, char *argv[] )
   int dimx = 32;
   int dimy = 32;
   dim3 blockSize(dimx, dimy);
-  dim3 gridSize((nx + blockSize.x - 1) / blockSize.x, (ny + blockSize.y - 1) / blockSize.y);
+  dim3 gridSize(((nx - 2) + blockSize.x - 1) / blockSize.x, ((ny - 2) + blockSize.y - 1) / blockSize.y);
 
   time=0;
   int k=0; //time-step counter
