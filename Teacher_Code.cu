@@ -346,9 +346,9 @@ __global__ void updateVariablesGPU(float *h, float *uh, float *vh, float *hm, fl
   unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
   unsigned int id;
 
-  if (i < ny + 1 &&  j < nx + 1)  // Ensure proper bounds
+  if (i < ny + 1 && i > 0 &&  j < nx + 1 && j > 0)  // Ensure proper bounds
   {
-    id = ID_2D(i + 1, j + 1, nx);
+    id = ID_2D(i, j, nx);
 
     h[id] = hm[id];
     uh[id] = uhm[id];
