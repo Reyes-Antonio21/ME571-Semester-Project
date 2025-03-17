@@ -8,7 +8,6 @@
 
 #define ID_2D(i,j,nx) ((i)*(nx+2)+(j))
 
-
 //utilities
 void getArgs(int *nx, float *dt, float *x_length, float *t_final, int argc, char *argv[]);
 
@@ -21,9 +20,11 @@ __global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int n
   int i = threadIdx.x + blockIdx.x * blockDim.x;
   int j = threadIdx.y + blockIdx.y * blockDim.y;
 
-  if (i >= nx + 2 || j >= ny + 2) return; // Ensure we are within valid bounds
+  if (i >= nx + 2 || j >= ny + 2) // Ensure we are within valid bounds
+  return; 
 
   int id, id_ghost;
+
   if (bc_type == 1) // Dirichlet Boundary Conditions
   {  
     // Left Boundary (j = 0)
@@ -153,7 +154,6 @@ __global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int n
   }
 
   __syncthreads();
-
 }
 /******************************************************************************/
 
@@ -211,6 +211,7 @@ __global__ void computeVariablesGPU(float *hm, float *uhm, float *vhm, float *fh
 
   __syncthreads(); // Ensure all threads have completed
 }
+/******************************************************************************/
 
 int main ( int argc, char *argv[] )
 {
@@ -320,7 +321,6 @@ int main ( int argc, char *argv[] )
   //Write initial condition to a file
   write_results("tc2d_init.dat",nx,ny,x,y,h,uh,vh);
 
-
   // **** TIME LOOP ****
   float lambda_x = 0.5*dt/dx;
   float lambda_y = 0.5*dt/dy;
@@ -338,25 +338,9 @@ int main ( int argc, char *argv[] )
 
   while (time<t_final) //time loop begins
     {
-      //  Take a time step
+      // Take a time step
       time=time+dt;
       k++;
-      //printf("time = %f\n",time);
-      // **** COMPUTE FLUXES ****
-      //Compute fluxes (including ghosts) 
-      /*for ( i = 0; i < ny+2; i++ )
-	    for ( j = 0; j < nx+2; j++)
-      {
-        id=ID_2D(i,j,nx);
-
-        fh[id] = uh[id]; //flux for the height equation: u*h
-        fuh[id] = uh[id]*uh[id]/h[id] + 0.5*g*h[id]*h[id]; //flux for the momentum equation: u^2*h + 0.5*g*h^2
-        fvh[id] = uh[id]*vh[id]/h[id]; //flux for the momentum equation: u*v**h 
-        gh[id] = vh[id]; //flux for the height equation: v*h
-        guh[id] = uh[id]*vh[id]/h[id]; //flux for the momentum equation: u*v**h 
-        gvh[id] = vh[id]*vh[id]/h[id] + 0.5*g*h[id]*h[id]; //flux for the momentum equation: v^2*h + 0.5*g*h^2
-	    }
-      */
 
       //Move data to the device for applyBoundaryConditionsGPU & computeFluxesGPU
       CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
@@ -368,8 +352,23 @@ int main ( int argc, char *argv[] )
       cudaDeviceSynchronize();
       CHECK(cudaGetLastError());
 
+      // **** COMPUTE FLUXES ****
+      //Compute fluxes (including ghosts) 
+      for ( i = 0; i < ny+2; i++ )
+	    for ( j = 0; j < nx+2; j++)
+      {
+        id=ID_2D(i,j,nx);
+
+        fh[id] = uh[id]; //flux for the height equation: u*h
+        fuh[id] = uh[id]*uh[id]/h[id] + 0.5*g*h[id]*h[id]; //flux for the momentum equation: u^2*h + 0.5*g*h^2
+        fvh[id] = uh[id]*vh[id]/h[id]; //flux for the momentum equation: u*v**h 
+        gh[id] = vh[id]; //flux for the height equation: v*h
+        guh[id] = uh[id]*vh[id]/h[id]; //flux for the momentum equation: u*v**h 
+        gvh[id] = vh[id]*vh[id]/h[id] + 0.5*g*h[id]*h[id]; //flux for the momentum equation: v^2*h + 0.5*g*h^2
+	    }
+
       // Compute fluxes after boundary conditions are enforced
-      computeFluxesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, nx, ny);
+      /*computeFluxesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, nx, ny);
       cudaDeviceSynchronize();
       CHECK(cudaGetLastError());
 
@@ -377,11 +376,13 @@ int main ( int argc, char *argv[] )
       CHECK(cudaMemcpy(d_hm, hm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
       CHECK(cudaMemcpy(d_uhm, uhm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
       CHECK(cudaMemcpy(d_vhm, vhm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
+      
 
       //Move data back to the host
       CHECK(cudaMemcpy(hm, d_hm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
       CHECK(cudaMemcpy(uhm, d_uhm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
       CHECK(cudaMemcpy(vhm, d_vhm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+      */
 
       CHECK(cudaMemcpy(fh, d_fh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
       CHECK(cudaMemcpy(fuh, d_fuh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
@@ -395,7 +396,7 @@ int main ( int argc, char *argv[] )
       CHECK(cudaMemcpy(uh, d_uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
       CHECK(cudaMemcpy(vh, d_vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
 
-       // **** COMPUTE VARIABLES ****
+      // **** COMPUTE VARIABLES ****
       //Compute updated variables
       for ( i = 1; i < ny+1; i++ )
 	      for ( j = 1; j < nx+1; j++ )
