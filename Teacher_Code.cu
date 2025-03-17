@@ -353,6 +353,10 @@ int main ( int argc, char *argv[] )
       cudaDeviceSynchronize();
       CHECK(cudaGetLastError());
 
+      CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+      CHECK(cudaMemcpy(uh, d_uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+      CHECK(cudaMemcpy(vh, d_vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+
       // **** COMPUTE FLUXES ****
       //Compute fluxes (including ghosts) 
       for ( i = 0; i < ny+2; i++ )
@@ -383,19 +387,15 @@ int main ( int argc, char *argv[] )
       CHECK(cudaMemcpy(hm, d_hm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
       CHECK(cudaMemcpy(uhm, d_uhm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
       CHECK(cudaMemcpy(vhm, d_vhm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-      */
 
-      CHECK(cudaMemcpy(fh, d_fh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+       CHECK(cudaMemcpy(fh, d_fh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
       CHECK(cudaMemcpy(fuh, d_fuh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
       CHECK(cudaMemcpy(fvh, d_fvh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
 
       CHECK(cudaMemcpy(gh, d_gh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
       CHECK(cudaMemcpy(guh, d_guh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
       CHECK(cudaMemcpy(gvh, d_gvh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-
-      CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-      CHECK(cudaMemcpy(uh, d_uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-      CHECK(cudaMemcpy(vh, d_vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+      */
 
       // **** COMPUTE VARIABLES ****
       //Compute updated variables
