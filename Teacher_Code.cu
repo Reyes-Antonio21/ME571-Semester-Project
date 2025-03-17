@@ -349,8 +349,8 @@ int main ( int argc, char *argv[] )
 
       // **** COMPUTE FLUXES ****
       //Compute fluxes (including ghosts) 
-      for ( i = 0; i < ny+2; i++ )
-        for ( j = 0; j < nx+2; j++)
+      for ( i = 1; i < ny+1; i++ )
+        for ( j = 1; j < nx+1; j++)
         {
           id=ID_2D(i,j,nx);
 
