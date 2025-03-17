@@ -368,6 +368,7 @@ int main ( int argc, char *argv[] )
       */
 
       //Move data to the device for computeVariablesGPU
+      /*
       CHECK(cudaMemcpy(d_hm, hm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
       CHECK(cudaMemcpy(d_uhm, uhm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
       CHECK(cudaMemcpy(d_vhm, vhm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
@@ -383,7 +384,7 @@ int main ( int argc, char *argv[] )
       CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
       CHECK(cudaMemcpy(d_uh, uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
       CHECK(cudaMemcpy(d_vh, vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
-
+      
       // **** COMPUTE VARIABLES ****
       computeVariablesGPU<<<gridSize, blockSize>>>(d_hm, d_uhm, d_vhm, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, d_h, d_uh, d_vh, lambda_x, lambda_y, nx, ny);
       cudaDeviceSynchronize();
@@ -403,11 +404,12 @@ int main ( int argc, char *argv[] )
       CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
       CHECK(cudaMemcpy(uh, d_uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
       CHECK(cudaMemcpy(vh, d_vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+      */
 
       // **** COMPUTE VARIABLES ****
       //Compute updated variables
-      /*for ( i = 1; i < ny+1; i++ )
-	      for ( j = 1; j < nx+1; j++ )
+      for ( i = 1; i < ny + 1; i++ )
+	      for ( j = 1; j < nx + 1; j++ )
         {
           id=ID_2D(i,j,nx);
           id_left=ID_2D(i,j-1,nx);
@@ -427,7 +429,6 @@ int main ( int argc, char *argv[] )
             - lambda_x * ( fvh[id_right] - fvh[id_left] ) 
             - lambda_y * ( gvh[id_top] - gvh[id_bottom] );
         }
-        */
 
       // **** UPDATE VARIABLES ****
       //update interior state variables
