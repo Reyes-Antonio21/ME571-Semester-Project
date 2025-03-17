@@ -475,43 +475,33 @@ int main ( int argc, char *argv[] )
   //start timer
   clock_t time_start = clock();
 
+  //Move data to the device for all GPU calculations
+  CHECK(cudaMemcpy(d_hm, hm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
+  CHECK(cudaMemcpy(d_uhm, uhm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
+  CHECK(cudaMemcpy(d_vhm, vhm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
+
+  CHECK(cudaMemcpy(d_fh, fh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
+  CHECK(cudaMemcpy(d_fuh, fuh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
+  CHECK(cudaMemcpy(d_fvh, fvh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
+
+  CHECK(cudaMemcpy(d_gh, gh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
+  CHECK(cudaMemcpy(d_guh, guh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
+  CHECK(cudaMemcpy(d_gvh, gvh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
+
+  CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
+  CHECK(cudaMemcpy(d_uh, uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
+  CHECK(cudaMemcpy(d_vh, vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
+
   while (time<t_final) //time loop begins
   {
     // Take a time step
     time=time+dt;
     k++;
 
-    // **** COMPUTE FLUXES ****
-    //Compute fluxes (including ghosts)
-    for ( i = 0; i < ny+2; i++ )
-    for ( j = 0; j < nx+2; j++)
-    {
-      id = ID_2D(i,j,nx);
-
-      fh[id] = uh[id]; //flux for the height equation: u*h
-      fuh[id] = uh[id] * uh[id] / h[id] + 0.5 * g * h[id] * h[id]; //flux for the momentum equation: u^2*h + 0.5*g*h^2
-      fvh[id] = uh[id] * vh[id] / h[id]; //flux for the momentum equation: u*v**h 
-      gh[id] = vh[id]; //flux for the height equation: v*h
-      guh[id] = uh[id] * vh[id] / h[id]; //flux for the momentum equation: u*v**h 
-      gvh[id] = vh[id] * vh[id] / h[id] + 0.5 * g * h[id] * h[id]; //flux for the momentum equation: v^2*h + 0.5*g*h^2
-    }
-
-    //Move data to the device for all GPU calculations
-    CHECK(cudaMemcpy(d_hm, hm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
-    CHECK(cudaMemcpy(d_uhm, uhm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
-    CHECK(cudaMemcpy(d_vhm, vhm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
-
-    CHECK(cudaMemcpy(d_fh, fh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
-    CHECK(cudaMemcpy(d_fuh, fuh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
-    CHECK(cudaMemcpy(d_fvh, fvh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
-
-    CHECK(cudaMemcpy(d_gh, gh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
-    CHECK(cudaMemcpy(d_guh, guh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
-    CHECK(cudaMemcpy(d_gvh, gvh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
-
-    CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
-    CHECK(cudaMemcpy(d_uh, uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
-    CHECK(cudaMemcpy(d_vh, vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
+    // Compute fluxes
+    computeFluxesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, nx, ny);
+    cudaDeviceSynchronize();
+    CHECK(cudaGetLastError());
     
     // **** COMPUTE VARIABLES ****
     computeVariablesGPU<<<gridSize, blockSize>>>(d_hm, d_uhm, d_vhm, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, d_h, d_uh, d_vh, lambda_x, lambda_y, nx, ny);
@@ -526,27 +516,28 @@ int main ( int argc, char *argv[] )
     // **** APPLY BOUNDARY CONDITIONS ****
     applyBoundaryConditionsGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, nx, ny, 3);
     cudaDeviceSynchronize();
-    CHECK(cudaGetLastError());
-    
-    //Move data back to the host
-    CHECK(cudaMemcpy(hm, d_hm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-    CHECK(cudaMemcpy(uhm, d_uhm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-    CHECK(cudaMemcpy(vhm, d_vhm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-
-    CHECK(cudaMemcpy(fh, d_fh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-    CHECK(cudaMemcpy(fuh, d_fuh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-    CHECK(cudaMemcpy(fvh, d_fvh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-
-    CHECK(cudaMemcpy(gh, d_gh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-    CHECK(cudaMemcpy(guh, d_guh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-    CHECK(cudaMemcpy(gvh, d_gvh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-
-    CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-    CHECK(cudaMemcpy(uh, d_uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-    CHECK(cudaMemcpy(vh, d_vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));  
+    CHECK(cudaGetLastError());  
 
   } //end time loop
 
+  //Move data back to the host
+  CHECK(cudaMemcpy(hm, d_hm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+  CHECK(cudaMemcpy(uhm, d_uhm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+  CHECK(cudaMemcpy(vhm, d_vhm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+
+  CHECK(cudaMemcpy(fh, d_fh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+  CHECK(cudaMemcpy(fuh, d_fuh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+  CHECK(cudaMemcpy(fvh, d_fvh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+
+  CHECK(cudaMemcpy(gh, d_gh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+  CHECK(cudaMemcpy(guh, d_guh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+  CHECK(cudaMemcpy(gvh, d_gvh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+
+  CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+  CHECK(cudaMemcpy(uh, d_uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+  CHECK(cudaMemcpy(vh, d_vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+
+  //stop timer
   clock_t time_end = clock();
   double time_elapsed = (double)(time_end - time_start) / CLOCKS_PER_SEC;
     
