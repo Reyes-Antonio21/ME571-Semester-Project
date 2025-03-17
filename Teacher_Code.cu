@@ -215,6 +215,7 @@ __global__ void computeVariablesGPU(float *hm, float *uhm, float *vhm, float *fh
 
 int main ( int argc, char *argv[] )
 {
+  float g = 9.81; // Gravitational acceleration
   float dx;
   float dy;
   float dt;
