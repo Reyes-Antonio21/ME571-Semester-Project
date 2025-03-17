@@ -284,7 +284,6 @@ __global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int n
       vh[id_ghost] = -vh[id];  // Flip normal velocity
     }
   }
-  __syncthreads();
 }
 /******************************************************************************/
 
@@ -309,7 +308,6 @@ __global__ void computeFluxesGPU(float *h,  float *uh,  float *vh, float *fh, fl
   guh[id] = uh[id] * vh[id] / h[id]; // momentum equation: u*v*h
   gvh[id] = vh[id] * vh[id] / h[id] + 0.5 * g * h[id] * h[id]; // momentum equation: v²h + 0.5 * g * h² 
 
-  __syncthreads(); // Ensure all threads have completed
 }
 /******************************************************************************/
 
@@ -319,7 +317,10 @@ __global__ void computeVariablesGPU(float *hm, float *uhm, float *vhm, float *fh
   unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
   unsigned int id, id_left, id_right, id_bottom, id_top;
 
-  if (i >= 1 && i < nx + 1 && j >= 1 && j < ny + 1)  // Ensure proper bounds
+  if (i >= nx + 2 || j >= ny + 2)
+  return
+
+  if (i > 0 && i < nx + 1 && j > 0 && j < ny + 1)  // Ensure proper bounds
   {
     id = ID_2D(i, j, nx);
 
@@ -340,7 +341,6 @@ __global__ void computeVariablesGPU(float *hm, float *uhm, float *vhm, float *fh
             - lambda_x * (fvh[id_right] - fvh[id_left])
             - lambda_y * (gvh[id_top] - gvh[id_bottom]);
   }
-  __syncthreads(); // Ensure all threads have completed
 }
 /******************************************************************************/
 
@@ -358,8 +358,6 @@ __global__ void updateVariablesGPU(float *h, float *uh, float *vh, float *hm, fl
     uh[id] = uhm[id];
     vh[id] = vhm[id];
   }
-  
-  __syncthreads(); // Ensure all threads have completed
 }
 /******************************************************************************/
 
