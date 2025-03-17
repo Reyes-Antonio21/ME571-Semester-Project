@@ -158,7 +158,7 @@ __global__ void computeFluxesGPU(float *h,  float *uh,  float *vh, float *fh, fl
   unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
   unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
   
-  if (i < 1 || i > ny || j < 1 || j > nx) // Ensure we stay inside computational domain, fully avoiding computing ghost cells
+  if (i > ny + 2 || j > nx + 2)
   return;
 
   unsigned int id = ID_2D(i, j, nx);
