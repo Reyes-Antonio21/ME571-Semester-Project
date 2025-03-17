@@ -292,22 +292,21 @@ __global__ void computeFluxesGPU(float *h,  float *uh,  float *vh, float *fh, fl
   unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
   unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
   
-  if (i > ny + 2 || j > nx + 2)
-  return;
+  if (i > ny + 2 && j > nx + 2)
+  {
+    unsigned int id = ID_2D(i, j, nx);
 
-  unsigned int id = ID_2D(i, j, nx);
+    float g = 9.81; // Gravitational acceleration
 
-  float g = 9.81; // Gravitational acceleration
+    // Compute fluxes
+    fh[id] = uh[id];  // flux for height equation: u*h
+    fuh[id] = uh[id] * uh[id] / h[id] + 0.5 * g * h[id] * h[id]; // momentum equation: u²h + 0.5 * g * h²
+    fvh[id] = uh[id] * vh[id] / h[id]; // momentum equation: u*v*h
 
-  // Compute fluxes
-  fh[id] = uh[id];  // flux for height equation: u*h
-  fuh[id] = uh[id] * uh[id] / h[id] + 0.5 * g * h[id] * h[id]; // momentum equation: u²h + 0.5 * g * h²
-  fvh[id] = uh[id] * vh[id] / h[id]; // momentum equation: u*v*h
-
-  gh[id] = vh[id];  // flux for height equation: v*h
-  guh[id] = uh[id] * vh[id] / h[id]; // momentum equation: u*v*h
-  gvh[id] = vh[id] * vh[id] / h[id] + 0.5 * g * h[id] * h[id]; // momentum equation: v²h + 0.5 * g * h² 
-
+    gh[id] = vh[id];  // flux for height equation: v*h
+    guh[id] = uh[id] * vh[id] / h[id]; // momentum equation: u*v*h
+    gvh[id] = vh[id] * vh[id] / h[id] + 0.5 * g * h[id] * h[id]; // momentum equation: v²h + 0.5 * g * h² 
+  }
 }
 /******************************************************************************/
 
@@ -316,9 +315,6 @@ __global__ void computeVariablesGPU(float *hm, float *uhm, float *vhm, float *fh
   unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
   unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
   unsigned int id, id_left, id_right, id_bottom, id_top;
-
-  if (i >= nx + 2 || j >= ny + 2)
-  return;
 
   if (i > 0 && i < nx + 1 && j > 0 && j < ny + 1)  // Ensure proper bounds
   {
