@@ -20,7 +20,7 @@ __global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int n
   int i = threadIdx.x + blockIdx.x * blockDim.x;
   int j = threadIdx.y + blockIdx.y * blockDim.y;
 
-  if (i >= nx + 2 || j >= ny + 2) // Ensure we are within valid bounds
+  if (i >= nx + 3 || j >= ny + 3) // Ensure we are within valid bounds
   return; 
 
   int id, id_ghost;
@@ -448,7 +448,7 @@ int main ( int argc, char *argv[] )
   CHECK(cudaFree(d_gh));
   CHECK(cudaFree(d_guh));
   CHECK(cudaFree(d_gvh));
-  
+
   CHECK(cudaFree(d_hm));
   CHECK(cudaFree(d_uhm));
   CHECK(cudaFree(d_vhm));
