@@ -461,7 +461,7 @@ int main ( int argc, char *argv[] )
   // **** INITIAL CONDITIONS ****
   //Apply the initial conditions.
   //printf("Before initial conditions\n");
-  initial_conditions ( nx, ny, dx, dy, x_length,  x, y, h, uh, vh);
+  initial_conditions ( nx, ny, dx, dy, x_length, x, y, h, uh, vh);
 
   //printf("Before write results\n");
   //Write initial condition to a file
