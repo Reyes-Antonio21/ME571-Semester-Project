@@ -158,7 +158,7 @@ __global__ void computeFluxesGPU(float *h,  float *uh,  float *vh, float *fh, fl
   unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
   unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
   
-  if (i < 1 || i > ny || j < 1 || j > nx) // Ensure we stay inside computational domain
+  if (i < 1 || i > ny || j < 1 || j > nx) // Ensure we stay inside computational domain, fully avoiding computing ghost cells
   return;
 
   unsigned int id = ID_2D(i, j, nx);
@@ -173,6 +173,8 @@ __global__ void computeFluxesGPU(float *h,  float *uh,  float *vh, float *fh, fl
   gh[id] = vh[id];  // flux for height equation: v*h
   guh[id] = uh[id] * vh[id] / h[id]; // momentum equation: u*v*h
   gvh[id] = vh[id] * vh[id] / h[id] + 0.5 * g * h[id] * h[id]; // momentum equation: v²h + 0.5 * g * h² 
+
+  __syncthreads(); // Ensure all threads have completed
 }
 /******************************************************************************/
 
@@ -221,6 +223,7 @@ __global__ void updateVariablesGPU(float *h, float *uh, float *vh, float *hm, fl
     uh[id] = uhm[id];
     vh[id] = vhm[id];
   }
+  
   __syncthreads(); // Ensure all threads have completed
 }
 /******************************************************************************/
@@ -380,7 +383,7 @@ int main ( int argc, char *argv[] )
       updateVariablesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_hm, d_uhm, d_vhm, nx, ny);
       cudaDeviceSynchronize();
       CHECK(cudaGetLastError());
-      
+
       // **** APPLY BOUNDARY CONDITIONS ****
       applyBoundaryConditionsGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, nx, ny, 3);
       cudaDeviceSynchronize();
