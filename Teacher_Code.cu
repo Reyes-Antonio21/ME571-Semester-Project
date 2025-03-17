@@ -150,12 +150,12 @@ void write_results ( char *output_filename, int nx, int ny, float x[], float y[]
 }
 /******************************************************************************/
 
-__global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int nx, int ny, int bc_type) 
+__global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int nx, int ny, int bc_type) // Likly not the culprit!!!
 {
-  int i = threadIdx.x + blockIdx.x * blockDim.x;
-  int j = threadIdx.y + blockIdx.y * blockDim.y;
+  unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
+  unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
 
-  int id, id_ghost;
+  unsigned int id, id_ghost;
 
   if (bc_type == 1) // Dirichlet Boundary Conditions
   {  
@@ -292,7 +292,7 @@ __global__ void computeFluxesGPU(float *h,  float *uh,  float *vh, float *fh, fl
   unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
   unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
   
-  if (i < ny + 3 && j < nx + 3)
+  if (i < ny + 2 && j < nx + 2)
   {
     unsigned int id = ID_2D(i, j, nx);
 
@@ -316,7 +316,7 @@ __global__ void computeVariablesGPU(float *hm, float *uhm, float *vhm, float *fh
   unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
   unsigned int id, id_left, id_right, id_bottom, id_top;
 
-  if (i < ny + 1 && i > 0 && j < nx + 1 && j > 0)  // Ensure proper bounds
+  if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)  // Ensure proper bounds
   {
     id = ID_2D(i, j, nx);
 
@@ -346,7 +346,7 @@ __global__ void updateVariablesGPU(float *h, float *uh, float *vh, float *hm, fl
   unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
   unsigned int id;
 
-  if (i < ny + 1 && i > 0 &&  j < nx + 1 && j > 0)  // Ensure proper bounds
+  if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)  // Ensure proper bounds
   {
     id = ID_2D(i, j, nx);
 
@@ -512,6 +512,11 @@ int main ( int argc, char *argv[] )
     updateVariablesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_hm, d_uhm, d_vhm, nx, ny);
     cudaDeviceSynchronize();
     CHECK(cudaGetLastError());
+
+    // **** APPLY BOUNDARY CONDITIONS ****
+    applyBoundaryConditionsGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, nx, ny, 3);
+    cudaDeviceSynchronize();
+    CHECK(cudaGetLastError());
     
     //Move data back to the host
     CHECK(cudaMemcpy(hm, d_hm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
@@ -529,77 +534,6 @@ int main ( int argc, char *argv[] )
     CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
     CHECK(cudaMemcpy(uh, d_uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
     CHECK(cudaMemcpy(vh, d_vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));  
-
-    // **** APPLY BOUNDARY CONDITIONS ****
-    //Update the ghosts (boundary conditions)
-
-    //left
-    j = 1;
-    for(i = 1; i < ny + 1; i++)
-    {
-
-      id = ID_2D(i, j, nx);
-
-      id_left = ID_2D(i, j - 1, nx);
-
-      h[id_left]  = h[id];
-
-      uh[id_left] = - uh[id];
-
-      vh[id_left] = vh[id];
-
-    }
-
-    //right
-    j = nx;
-    for(i = 1; i < ny + 1; i++)
-    {
-
-      id = ID_2D(i, j, nx);
-
-      id_right = ID_2D(i, j + 1, nx);
-
-      h[id_right]  = h[id];
-
-      uh[id_right] = - uh[id];
-
-      vh[id_right] = vh[id];
-
-    }
-
-    //bottom
-    i = 1;
-    for(j = 1; j < nx + 1; j++)
-    {
-
-      id = ID_2D(i, j, nx);
-
-      id_bottom = ID_2D(i - 1, j, nx);
-
-      h[id_bottom]  = h[id];
-
-      uh[id_bottom] = uh[id];
-
-      vh[id_bottom] = - vh[id];
-
-    }
-
-    //top
-    i = ny;
-    for(j = 1; j < nx + 1; j++)
-    {
-
-      id = ID_2D(i, j, nx);
-
-      id_top = ID_2D(i + 1, j, nx);
-
-      h[id_top]  = h[id];
-
-      uh[id_top] = uh[id];
-
-      vh[id_top] = - vh[id];
-
-    }
 
   } //end time loop
 
@@ -779,9 +713,4 @@ for(j = 1; j < nx + 1; j++)
     vh[id_top] = - vh[id];
 
   }
-
-  // **** APPLY BOUNDARY CONDITIONS ****
-    applyBoundaryConditionsGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, nx, ny, 3);
-    cudaDeviceSynchronize();
-    CHECK(cudaGetLastError());
 */
