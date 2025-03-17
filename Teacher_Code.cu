@@ -518,7 +518,7 @@ int main ( int argc, char *argv[] )
       CHECK(cudaGetLastError());
 
       // **** APPLY BOUNDARY CONDITIONS ****
-      applyBoundaryConditionsGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, nx, ny, 1);
+      applyBoundaryConditionsGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, nx, ny, 3);
       cudaDeviceSynchronize();
       CHECK(cudaGetLastError());
       
@@ -648,7 +648,7 @@ for (i = 1; i < ny+1; i++)
   }
 
 // **** APPLY BOUNDARY CONDITIONS ****
-  //Update the ghosts (boundary conditions)
+//Update the ghosts (boundary conditions)
 
 //left
 j = 1;
