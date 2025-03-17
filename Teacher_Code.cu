@@ -292,7 +292,7 @@ __global__ void computeFluxesGPU(float *h,  float *uh,  float *vh, float *fh, fl
   unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
   unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
   
-  if (i > ny + 2 && j > nx + 2)
+  if (i < ny + 2 && j < nx + 2)
   {
     unsigned int id = ID_2D(i, j, nx);
 
