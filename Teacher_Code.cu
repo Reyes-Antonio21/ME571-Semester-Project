@@ -318,7 +318,7 @@ __global__ void computeVariablesGPU(float *hm, float *uhm, float *vhm, float *fh
   unsigned int id, id_left, id_right, id_bottom, id_top;
 
   if (i >= nx + 2 || j >= ny + 2)
-  return
+  return;
 
   if (i > 0 && i < nx + 1 && j > 0 && j < ny + 1)  // Ensure proper bounds
   {
@@ -586,7 +586,6 @@ int main ( int argc, char *argv[] )
   free ( y );
 
   //Terminate.
-
   printf ( "\n" );
   printf ( "SHALLOW_WATER_2D:\n" );
   printf ( "  Normal end of execution.\n" );
