@@ -316,9 +316,9 @@ __global__ void computeVariablesGPU(float *hm, float *uhm, float *vhm, float *fh
   unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
   unsigned int id, id_left, id_right, id_bottom, id_top;
 
-  if (i > 0 && i < nx + 1 && j > 0 && j < ny + 1)  // Ensure proper bounds
+  if (i < ny + 1 && j < nx + 1)  // Ensure proper bounds
   {
-    id = ID_2D(i, j, nx);
+    id = ID_2D(i + 1, j + 1, nx);
 
     id_left   = ID_2D(i, j - 1, nx);
     id_right  = ID_2D(i, j + 1, nx);
@@ -346,9 +346,9 @@ __global__ void updateVariablesGPU(float *h, float *uh, float *vh, float *hm, fl
   unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
   unsigned int id;
 
-  if (i >= 1 && i < nx + 1 && j >= 1 && j < ny + 1)  // Ensure proper bounds
+  if (i < ny + 1 &&  j < nx + 1)  // Ensure proper bounds
   {
-    id = ID_2D(i, j, nx);
+    id = ID_2D(i + 1, j + 1, nx);
 
     h[id] = hm[id];
     uh[id] = uhm[id];
