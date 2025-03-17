@@ -481,6 +481,21 @@ int main ( int argc, char *argv[] )
     time=time+dt;
     k++;
 
+    // **** COMPUTE FLUXES ****
+    //Compute fluxes (including ghosts)
+    for ( i = 0; i < ny+2; i++ )
+    for ( j = 0; j < nx+2; j++)
+    {
+      id = ID_2D(i,j,nx);
+
+      fh[id] = uh[id]; //flux for the height equation: u*h
+      fuh[id] = uh[id] * uh[id] / h[id] + 0.5 * g * h[id] * h[id]; //flux for the momentum equation: u^2*h + 0.5*g*h^2
+      fvh[id] = uh[id] * vh[id] / h[id]; //flux for the momentum equation: u*v**h 
+      gh[id] = vh[id]; //flux for the height equation: v*h
+      guh[id] = uh[id] * vh[id] / h[id]; //flux for the momentum equation: u*v**h 
+      gvh[id] = vh[id] * vh[id] / h[id] + 0.5 * g * h[id] * h[id]; //flux for the momentum equation: v^2*h + 0.5*g*h^2
+    }
+
     //Move data to the device for all GPU calculations
     CHECK(cudaMemcpy(d_hm, hm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
     CHECK(cudaMemcpy(d_uhm, uhm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
@@ -497,11 +512,6 @@ int main ( int argc, char *argv[] )
     CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
     CHECK(cudaMemcpy(d_uh, uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
     CHECK(cudaMemcpy(d_vh, vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
-
-    // Compute fluxes
-    computeFluxesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, nx, ny);
-    cudaDeviceSynchronize();
-    CHECK(cudaGetLastError());
     
     // **** COMPUTE VARIABLES ****
     computeVariablesGPU<<<gridSize, blockSize>>>(d_hm, d_uhm, d_vhm, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, d_h, d_uh, d_vh, lambda_x, lambda_y, nx, ny);
@@ -713,4 +723,10 @@ for(j = 1; j < nx + 1; j++)
     vh[id_top] = - vh[id];
 
   }
+  
+  // Compute fluxes
+    computeFluxesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, nx, ny);
+    cudaDeviceSynchronize();
+    CHECK(cudaGetLastError());
+  
 */
