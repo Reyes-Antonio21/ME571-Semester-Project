@@ -316,9 +316,9 @@ __global__ void computeVariablesGPU(float *hm, float *uhm, float *vhm, float *fh
   unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
   unsigned int id, id_left, id_right, id_bottom, id_top;
 
-  if (i < ny + 1 && j < nx + 1)  // Ensure proper bounds
+  if (i < ny + 1 && i > 0 && j < nx + 1 && j > 0)  // Ensure proper bounds
   {
-    id = ID_2D(i + 1, j + 1, nx);
+    id = ID_2D(i, j, nx);
 
     id_left   = ID_2D(i, j - 1, nx);
     id_right  = ID_2D(i, j + 1, nx);
