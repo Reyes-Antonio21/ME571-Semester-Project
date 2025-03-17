@@ -245,7 +245,7 @@ __global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int n
   else if (bc_type == 3) // Reflective Boundary Conditions
   {  
     // Left Boundary (j = 0) - Reflective
-    if (j == 0 && i >= 1 && i <= ny) 
+    if (j == 0 && i >= 0 && i <= ny + 1) 
     {
       id = ID_2D(i, 1, nx);
       id_ghost = ID_2D(i, 0, nx);
@@ -255,7 +255,7 @@ __global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int n
     }
 
     // Right Boundary (j = nx + 1) - Reflective
-    if (j == nx + 1 && i >= 1 && i <= ny) 
+    if (j == nx + 1 && i >= 0 && i <= ny + 1) 
     {
       id = ID_2D(i, nx, nx);
       id_ghost = ID_2D(i, nx + 1, nx);
@@ -265,7 +265,7 @@ __global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int n
     }
 
     // Bottom Boundary (i = 0) - Reflective
-    if (i == 0 && j >= 1 && j <= nx) 
+    if (i == 0 && j > 0 && j < nx + 1) 
     {
       id = ID_2D(1, j, nx);
       id_ghost = ID_2D(0, j, nx);
@@ -275,7 +275,7 @@ __global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int n
     }
 
     // Top Boundary (i = ny + 1) - Reflective
-    if (i == ny + 1 && j >= 1 && j <= nx) 
+    if (i == ny + 1 && j > 0 && j < nx + 1) 
     {
       id = ID_2D(ny, j, nx);
       id_ghost = ID_2D(ny + 1, j, nx);
