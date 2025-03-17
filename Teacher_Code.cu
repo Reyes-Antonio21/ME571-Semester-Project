@@ -158,10 +158,10 @@ __global__ void computeFluxesGPU(float *h,  float *uh,  float *vh, float *fh, fl
   unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
   unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
 
-  if (i >= nx + 1 || j >= ny + 1) // Ensure we stay inside computational domain
+  if (i > nx + 2  || j > ny + 2) // Ensure we stay inside computational domain
   return; 
 
-  unsigned int id = ID_2D(i + 1, j + 1, nx); // Offset to skip ghost cells
+  unsigned int id = ID_2D(i, j, nx);
 
   float g = 9.81; // Gravitational acceleration
 
@@ -332,7 +332,8 @@ int main ( int argc, char *argv[] )
       k++;
 
       // **** COMPUTE FLUXES ****
-      //Compute fluxes (including ghosts) 
+      //Compute fluxes (including ghosts)
+      /* 
       for ( i = 0; i < ny+2; i++ )
         for ( j = 0; j < nx+2; j++)
         {
@@ -345,12 +346,30 @@ int main ( int argc, char *argv[] )
           guh[id] = uh[id] * vh[id] / h[id]; //flux for the momentum equation: u*v**h 
           gvh[id] = vh[id] * vh[id] / h[id] + 0.5 * g * h[id] * h[id]; //flux for the momentum equation: v^2*h + 0.5*g*h^2
         }
+      */
+
+      //Move data to the device for applyBoundaryConditionsGPU & computeFluxesGPU
+      CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
+      CHECK(cudaMemcpy(d_uh, uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
+      CHECK(cudaMemcpy(d_vh, vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
 
       // Compute fluxes after boundary conditions are enforced
-      /*computeFluxesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, nx, ny);
+      computeFluxesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, nx, ny);
       cudaDeviceSynchronize();
       CHECK(cudaGetLastError());
-      */
+
+      //Move data back to the host
+      CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+      CHECK(cudaMemcpy(uh, d_uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+      CHECK(cudaMemcpy(vh, d_vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+
+      CHECK(cudaMemcpy(fh, d_fh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+      CHECK(cudaMemcpy(fuh, d_fuh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+      CHECK(cudaMemcpy(fvh, d_fvh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+
+      CHECK(cudaMemcpy(gh, d_gh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+      CHECK(cudaMemcpy(guh, d_guh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+      CHECK(cudaMemcpy(gvh, d_gvh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
 
       //Move data to the device for computeVariablesGPU
       /*
