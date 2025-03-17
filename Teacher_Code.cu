@@ -186,10 +186,10 @@ __global__ void computeVariablesGPU(float *hm, float *uhm, float *vhm, float *fh
   {
     id = ID_2D(i, j, nx);
 
-    id_left   = (j > 0) ? ID_2D(i, j - 1, nx) : id;
-    id_right  = (j < ny - 1) ? ID_2D(i, j + 1, nx) : id;
-    id_bottom = (i > 0) ? ID_2D(i - 1, j, nx) : id;
-    id_top    = (i < nx - 1) ? ID_2D(i + 1, j, nx) : id;
+    id_left   = ID_2D(i, j - 1, nx);
+    id_right  = ID_2D(i, j + 1, nx);
+    id_bottom = ID_2D(i - 1, j, nx);
+    id_top    = ID_2D(i + 1, j, nx);
 
     hm[id] = 0.25 * (h[id_left] + h[id_right] + h[id_bottom] + h[id_top])
           - lambda_x * (fh[id_right] - fh[id_left])
@@ -203,7 +203,6 @@ __global__ void computeVariablesGPU(float *hm, float *uhm, float *vhm, float *fh
             - lambda_x * (fvh[id_right] - fvh[id_left])
             - lambda_y * (gvh[id_top] - gvh[id_bottom]);
   }
-
   __syncthreads(); // Ensure all threads have completed
 }
 /******************************************************************************/
