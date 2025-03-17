@@ -9,11 +9,146 @@
 #define ID_2D(i,j,nx) ((i)*(nx+2)+(j))
 
 //utilities
-void getArgs(int *nx, float *dt, float *x_length, float *t_final, int argc, char *argv[]);
+void getArgs(int *nx, float *dt, float *x_length, float *t_final, int argc, char *argv[])
+{
+  /*
+    Get the quadrature file root name:
+  */
+  if ( argc <= 1 ){
+    *nx = 401;
+  }else{
+    *nx = atoi ( argv[1] );
+  }
+  
+  if ( argc <= 2 ){
+    *dt = 0.002;
+  }else{
+    *dt = atof ( argv[2] );
+  }
+  
+  if ( argc <= 3 ){
+    *x_length = 10.0;
+  }else{
+    *x_length = atof ( argv[3] );
+    }
+  
+  if ( argc <= 4 ){
+    *t_final = 0.5;
+  }else{
+    *t_final = atof ( argv[4] );
+  }
+}
+/******************************************************************************/
 
-void write_results ( char *output_filename, int nx, int ny, float x[], float y[], float h[], float uh[], float vh[]);
+void initial_conditions ( int nx, int ny, float dx, float dy,  float x_length, float x[],float y[], float h[], float uh[] ,float vh[]){
+  int i,j, id, id1;
 
-void initial_conditions ( int nx, int ny, float dx, float dy,  float x_length, float x[],float y[], float h[], float uh[] ,float vh[]);
+  for ( i = 1; i < nx+1; i++ )
+    {
+      x[i-1] = -x_length/2+dx/2+(i-1)*dx;
+      y[i-1] = -x_length/2+dy/2+(i-1)*dy;
+    }
+
+  for ( i = 1; i < nx+1; i++ )
+    for( j = 1; j < ny+1; j++)
+    {
+      float xx = x[j-1];
+      float yy = y[i-1];
+      id=ID_2D(i,j,nx);
+      h[id] = 1.0 + 0.4*exp ( -5 * ( xx*xx + yy*yy) );
+    }
+  
+  for ( i = 1; i < nx+1; i++ )
+    for( j = 1; j < ny+1; j++)
+    {
+      id=ID_2D(i,j,nx);
+      uh[id] = 0.0;
+      vh[id] = 0.0;
+    }
+
+  //set boundaries
+  //bottom
+  i=0;
+  for( j = 1; j < nx+1; j++)
+    {
+      id=ID_2D(i,j,nx);
+      id1=ID_2D(i+1,j,nx);
+
+      h[id] = h[id1];
+      uh[id] = 0.0;
+      vh[id] = 0.0;
+    }
+
+  //top
+  i=nx+1;
+  for( j = 1; j < nx+1; j++)
+    {
+      id=ID_2D(i,j,nx);
+      id1=ID_2D(i-1,j,nx);
+
+      h[id] = h[id1];
+      uh[id] = 0.0;
+      vh[id] = 0.0;
+    }
+
+  //left
+  j=0;
+  for( i = 1; i < ny+1; i++)
+    {
+      id=ID_2D(i,j,nx);
+      id1=ID_2D(i,j+1,nx);
+
+      h[id] = h[id1];
+      uh[id] = 0.0;
+      vh[id] = 0.0;
+    }
+
+  //right
+  j=nx+1;
+  for( i = 1; i < ny+1; i++)
+    {
+      id=ID_2D(i,j,nx);
+      id1=ID_2D(i,j-1,nx);
+
+      h[id] = h[id1];
+      uh[id] = 0.0;
+      vh[id] = 0.0;
+    }
+
+  return;
+}
+/******************************************************************************/
+
+void write_results ( char *output_filename, int nx, int ny, float x[], float y[], float h[], float uh[], float vh[])
+{
+  int i,j, id;
+  FILE *output;
+   
+  //Open the file.
+  output = fopen ( output_filename, "wt" );
+    
+  if ( !output )
+  {
+    fprintf ( stderr, "\n" );
+    fprintf ( stderr, "WRITE_RESULTS - Fatal error!\n" );
+    fprintf ( stderr, "  Could not open the output file.\n" );
+    exit ( 1 );
+  }
+    
+  //Write the data.
+  for ( i = 0; i < ny; i++ ) 
+    for ( j = 0; j < nx; j++ )
+    {
+        id=ID_2D(i+1,j+1,nx);
+	      fprintf ( output, "  %24.16g\t%24.16g\t%24.16g\t %24.16g\t %24.16g\n", x[j], y[i],h[id], uh[id], vh[id]);
+    }
+    
+  //Close the file.
+  fclose ( output );
+  
+  return;
+}
+/******************************************************************************/
 
 __global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int nx, int ny, int bc_type) 
 {
@@ -385,7 +520,7 @@ int main ( int argc, char *argv[] )
       CHECK(cudaGetLastError());
 
       // **** APPLY BOUNDARY CONDITIONS ****
-      applyBoundaryConditionsGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, nx, ny, 3);
+      applyBoundaryConditionsGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, nx, ny, 1);
       cudaDeviceSynchronize();
       CHECK(cudaGetLastError());
       
@@ -463,146 +598,6 @@ int main ( int argc, char *argv[] )
 }
 /******************************************************************************/
 
-void initial_conditions ( int nx, int ny, float dx, float dy,  float x_length, float x[],float y[], float h[], float uh[] ,float vh[]){
-  int i,j, id, id1;
-
-  for ( i = 1; i < nx+1; i++ )
-    {
-      x[i-1] = -x_length/2+dx/2+(i-1)*dx;
-      y[i-1] = -x_length/2+dy/2+(i-1)*dy;
-    }
-
-  for ( i = 1; i < nx+1; i++ )
-    for( j = 1; j < ny+1; j++)
-    {
-      float xx = x[j-1];
-      float yy = y[i-1];
-      id=ID_2D(i,j,nx);
-      h[id] = 1.0 + 0.4*exp ( -5 * ( xx*xx + yy*yy) );
-    }
-  
-  for ( i = 1; i < nx+1; i++ )
-    for( j = 1; j < ny+1; j++)
-    {
-      id=ID_2D(i,j,nx);
-      uh[id] = 0.0;
-      vh[id] = 0.0;
-    }
-
-  //set boundaries
-  //bottom
-  i=0;
-  for( j = 1; j < nx+1; j++)
-    {
-      id=ID_2D(i,j,nx);
-      id1=ID_2D(i+1,j,nx);
-
-      h[id] = h[id1];
-      uh[id] = 0.0;
-      vh[id] = 0.0;
-    }
-
-  //top
-  i=nx+1;
-  for( j = 1; j < nx+1; j++)
-    {
-      id=ID_2D(i,j,nx);
-      id1=ID_2D(i-1,j,nx);
-
-      h[id] = h[id1];
-      uh[id] = 0.0;
-      vh[id] = 0.0;
-    }
-
-  //left
-  j=0;
-  for( i = 1; i < ny+1; i++)
-    {
-      id=ID_2D(i,j,nx);
-      id1=ID_2D(i,j+1,nx);
-
-      h[id] = h[id1];
-      uh[id] = 0.0;
-      vh[id] = 0.0;
-    }
-
-  //right
-  j=nx+1;
-  for( i = 1; i < ny+1; i++)
-    {
-      id=ID_2D(i,j,nx);
-      id1=ID_2D(i,j-1,nx);
-
-      h[id] = h[id1];
-      uh[id] = 0.0;
-      vh[id] = 0.0;
-    }
-
-  return;
-}
-/******************************************************************************/
-
-void write_results ( char *output_filename, int nx, int ny, float x[], float y[], float h[], float uh[], float vh[])
-{
-  int i,j, id;
-  FILE *output;
-   
-  //Open the file.
-  output = fopen ( output_filename, "wt" );
-    
-  if ( !output )
-  {
-    fprintf ( stderr, "\n" );
-    fprintf ( stderr, "WRITE_RESULTS - Fatal error!\n" );
-    fprintf ( stderr, "  Could not open the output file.\n" );
-    exit ( 1 );
-  }
-    
-  //Write the data.
-  for ( i = 0; i < ny; i++ ) 
-    for ( j = 0; j < nx; j++ )
-    {
-        id=ID_2D(i+1,j+1,nx);
-	      fprintf ( output, "  %24.16g\t%24.16g\t%24.16g\t %24.16g\t %24.16g\n", x[j], y[i],h[id], uh[id], vh[id]);
-    }
-    
-  //Close the file.
-  fclose ( output );
-  
-  return;
-}
-/******************************************************************************/
-
-void getArgs(int *nx, float *dt, float *x_length, float *t_final, int argc, char *argv[])
-{
-  /*
-    Get the quadrature file root name:
-  */
-  if ( argc <= 1 ){
-    *nx = 401;
-  }else{
-    *nx = atoi ( argv[1] );
-  }
-  
-  if ( argc <= 2 ){
-    *dt = 0.002;
-  }else{
-    *dt = atof ( argv[2] );
-  }
-  
-  if ( argc <= 3 ){
-    *x_length = 10.0;
-  }else{
-    *x_length = atof ( argv[3] );
-    }
-  
-  if ( argc <= 4 ){
-    *t_final = 0.5;
-  }else{
-    *t_final = atof ( argv[4] );
-  }
-}
-
 //************************************************ SERIAL CODE ************************************************//
 // **** COMPUTE FLUXES ****
 //Compute fluxes (including ghosts)
@@ -610,7 +605,7 @@ void getArgs(int *nx, float *dt, float *x_length, float *t_final, int argc, char
 for ( i = 0; i < ny+2; i++ )
   for ( j = 0; j < nx+2; j++)
   {
-    id=ID_2D(i,j,nx);
+    id = ID_2D(i,j,nx);
 
     fh[id] = uh[id]; //flux for the height equation: u*h
     fuh[id] = uh[id] * uh[id] / h[id] + 0.5 * g * h[id] * h[id]; //flux for the momentum equation: u^2*h + 0.5*g*h^2
