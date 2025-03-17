@@ -152,7 +152,6 @@ __global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int n
       vh[id_ghost] = -vh[id];  // Flip normal velocity
     }
   }
-
   __syncthreads();
 }
 /******************************************************************************/
@@ -176,9 +175,7 @@ __global__ void computeFluxesGPU(float *h,  float *uh,  float *vh, float *fh, fl
 
   gh[id] = vh[id];  // flux for height equation: v*h
   guh[id] = uh[id] * vh[id] / h[id]; // momentum equation: u*v*h
-  gvh[id] = vh[id] * vh[id] / h[id] + 0.5 * g * h[id] * h[id]; // momentum equation: v²h + 0.5 * g * h²
-
-  __syncthreads(); 
+  gvh[id] = vh[id] * vh[id] / h[id] + 0.5 * g * h[id] * h[id]; // momentum equation: v²h + 0.5 * g * h² 
 }
 /******************************************************************************/
 
@@ -216,29 +213,38 @@ __global__ void computeVariablesGPU(float *hm, float *uhm, float *vhm, float *fh
 
 int main ( int argc, char *argv[] )
 {
+  int i, j, id, id_left, id_right, id_bottom, id_top;
+  int nx, ny;
+
   float g = 9.81; // Gravitational acceleration
+
   float dx;
   float dy;
   float dt;
-  float *h;
-  float *fh, *h_fh;
-  float *gh, *h_gh;
-  float *hm;
-  int i,j, id, id_left, id_right, id_bottom, id_top;
-  int nx, ny;
+  float time; 
   float t_final;
-  float *uh;
-  float *fuh, *h_fuh;
-  float *guh, *h_guh;
-  float *uhm;
-  float *vh;
-  float *fvh, *h_fvh;
-  float *gvh, *h_gvh;
-  float *vhm;
+  float x_length;
+
+  // pointers to host, device memory 
+  float *h, *d_h;
+  float *uh, *d_uh;
+  float *vh, *d_vh;
+
+  float *fh, *d_fh;
+  float *fuh, *d_fuh;
+  float *fvh, *d_fvh;
+
+  float *gh, *d_gh;
+  float *guh, *d_guh;
+  float *gvh, *d_gvh;
+
+  float *hm, *d_hm; 
+  float *uhm, *d_uhm;
+  float *vhm, *d_vhm;
+
   float *x;
   float *y;
-  float x_length, time;
-
+ 
   //printf ( "\n" );
   //printf ( "SHALLOW_WATER_2D\n" );
   //printf ( "\n" );
@@ -253,16 +259,13 @@ int main ( int argc, char *argv[] )
   
   ny = nx; // we assume this, does not have to be this way
 
-  // **** ALLOCATE MEMORY ****
-  
+  // **** Allocate memory on host ****
   //Allocate space (nx+2)((nx+2) long, to accound for ghosts
   //height array
   h  = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
   hm = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
   fh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
   gh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
-  h_fh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
-  h_gh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
 
   //x momentum array
   uh  = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
@@ -270,27 +273,15 @@ int main ( int argc, char *argv[] )
   fuh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
   guh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
 
-  h_fuh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
-  h_guh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
-
   //y momentum array
   vh  = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
   vhm = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
   fvh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
   gvh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
 
-  h_fvh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
-  h_gvh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
-
   // location arrays
   x = ( float * ) malloc ( nx * sizeof ( float ) );
   y = ( float * ) malloc ( ny * sizeof ( float ) );
-
-  //Allocate memory on the device
-  float *d_h, *d_uh, *d_vh;
-  float *d_fh, *d_fuh, *d_fvh;
-  float *d_gh, *d_guh, *d_gvh;
-  float *d_hm, *d_uhm, *d_vhm;
 
   // **** Allocate memory on device ****
   //Allocate space (nx+2)((nx+2) long, to account for ghosts
@@ -331,7 +322,7 @@ int main ( int argc, char *argv[] )
   int dimx = 32;
   int dimy = 32;
   dim3 blockSize(dimx, dimy);
-  dim3 gridSize(((nx - 2) + blockSize.x - 1) / blockSize.x, ((ny - 2) + blockSize.y - 1) / blockSize.y);
+  dim3 gridSize((nx + blockSize.x - 1) / blockSize.x, (ny + blockSize.y - 1) / blockSize.y);
 
   time=0;
   int k=0; //time-step counter
@@ -449,12 +440,15 @@ int main ( int argc, char *argv[] )
   CHECK(cudaFree(d_h));
   CHECK(cudaFree(d_uh));
   CHECK(cudaFree(d_vh));
+
   CHECK(cudaFree(d_fh));
   CHECK(cudaFree(d_fuh));
   CHECK(cudaFree(d_fvh));
+
   CHECK(cudaFree(d_gh));
   CHECK(cudaFree(d_guh));
   CHECK(cudaFree(d_gvh));
+  
   CHECK(cudaFree(d_hm));
   CHECK(cudaFree(d_uhm));
   CHECK(cudaFree(d_vhm));
@@ -463,29 +457,24 @@ int main ( int argc, char *argv[] )
   free ( h );
   free ( uh );
   free ( vh ); 
+
   free ( fh );
   free ( fuh );
-  free ( fvh ); 
+  free ( fvh );
+
   free ( gh );
   free ( guh );
   free ( gvh ); 
-
-  free ( h_fh );
-  free ( h_fuh );
-  free ( h_fvh ); 
-  free ( h_gh );
-  free ( h_guh );
-  free ( h_gvh ); 
 
   free ( x );
   free ( y );
 
   //Terminate.
 
-  //printf ( "\n" );
-  //printf ( "SHALLOW_WATER_2D:\n" );
-  //printf ( "  Normal end of execution.\n" );
-  //printf ( "\n" );
+  printf ( "\n" );
+  printf ( "SHALLOW_WATER_2D:\n" );
+  printf ( "  Normal end of execution.\n" );
+  printf ( "\n" );
 
   return 0;
 }
