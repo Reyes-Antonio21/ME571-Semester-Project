@@ -20,9 +20,6 @@ __global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int n
   int i = threadIdx.x + blockIdx.x * blockDim.x;
   int j = threadIdx.y + blockIdx.y * blockDim.y;
 
-  if (i >= nx + 2 || j >= ny + 2) // Ensure we are within valid bounds
-  return; 
-
   int id, id_ghost;
 
   if (bc_type == 1) // Dirichlet Boundary Conditions
@@ -161,7 +158,7 @@ __global__ void computeFluxesGPU(float *h,  float *uh,  float *vh, float *fh, fl
   unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
   unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
 
-  if (i >= nx || j >= ny) // Ensure we stay inside computational domain
+  if (i >= nx + 1 || j >= ny + 1) // Ensure we stay inside computational domain
   return; 
 
   unsigned int id = ID_2D(i + 1, j + 1, nx); // Offset to skip ghost cells
