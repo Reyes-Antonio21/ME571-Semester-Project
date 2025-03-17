@@ -150,7 +150,7 @@ void write_results ( char *output_filename, int nx, int ny, float x[], float y[]
 }
 /******************************************************************************/
 
-__global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int nx, int ny, int bc_type) // Likly not the culprit!!!
+__global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int nx, int ny, int bc_type)
 {
   unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
   unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
@@ -472,6 +472,7 @@ int main ( int argc, char *argv[] )
 
   time=0;
   int k=0; //time-step counter
+
   //start timer
   clock_t time_start = clock();
 
@@ -495,27 +496,23 @@ int main ( int argc, char *argv[] )
   while (time<t_final) //time loop begins
   {
     // Take a time step
-    time=time+dt;
+    time = time + dt;
     k++;
 
     // Compute fluxes
     computeFluxesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, nx, ny);
-    cudaDeviceSynchronize();
     CHECK(cudaGetLastError());
     
     // **** COMPUTE VARIABLES ****
     computeVariablesGPU<<<gridSize, blockSize>>>(d_hm, d_uhm, d_vhm, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, d_h, d_uh, d_vh, lambda_x, lambda_y, nx, ny);
-    cudaDeviceSynchronize();
     CHECK(cudaGetLastError());
 
     // **** UPDATE VARIABLES ****
     updateVariablesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_hm, d_uhm, d_vhm, nx, ny);
-    cudaDeviceSynchronize();
     CHECK(cudaGetLastError());
 
     // **** APPLY BOUNDARY CONDITIONS ****
     applyBoundaryConditionsGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, nx, ny, 3);
-    cudaDeviceSynchronize();
     CHECK(cudaGetLastError());  
 
   } //end time loop
