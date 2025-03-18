@@ -497,7 +497,6 @@ int main ( int argc, char *argv[] )
     CHECK(cudaMemcpy(d_vh, vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
 
     time = 0;
-    k = 0; //time-step counter
 
     // ******************************************************************** COMPUTATION SECTION ******************************************************************** //
     //start timer
@@ -507,7 +506,6 @@ int main ( int argc, char *argv[] )
     {
       // Take a time step
       time = time + dt;
-      k++;
 
       // **** COMPUTE FLUXES ****
       computeFluxesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, nx, ny);
@@ -526,7 +524,8 @@ int main ( int argc, char *argv[] )
     //stop timer
     clock_t time_end = clock();
     double time_elapsed = (double)(time_end - time_start) / CLOCKS_PER_SEC;
-
+    printf("Problem size: %d, time steps taken: %d,  elapsed time: %f s\n", nx, k, time_elapsed);
+    
   } //end of k loop
 
   // ******************************************************************** POSTPROCESSING ******************************************************************** //
@@ -536,7 +535,7 @@ int main ( int argc, char *argv[] )
   CHECK(cudaMemcpy(uh, d_uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
   CHECK(cudaMemcpy(vh, d_vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
 
-  printf("Problem size: %d, time steps taken: %d,  elapsed time: %f s\n", nx, k, time_elapsed);
+
   //writeResults("tc2d_final.dat", nx, ny, x, y, h, uh, vh);
 
   // ******************************************************************** DEALLOCATE MEMORY ******************************************************************** //
