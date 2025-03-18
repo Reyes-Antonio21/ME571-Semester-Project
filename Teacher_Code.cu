@@ -10,15 +10,6 @@
 
 #define EPSILON 1e-6f  // Small value to prevent division by zero
 
-// CUDA Error Checking Macro
-#define CUDA_CHECK_ERROR(call) { \
-  cudaError_t err = call; \
-  if (err != cudaSuccess) { \
-      printf("CUDA Error: %s (File %s, Line %d)\n", cudaGetErrorString(err), __FILE__, __LINE__); \
-  } \
-}
-/******************************************************************************/
-
 //utilities
 void getArgs(int *nx, float *dt, float *x_length, float *t_final, int argc, char *argv[])
 {
@@ -303,7 +294,8 @@ __global__ void computeFluxesGPU(float *h, float *uh, float *vh, float *fh, floa
   unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
   unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
   
-  if (i >= nx + 2 || j >= ny + 2) return; // Bounds check
+  if (i >= nx + 2 || j >= ny + 2) // Bounds check
+  return;
   
   unsigned int id = ID_2D(i, j, nx);
   float g = 9.81f; // Gravitational acceleration
@@ -318,10 +310,6 @@ __global__ void computeFluxesGPU(float *h, float *uh, float *vh, float *fh, floa
   guh[id] = uh[id] * vh[id] / h_safe;
   gvh[id] = vh[id] * vh[id] / h_safe + 0.5f * g * h_safe * h_safe;
   
-  // Debug print for the first few threads
-  if (i < 2 && j < 2) {
-      printf("Thread (%d, %d): h=%f, uh=%f, vh=%f, fh=%f, fuh=%f, fvh=%f\n", i, j, h[id], uh[id], vh[id], fh[id], fuh[id], fvh[id]);
-  }
 }
 /******************************************************************************/
 
@@ -374,10 +362,7 @@ __global__ void updateVariablesGPU(float *h, float *uh, float *vh, float *hm, fl
 
 int main ( int argc, char *argv[] )
 {
-  int i, j, id, id_left, id_right, id_bottom, id_top;
   int nx, ny;
-
-  float g = 9.81; // Gravitational acceleration
 
   float dx;
   float dy;
@@ -504,19 +489,15 @@ int main ( int argc, char *argv[] )
 
     // Compute fluxes
     computeFluxesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, nx, ny);
-    CUDA_CHECK_ERROR(cudaDeviceSynchronize()); // Ensure all threads complete execution
     
     // **** COMPUTE VARIABLES ****
     computeVariablesGPU<<<gridSize, blockSize>>>(d_hm, d_uhm, d_vhm, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, d_h, d_uh, d_vh, lambda_x, lambda_y, nx, ny);
-    CHECK(cudaGetLastError());
-
+  
     // **** UPDATE VARIABLES ****
     updateVariablesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_hm, d_uhm, d_vhm, nx, ny);
-    CHECK(cudaGetLastError());
 
     // **** APPLY BOUNDARY CONDITIONS ****
-    applyBoundaryConditionsGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, nx, ny, 3);
-    CHECK(cudaGetLastError());  
+    applyBoundaryConditionsGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, nx, ny, 3);  
 
   } //end time loop
 
@@ -547,7 +528,7 @@ int main ( int argc, char *argv[] )
   // Write data to file
   write_results("tc2d_final.dat", nx, ny, x, y, h, uh, vh);
 
-  // **** DEALLOCATE MEMORY ****
+  // ******************************************************************** DEALLOCATE MEMORY ******************************************************************** //
 
   //Free device memory.
   CHECK(cudaFree(d_h));
@@ -714,10 +695,4 @@ for(j = 1; j < nx + 1; j++)
     vh[id_top] = - vh[id];
 
   }
-  
-  // Compute fluxes
-    computeFluxesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, nx, ny);
-    cudaDeviceSynchronize();
-    CHECK(cudaGetLastError());
-  
 */
