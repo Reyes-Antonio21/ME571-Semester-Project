@@ -506,27 +506,15 @@ int main ( int argc, char *argv[] )
 
   } //end time loop
 
+  //stop timer
+  clock_t time_end = clock();
+  double time_elapsed = (double)(time_end - time_start) / CLOCKS_PER_SEC;
+
   //Move data back to the host
-  CHECK(cudaMemcpy(hm, d_hm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-  CHECK(cudaMemcpy(uhm, d_uhm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-  CHECK(cudaMemcpy(vhm, d_vhm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-
-  CHECK(cudaMemcpy(fh, d_fh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-  CHECK(cudaMemcpy(fuh, d_fuh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-  CHECK(cudaMemcpy(fvh, d_fvh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-
-  CHECK(cudaMemcpy(gh, d_gh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-  CHECK(cudaMemcpy(guh, d_guh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-  CHECK(cudaMemcpy(gvh, d_gvh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-
   CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
   CHECK(cudaMemcpy(uh, d_uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
   CHECK(cudaMemcpy(vh, d_vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
 
-  //stop timer
-  clock_t time_end = clock();
-  double time_elapsed = (double)(time_end - time_start) / CLOCKS_PER_SEC;
-    
   printf("Problem size: %d, time steps taken: %d,  elapsed time: %f s\n", nx, k, time_elapsed);
 
   // **** POSTPROCESSING ****
