@@ -374,8 +374,8 @@ int main ( int argc, char *argv[] )
   int nx; 
   int ny; 
 
-  float *x, d_x;
-  float *y, d_y;
+  float *x, *d_x;
+  float *y, *d_y;
 
   float dx;
   float dy;
@@ -405,7 +405,7 @@ int main ( int argc, char *argv[] )
   //get command line arguments
   getArgs(&nx, &dt, &x_length, &t_final, argc, argv);
   ny = nx; // we assume this, does not have to be this way
-  
+
   //Define the block and grid sizes
   int dimx = 32;
   int dimy = 32;
