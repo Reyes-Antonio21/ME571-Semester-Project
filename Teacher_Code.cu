@@ -402,6 +402,10 @@ int main ( int argc, char *argv[] )
   float *uhm, *d_uhm;
   float *vhm, *d_vhm;
 
+  //get command line arguments
+  getArgs(&nx, &dt, &x_length, &t_final, argc, argv);
+  ny = nx; // we assume this, does not have to be this way
+  
   //Define the block and grid sizes
   int dimx = 32;
   int dimy = 32;
@@ -409,10 +413,6 @@ int main ( int argc, char *argv[] )
   dim3 gridSize((nx + 2 + blockSize.x - 1) / blockSize.x, (ny + 2 + blockSize.y - 1) / blockSize.y);
 
   //************************************************ MEMORY ALLOCATIONS ************************************************//
-  
-  //get command line arguments
-  getArgs(&nx, &dt, &x_length, &t_final, argc, argv);
-  ny = nx; // we assume this, does not have to be this way
 
   // **** Allocate memory on host ****
   //Allocate space (nx+2)((nx+2) long, to account for ghosts
@@ -533,7 +533,7 @@ int main ( int argc, char *argv[] )
   CHECK(cudaMemcpy(vh, d_vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
 
   printf("Problem size: %d, time steps taken: %d,  elapsed time: %f s\n", nx, k, time_elapsed);
-  write_results("tc2d_final.dat", nx, ny, x, y, h, uh, vh);
+  writeResults("tc2d_final.dat", nx, ny, x, y, h, uh, vh);
 
   // ******************************************************************** DEALLOCATE MEMORY ******************************************************************** //
 
