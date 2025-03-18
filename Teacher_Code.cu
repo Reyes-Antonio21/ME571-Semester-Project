@@ -469,7 +469,7 @@ int main ( int argc, char *argv[] )
 
   //************************************************ INITIAL CONDITIONS ************************************************//
   // Loop over 5 iterations of the calculation
-  for (k = 1; k < 6; k++)
+  for (k = 0; k < 10; k++)
   {
     printf ( "\n" );
     printf ( "SHALLOW_WATER_2D\n" );
@@ -526,7 +526,7 @@ int main ( int argc, char *argv[] )
     //stop timer
     clock_t time_end = clock();
     double time_elapsed = (double)(time_end - time_start) / CLOCKS_PER_SEC;
-    
+
   } //end of k loop
 
   // ******************************************************************** POSTPROCESSING ******************************************************************** //
