@@ -478,13 +478,13 @@ int main ( int argc, char *argv[] )
   time=0;
   int k=0; //time-step counter
 
-  //start timer
-  clock_t time_start = clock();
-
   //Move data to the device for all GPU calculations
   CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
   CHECK(cudaMemcpy(d_uh, uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
   CHECK(cudaMemcpy(d_vh, vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
+
+  //start timer
+  clock_t time_start = clock();
 
   while (time<t_final) //time loop begins
   {
