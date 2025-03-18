@@ -8,6 +8,19 @@
 
 #define ID_2D(i,j,nx) ((i)*(nx+2)+(j))
 
+#define EPSILON 1e-6f  // Small value to prevent division by zero
+
+// CUDA Error Checking Macro
+#define CUDA_CHECK_ERROR(call) 
+{ 
+  cudaError_t err = call; 
+  if (err != cudaSuccess) 
+  { 
+    printf("CUDA Error: %s (File %s, Line %d)\n", cudaGetErrorString(err), __FILE__, __LINE__); 
+  } 
+}
+/******************************************************************************/
+
 //utilities
 void getArgs(int *nx, float *dt, float *x_length, float *t_final, int argc, char *argv[])
 {
@@ -287,33 +300,30 @@ __global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int n
 }
 /******************************************************************************/
 
-__global__ void computeFluxesGPU(float *h,  float *uh,  float *vh, float *fh, float *fuh, float *fvh, float *gh, float *guh, float *gvh, int nx, int ny)
+__global__ void computeFluxesGPU(float *h, float *uh, float *vh, float *fh, float *fuh, float *fvh, float *gh, float *guh, float *gvh, int nx, int ny) 
 {
   unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
   unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
-  unsigned int id;
-
-  float g = 9.81; // Gravitational acceleration
-
-  // **** COMPUTE FLUXES ****
-  //Compute fluxes (including ghosts) 
-  if (i < nx + 2 && j < ny + 2)
-  {
-    id = ID_2D(i,j,nx);
-
-    fh[id] = uh[id]; //flux for the height equation: u*h
-
-    fuh[id] = uh[id] * uh[id] / h[id] + 0.5 * g * h[id] * h[id]; //flux for the momentum equation: u^2*h + 0.5*g*h^2 
-
-    fvh[id] = uh[id] * vh[id] / h[id]; //flux for the momentum equation: u*v**h 
-
-    gh[id] = vh[id]; //flux for the height equation: v*h
-
-    guh[id] = uh[id] * vh[id] / h[id]; //flux for the momentum equation: u*v**h 
-
-    gvh[id] = vh[id] * vh[id] / h[id] + 0.5 * g * h[id] * h[id]; //flux for the momentum equation: v^2*h + 0.5*g*h^2
-  }
   
+  if (i >= nx + 2 || j >= ny + 2) return; // Bounds check
+  
+  unsigned int id = ID_2D(i, j, nx);
+  float g = 9.81f; // Gravitational acceleration
+  
+  float h_safe = fmaxf(h[id], EPSILON); // Prevent division by zero
+  
+  // Compute fluxes safely
+  fh[id] = uh[id];
+  fuh[id] = uh[id] * uh[id] / h_safe + 0.5f * g * h_safe * h_safe;
+  fvh[id] = uh[id] * vh[id] / h_safe;
+  gh[id] = vh[id];
+  guh[id] = uh[id] * vh[id] / h_safe;
+  gvh[id] = vh[id] * vh[id] / h_safe + 0.5f * g * h_safe * h_safe;
+  
+  // Debug print for the first few threads
+  if (i < 2 && j < 2) {
+      printf("Thread (%d, %d): h=%f, uh=%f, vh=%f, fh=%f, fuh=%f, fvh=%f\n", i, j, h[id], uh[id], vh[id], fh[id], fuh[id], fvh[id]);
+  }
 }
 /******************************************************************************/
 
@@ -475,7 +485,7 @@ int main ( int argc, char *argv[] )
   int dimx = 32;
   int dimy = 32;
   dim3 blockSize(dimx, dimy);
-  dim3 gridSize((nx + blockSize.x - 1) / blockSize.x, (ny + blockSize.y - 1) / blockSize.y);
+  dim3 gridSize((nx + 2 + blockSize.x - 1) / blockSize.x, (ny + 2 + blockSize.y - 1) / blockSize.y);
 
   time=0;
   int k=0; //time-step counter
@@ -484,18 +494,6 @@ int main ( int argc, char *argv[] )
   clock_t time_start = clock();
 
   //Move data to the device for all GPU calculations
-  CHECK(cudaMemcpy(d_hm, hm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
-  CHECK(cudaMemcpy(d_uhm, uhm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
-  CHECK(cudaMemcpy(d_vhm, vhm, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
-
-  CHECK(cudaMemcpy(d_fh, fh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
-  CHECK(cudaMemcpy(d_fuh, fuh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
-  CHECK(cudaMemcpy(d_fvh, fvh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
-
-  CHECK(cudaMemcpy(d_gh, gh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
-  CHECK(cudaMemcpy(d_guh, guh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
-  CHECK(cudaMemcpy(d_gvh, gvh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
-
   CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
   CHECK(cudaMemcpy(d_uh, uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
   CHECK(cudaMemcpy(d_vh, vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
@@ -508,7 +506,7 @@ int main ( int argc, char *argv[] )
 
     // Compute fluxes
     computeFluxesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, nx, ny);
-    CHECK(cudaGetLastError());
+    CUDA_CHECK_ERROR(cudaDeviceSynchronize()); // Ensure all threads complete execution
     
     // **** COMPUTE VARIABLES ****
     computeVariablesGPU<<<gridSize, blockSize>>>(d_hm, d_uhm, d_vhm, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, d_h, d_uh, d_vh, lambda_x, lambda_y, nx, ny);
