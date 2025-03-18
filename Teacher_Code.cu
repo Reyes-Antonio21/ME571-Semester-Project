@@ -487,7 +487,7 @@ int main ( int argc, char *argv[] )
 
   //printf("Before write results\n");
   //Write initial condition to a file
-  writeResults("tc2d_init.dat", nx, ny, x, y, h, uh, vh);
+  //writeResults("tc2d_init.dat", nx, ny, x, y, h, uh, vh);
 
   //Move data to the device for calculations
   CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
@@ -533,7 +533,7 @@ int main ( int argc, char *argv[] )
   CHECK(cudaMemcpy(vh, d_vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
 
   printf("Problem size: %d, time steps taken: %d,  elapsed time: %f s\n", nx, k, time_elapsed);
-  writeResults("tc2d_final.dat", nx, ny, x, y, h, uh, vh);
+  //writeResults("tc2d_final.dat", nx, ny, x, y, h, uh, vh);
 
   // ******************************************************************** DEALLOCATE MEMORY ******************************************************************** //
 
