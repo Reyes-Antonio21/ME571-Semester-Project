@@ -134,7 +134,7 @@ __global__ void initialConditionsGPU( int nx, int ny, float dx, float dy,  float
     id = ID_2D(i, j, nx);
     id_boundary = ID_2D(i, j + 1, nx);
 
-    h[id] = h[id1_boundary];
+    h[id] = h[id_boundary];
     uh[id] = 0.0;
     vh[id] = 0.0;
   }
@@ -409,6 +409,10 @@ int main ( int argc, char *argv[] )
   dim3 gridSize((nx + 2 + blockSize.x - 1) / blockSize.x, (ny + 2 + blockSize.y - 1) / blockSize.y);
 
   //************************************************ MEMORY ALLOCATIONS ************************************************//
+  
+  //get command line arguments
+  getArgs(&nx, &dt, &x_length, &t_final, argc, argv);
+  ny = nx; // we assume this, does not have to be this way
 
   // **** Allocate memory on host ****
   //Allocate space (nx+2)((nx+2) long, to account for ghosts
@@ -462,10 +466,6 @@ int main ( int argc, char *argv[] )
   printf ( "SHALLOW_WATER_2D\n" );
   printf ( "\n" );
 
-  //get command line arguments
-  getArgs(&nx, &dt, &x_length, &t_final, argc, argv);
-  ny = nx; // we assume this, does not have to be this way
-
   //Define the locations of the nodes and time steps and the spacing.
   dx = x_length / ( float ) ( nx );
   dy = x_length / ( float ) ( nx );
@@ -487,7 +487,7 @@ int main ( int argc, char *argv[] )
 
   //printf("Before write results\n");
   //Write initial condition to a file
-  write_results("tc2d_init.dat", nx, ny, x, y, h, uh, vh);
+  writeResults("tc2d_init.dat", nx, ny, x, y, h, uh, vh);
 
   //Move data to the device for calculations
   CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
