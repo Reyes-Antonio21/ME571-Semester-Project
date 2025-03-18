@@ -11,13 +11,11 @@
 #define EPSILON 1e-6f  // Small value to prevent division by zero
 
 // CUDA Error Checking Macro
-#define CUDA_CHECK_ERROR(call) 
-{ 
-  cudaError_t err = call; 
-  if (err != cudaSuccess) 
-  { 
-    printf("CUDA Error: %s (File %s, Line %d)\n", cudaGetErrorString(err), __FILE__, __LINE__); 
-  } 
+#define CUDA_CHECK_ERROR(call) { \
+  cudaError_t err = call; \
+  if (err != cudaSuccess) { \
+      printf("CUDA Error: %s (File %s, Line %d)\n", cudaGetErrorString(err), __FILE__, __LINE__); \
+  } \
 }
 /******************************************************************************/
 
