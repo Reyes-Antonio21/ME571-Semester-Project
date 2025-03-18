@@ -487,7 +487,7 @@ int main ( int argc, char *argv[] )
     time = time + dt;
     k++;
 
-    // Compute fluxes
+    // **** COMPUTE FLUXES ****
     computeFluxesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, nx, ny);
     
     // **** COMPUTE VARIABLES ****
