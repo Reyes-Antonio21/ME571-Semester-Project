@@ -406,6 +406,13 @@ int main ( int argc, char *argv[] )
   getArgs(&nx, &dt, &x_length, &t_final, argc, argv);
   ny = nx; // we assume this, does not have to be this way
 
+  //Define the locations of the nodes and time steps and the spacing.
+  dx = x_length / ( float ) ( nx );
+  dy = x_length / ( float ) ( nx );
+
+  float lambda_x = 0.5  *dt / dx;
+  float lambda_y = 0.5 * dt / dy;
+
   //Define the block and grid sizes
   int dimx = 32;
   int dimy = 32;
@@ -440,8 +447,8 @@ int main ( int argc, char *argv[] )
 
   // **** Allocate memory on device ****
 
-  CHECK(cudaMalloc((void**)&d_x, nx * sizeof ( float )));
-  CHECK(cudaMalloc((void**)&d_y, ny * sizeof ( float )));
+  CHECK(cudaMalloc((void **)&d_x, nx * sizeof ( float )));
+  CHECK(cudaMalloc((void **)&d_y, ny * sizeof ( float )));
 
   //Allocate space (nx+2)((nx+2) long, to account for ghosts
   CHECK(cudaMalloc((void **)&d_h, (nx+2)*(ny+2) * sizeof ( float )));
@@ -465,13 +472,6 @@ int main ( int argc, char *argv[] )
   printf ( "\n" );
   printf ( "SHALLOW_WATER_2D\n" );
   printf ( "\n" );
-
-  //Define the locations of the nodes and time steps and the spacing.
-  dx = x_length / ( float ) ( nx );
-  dy = x_length / ( float ) ( nx );
-
-  float lambda_x = 0.5  *dt / dx;
-  float lambda_y = 0.5 * dt / dy;
 
   //Apply the initial conditions.
   //printf("Before initial conditions\n");
