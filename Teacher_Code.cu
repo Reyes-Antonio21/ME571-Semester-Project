@@ -468,65 +468,67 @@ int main ( int argc, char *argv[] )
   CHECK(cudaMalloc((void **)&d_vhm, (nx+2)*(ny+2) * sizeof ( float )));
 
   //************************************************ INITIAL CONDITIONS ************************************************//
-  // Loop over 5 iterations of the calculation
-  for (k = 0; k < 10; k++)
+
+  printf ( "\n" );
+  printf ( "SHALLOW_WATER_2D\n" );
+  printf ( "\n" );
+
+  //Apply the initial conditions.
+  //printf("Before initial conditions\n");
+  initialConditionsGPU<<<gridSize, blockSize>>>(nx, ny, dx, dy, x_length, d_x, d_y, d_h, d_uh, d_vh);
+
+  //Move data to the Host for initial conditions file write
+  CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+  CHECK(cudaMemcpy(uh, d_uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+  CHECK(cudaMemcpy(vh, d_vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+
+  CHECK(cudaMemcpy(x, d_x, nx * sizeof ( float ), cudaMemcpyDeviceToHost));
+  CHECK(cudaMemcpy(y, d_y, nx * sizeof ( float ), cudaMemcpyDeviceToHost));
+
+  //Write initial condition to a file
+  writeResults("tc2d_init.dat", nx, ny, x, y, h, uh, vh);
+
+  //Move data to the device for calculations
+  CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
+  CHECK(cudaMemcpy(d_uh, uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
+  CHECK(cudaMemcpy(d_vh, vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
+
+  // ******************************************************************** COMPUTATION SECTION ******************************************************************** //
+  
+  // set initial time & step counter
+  // set time to zero and step counter to zero
+  time = 0.0f;
+  k = 0;
+
+  //start timer
+  clock_t time_start = clock();
+
+  while (time < t_final) //time loop begins
   {
-    printf ( "\n" );
-    printf ( "SHALLOW_WATER_2D\n" );
-    printf ( "\n" );
+    // Take a time step and increase step counter
+    time = time + dt;
+    k++;
 
-    //Apply the initial conditions.
-    //printf("Before initial conditions\n");
-    initialConditionsGPU<<<gridSize, blockSize>>>(nx, ny, dx, dy, x_length, d_x, d_y, d_h, d_uh, d_vh);
-
-    //Move data to the Host for initial conditions file write
-    CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-    CHECK(cudaMemcpy(uh, d_uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-    CHECK(cudaMemcpy(vh, d_vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-
-    CHECK(cudaMemcpy(x, d_x, nx * sizeof ( float ), cudaMemcpyDeviceToHost));
-    CHECK(cudaMemcpy(y, d_y, nx * sizeof ( float ), cudaMemcpyDeviceToHost));
-
-    //printf("Before write results\n");
-    //Write initial condition to a file
-    //writeResults("tc2d_init.dat", nx, ny, x, y, h, uh, vh);
-
-    //Move data to the device for calculations
-    CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
-    CHECK(cudaMemcpy(d_uh, uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
-    CHECK(cudaMemcpy(d_vh, vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
-
-    time = 0;
-
-    // ******************************************************************** COMPUTATION SECTION ******************************************************************** //
-    //start timer
-    clock_t time_start = clock();
-
-    while (time < t_final) //time loop begins
-    {
-      // Take a time step
-      time = time + dt;
-
-      // **** COMPUTE FLUXES ****
-      computeFluxesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, nx, ny);
-      
-      // **** COMPUTE VARIABLES ****
-      computeVariablesGPU<<<gridSize, blockSize>>>(d_hm, d_uhm, d_vhm, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, d_h, d_uh, d_vh, lambda_x, lambda_y, nx, ny);
+    // **** COMPUTE FLUXES ****
+    computeFluxesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, nx, ny);
     
-      // **** UPDATE VARIABLES ****
-      updateVariablesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_hm, d_uhm, d_vhm, nx, ny);
+    // **** COMPUTE VARIABLES ****
+    computeVariablesGPU<<<gridSize, blockSize>>>(d_hm, d_uhm, d_vhm, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, d_h, d_uh, d_vh, lambda_x, lambda_y, nx, ny);
+  
+    // **** UPDATE VARIABLES ****
+    updateVariablesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_hm, d_uhm, d_vhm, nx, ny);
 
-      // **** APPLY BOUNDARY CONDITIONS ****
-      applyBoundaryConditionsGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, nx, ny, 3);  
+    // **** APPLY BOUNDARY CONDITIONS ****
+    applyBoundaryConditionsGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, nx, ny, 3);  
 
-    } //end time loop
+  } //end time loop
 
-    //stop timer
-    clock_t time_end = clock();
-    double time_elapsed = (double)(time_end - time_start) / CLOCKS_PER_SEC;
-    printf("Problem size: %d, time steps taken: %d,  elapsed time: %f s\n", nx, k, time_elapsed);
-    
-  } //end of k loop
+  //stop timer
+  clock_t time_end = clock();
+  double time_elapsed = (double)(time_end - time_start) / CLOCKS_PER_SEC;
+
+  //Print out the results
+  printf("Problem size: %d, time steps taken: %d,  elapsed time: %f s\n", nx, k, time_elapsed);
 
   // ******************************************************************** POSTPROCESSING ******************************************************************** //
 
@@ -535,8 +537,7 @@ int main ( int argc, char *argv[] )
   CHECK(cudaMemcpy(uh, d_uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
   CHECK(cudaMemcpy(vh, d_vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
 
-
-  //writeResults("tc2d_final.dat", nx, ny, x, y, h, uh, vh);
+  writeResults("tc2d_final.dat", nx, ny, x, y, h, uh, vh);
 
   // ******************************************************************** DEALLOCATE MEMORY ******************************************************************** //
 
