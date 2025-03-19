@@ -787,3 +787,28 @@ for ( i = 1; i < nx+1; i++ )
   CHECK(cudaMemcpy(d_vh, vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
 
 */
+
+void saveDataToFile(float *h_u, int step, int nx, int ny) 
+{
+  char filename[50];
+  sprintf(filename, "water_step_%04d.dat", step);
+  FILE *file = fopen(filename, "w");
+  if (file) 
+  {
+    for (int j = 0; j < ny; j++) 
+    {
+      for (int i = 0; i < nx; i++) 
+      {
+        fprintf(file, "%f ", h_u[j * nx + i]);
+      }
+      fprintf(file, "\n");
+    }
+    fclose(file);
+  }
+  else 
+  {
+    printf("Error opening file %s for writing.\n", filename);
+  }
+}
+
+writeResults("tc2d_final.dat", nx, ny, x, y, h, uh, vh);
