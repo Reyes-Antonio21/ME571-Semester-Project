@@ -152,7 +152,7 @@ __global__ void initialConditionsGPU( int nx, int ny, float dx, float dy,  float
     id = ID_2D(i, j, nx);
     id_boundary = ID_2D(i, j - 1, nx);
 
-    h = h[id_boundary];
+    h[id] = h[id_boundary];
     uh[id] = 0.0;
     vh[id] = 0.0;
   }
