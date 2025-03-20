@@ -171,20 +171,19 @@ __global__ void computeFluxesGPU(float *h, float *uh, float *vh, float *fh, floa
   unsigned int id = ID_2D(i, j, nx);
 
   float g = 9.81f; // Gravitational acceleration
-  float h_safe = fmaxf(h[id], EPSILON); // Prevent division by zero
   
   // Compute fluxes safely
   fh[id] = uh[id];
 
-  fuh[id] = uh[id] * uh[id] / h_safe + 0.5f * g * h_safe * h_safe;
+  fuh[id] = uh[id] * uh[id] / h[id] + 0.5f * g * h[id] * h[id];
 
-  fvh[id] = uh[id] * vh[id] / h_safe;
+  fvh[id] = uh[id] * vh[id] / h[id];
 
   gh[id] = vh[id];
 
-  guh[id] = uh[id] * vh[id] / h_safe;
+  guh[id] = uh[id] * vh[id] / h[id];
 
-  gvh[id] = vh[id] * vh[id] / h_safe + 0.5f * g * h_safe * h_safe;
+  gvh[id] = vh[id] * vh[id] / h[id] + 0.5f * g * h[id] * h[id];
   
 }
 /******************************************************************************/
