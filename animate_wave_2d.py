@@ -21,11 +21,11 @@ def animate_water_simulation(data):
         cax.set_array(data[frame])
         return [cax]
     
-    ani = animation.FuncAnimation(fig, update, frames=len(data), interval=100, blit=False)
+    ani = animation.FuncAnimation(fig, update, frames = len(data), interval=100, blit=False)
     plt.show()
 
 if __name__ == "__main__":
-    files = glob.glob("water_step_*.dat")  # Adjust pattern if needed
+    files = glob.glob("*.dat")
     if not files:
         print("No .dat files found!")
     else:
