@@ -8,7 +8,7 @@
 
 #define ID_2D(i,j,nx) ((i)*(nx+2)+(j))
 
-#define EPSILON 1  // Small value to prevent division by zero
+#define EPSILON 1e-6f  // Small value to prevent division by zero
 
 //************************************************ UTILITIES ************************************************//
 
