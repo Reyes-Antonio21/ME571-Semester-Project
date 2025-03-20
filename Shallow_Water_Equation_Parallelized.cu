@@ -15,7 +15,7 @@
 void getArgs(int *nx, float *dt, float *x_length, float *t_final, int argc, char *argv[])
 {
   /*
-    Get the quadrature file root name:
+  Get the quadrature file root name:
   */
   if ( argc <= 1 ){
     *nx = 401;
