@@ -8,7 +8,7 @@
 
 #define ID_2D(i,j,nx) ((i)*(nx+2)+(j))
 
-#define EPSILON 1e-10f  // Small value to prevent division by zero
+#define EPSILON 1e-6f  // Small value to prevent division by zero
 
 //************************************************ UTILITIES ************************************************//
 
@@ -168,27 +168,27 @@ __global__ void computeFluxesGPU(float *h, float *uh, float *vh, float *fh, floa
   unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
   unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
   
-  if (i >= nx + 2 || j >= ny + 2) // Bounds check
-  return;
-  
   unsigned int id = ID_2D(i, j, nx);
 
   float g = 9.81f; // Gravitational acceleration
   float h_safe = fmaxf(h[id], EPSILON); // Prevent division by zero
-  
-  // Compute fluxes safely
-  fh[id] = uh[id];
 
-  fuh[id] = uh[id] * uh[id] / h_safe + 0.5f * g * h_safe * h_safe;
+  if (i < ny + 2 && j < nx + 2) // Ensure proper bounds
+  {
+    // Compute fluxes safely
+    fh[id] = uh[id];
 
-  fvh[id] = uh[id] * vh[id] / h_safe;
+    fuh[id] = uh[id] * uh[id] / h_safe + 0.5f * g * h_safe * h_safe;
 
-  gh[id] = vh[id];
+    fvh[id] = uh[id] * vh[id] / h_safe;
 
-  guh[id] = uh[id] * vh[id] / h_safe;
+    gh[id] = vh[id];
 
-  gvh[id] = vh[id] * vh[id] / h_safe + 0.5f * g * h_safe * h_safe;
-  
+    guh[id] = uh[id] * vh[id] / h_safe;
+
+    gvh[id] = vh[id] * vh[id] / h_safe + 0.5f * g * h_safe * h_safe;
+  }
+
 }
 /******************************************************************************/
 
