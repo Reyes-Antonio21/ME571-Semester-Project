@@ -119,9 +119,7 @@ __global__ void initialConditionsGPU( int nx, int ny, float dx, float dy,  float
     id = ID_2D(i, j, nx);
     id_boundary = ID_2D(i + 1, j, nx);
 
-    float h_safe = fmaxf(h[id], EPSILON); // Prevent division by zero
-
-    h_safe = h[id_boundary];
+    h[id] = h[id_boundary];
     uh[id] = 0.0;
     vh[id] = 0.0;
   }
@@ -132,9 +130,7 @@ __global__ void initialConditionsGPU( int nx, int ny, float dx, float dy,  float
     id = ID_2D(i, j, nx);
     id_boundary = ID_2D(i - 1, j, nx);
 
-    float h_safe = fmaxf(h[id], EPSILON); // Prevent division by zero
-
-    h_safe = h[id_boundary];
+    h[id] = h[id_boundary];
     uh[id] = 0.0;
     vh[id] = 0.0;
   }
@@ -145,9 +141,7 @@ __global__ void initialConditionsGPU( int nx, int ny, float dx, float dy,  float
     id = ID_2D(i, j, nx);
     id_boundary = ID_2D(i, j + 1, nx);
 
-    float h_safe = fmaxf(h[id], EPSILON); // Prevent division by zero
-
-    h_safe = h[id_boundary];
+    h[id] = h[id_boundary];
     uh[id] = 0.0;
     vh[id] = 0.0;
   }
@@ -158,9 +152,7 @@ __global__ void initialConditionsGPU( int nx, int ny, float dx, float dy,  float
     id = ID_2D(i, j, nx);
     id_boundary = ID_2D(i, j - 1, nx);
 
-    float h_safe = fmaxf(h[id], EPSILON); // Prevent division by zero
-
-    h_safe = h[id_boundary];
+    h[id] = h[id_boundary];
     uh[id] = 0.0;
     vh[id] = 0.0;
   }
