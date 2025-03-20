@@ -376,10 +376,10 @@ __global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int n
 }
 /******************************************************************************/
 
-//****************************************************** MAIN ******************************************************//
+// ****************************************************** MAIN ****************************************************** //
 int main ( int argc, char *argv[] )
 { 
-  //************************************************ INSTANTIATION ************************************************//
+  // ************************************************ INSTANTIATION ************************************************ //
   int k;
   int nx; 
   int ny; 
@@ -412,40 +412,40 @@ int main ( int argc, char *argv[] )
   float *uhm, *d_uhm;
   float *vhm, *d_vhm;
 
-  //get command line arguments
+  // get command line arguments
   getArgs(&nx, &dt, &x_length, &t_final, argc, argv);
   ny = nx; // we assume this, does not have to be this way
 
-  //Define the locations of the nodes and time steps and the spacing.
+  // Define the locations of the nodes and time steps and the spacing.
   dx = x_length / ( float ) ( nx );
   dy = x_length / ( float ) ( nx );
 
   float lambda_x = 0.5  *dt / dx;
   float lambda_y = 0.5 * dt / dy;
 
-  //Define the block and grid sizes
+  // Define the block and grid sizes
   int dimx = 32;
   int dimy = 32;
   dim3 blockSize(dimx, dimy);
   dim3 gridSize((nx + 2 + blockSize.x - 1) / blockSize.x, (ny + 2 + blockSize.y - 1) / blockSize.y);
 
-  //************************************************ MEMORY ALLOCATIONS ************************************************//
+  // ************************************************ MEMORY ALLOCATIONS ************************************************ //
 
   // **** Allocate memory on host ****
-  //Allocate space (nx+2)((nx+2) long, to account for ghosts
-  //height array
+  // Allocate space (nx+2)((nx+2) long, to account for ghosts
+  // height array
   h  = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
   hm = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
   fh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
   gh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
 
-  //x momentum array
+  // x momentum array
   uh  = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
   uhm = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
   fuh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
   guh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
 
-  //y momentum array
+  // y momentum array
   vh  = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
   vhm = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
   fvh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
@@ -460,7 +460,7 @@ int main ( int argc, char *argv[] )
   CHECK(cudaMalloc((void **)&d_x, nx * sizeof ( float )));
   CHECK(cudaMalloc((void **)&d_y, ny * sizeof ( float )));
 
-  //Allocate space (nx+2)((nx+2) long, to account for ghosts
+  // Allocate space (nx+2)((nx+2) long, to account for ghosts
   CHECK(cudaMalloc((void **)&d_h, (nx+2)*(ny+2) * sizeof ( float )));
   CHECK(cudaMalloc((void **)&d_uh, (nx+2)*(ny+2) * sizeof ( float )));
   CHECK(cudaMalloc((void **)&d_vh, (nx+2)*(ny+2) * sizeof ( float )));
@@ -477,7 +477,7 @@ int main ( int argc, char *argv[] )
   CHECK(cudaMalloc((void **)&d_uhm, (nx+2)*(ny+2) * sizeof ( float )));
   CHECK(cudaMalloc((void **)&d_vhm, (nx+2)*(ny+2) * sizeof ( float )));
 
-  //************************************************ INITIAL CONDITIONS ************************************************//
+  // ************************************************ INITIAL CONDITIONS ************************************************ //
 
   printf ( "\n" );
   printf ( "SHALLOW_WATER_2D\n" );
@@ -488,11 +488,10 @@ int main ( int argc, char *argv[] )
   time = 0.0f;
   k = 0;
 
-  //Apply the initial conditions.
-  //printf("Before initial conditions\n");
+  // Apply the initial conditions.
   initialConditionsGPU<<<gridSize, blockSize>>>(nx, ny, dx, dy, x_length, d_x, d_y, d_h, d_uh, d_vh);
 
-  //Move data to the Host for initial conditions file write
+  // Move data to the Host for initial conditions file write
   CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
   CHECK(cudaMemcpy(uh, d_uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
   CHECK(cudaMemcpy(vh, d_vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
@@ -500,20 +499,20 @@ int main ( int argc, char *argv[] )
   CHECK(cudaMemcpy(x, d_x, nx * sizeof ( float ), cudaMemcpyDeviceToHost));
   CHECK(cudaMemcpy(y, d_y, nx * sizeof ( float ), cudaMemcpyDeviceToHost));
 
-  //Write initial condition to a file
+  // Write initial condition to a file
   writeResults(h, uh, vh, x, y, time, nx, ny);
 
-  //Move data to the device for calculations
+  // Move data to the device for calculations
   CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
   CHECK(cudaMemcpy(d_uh, uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
   CHECK(cudaMemcpy(d_vh, vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
 
   // ******************************************************************** COMPUTATION SECTION ******************************************************************** //
 
-  //start timer
+  // start timer
   clock_t time_start = clock();
 
-  while (time < t_final) //time loop begins
+  while (time < t_final) // time loop begins
   {
     // Take a time step and increase step counter
     time = time + dt;
@@ -531,18 +530,18 @@ int main ( int argc, char *argv[] )
     // **** APPLY BOUNDARY CONDITIONS ****
     applyBoundaryConditionsGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, nx, ny, 3);  
 
-  } //end time loop
+  } // end time loop
 
-  //stop timer
+  // stop timer
   clock_t time_end = clock();
   double time_elapsed = (double)(time_end - time_start) / CLOCKS_PER_SEC;
 
-  //Print out the results
+  // Print out the results
   printf("Problem size: %d, time steps taken: %d,  elapsed time: %f s\n", nx, k, time_elapsed);
 
   // ******************************************************************** POSTPROCESSING ******************************************************************** //
 
-  //Move data back to the host
+  // Move data back to the host
   CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
   CHECK(cudaMemcpy(uh, d_uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
   CHECK(cudaMemcpy(vh, d_vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
@@ -571,7 +570,7 @@ int main ( int argc, char *argv[] )
   CHECK(cudaFree(d_x));
   CHECK(cudaFree(d_y));
 
-  //Free host memory.
+  // Free host memory.
   free ( h );
   free ( uh );
   free ( vh ); 
@@ -587,7 +586,7 @@ int main ( int argc, char *argv[] )
   free ( x );
   free ( y );
 
-  //Terminate.
+  // Terminate.
   printf ( "\n" );
   printf ( "SHALLOW_WATER_2D:\n" );
   printf ( "  Normal end of execution.\n" );
@@ -595,9 +594,9 @@ int main ( int argc, char *argv[] )
 
   return 0;
 }
-/********************************************************************************************************************************************/
+// ******************************************************************************************************************************************** //
 
-//************************************************ SERIAL CODE ************************************************//
+// ************************************************ SERIAL CODE ************************************************ //
 // **** COMPUTE FLUXES ****
 //Compute fluxes (including ghosts)
 /* 
