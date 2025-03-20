@@ -50,7 +50,7 @@ void writeResults(float h[], float uh[], float vh[], float x[], float y[], float
   int i, j, id;
 
   //Create the filename based on the time step.
-  sprintf(filename, "tc_2d_%04d.dat", time);
+  sprintf(filename, "tc_2d_%08.6f.dat", time);
 
   //Open the file.
   FILE *file = fopen (filename, "wt" );
