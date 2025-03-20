@@ -43,33 +43,43 @@ void getArgs(int *nx, float *dt, float *x_length, float *t_final, int argc, char
 }
 /******************************************************************************/
 
-void writeResults( char *output_filename, int nx, int ny, float x[], float y[], float h[], float uh[], float vh[])
+void writeResults(float h[], float uh[], float vh[], float x[], float y[], float time, int nx, int ny)
 {
+  char filename[50];
+
   int i, j, id;
-  FILE *output;
-   
+
+  //Create the filename based on the time step.
+  sprintf(filename, "tc_2d_%04d.dat", time);
+
   //Open the file.
-  output = fopen ( output_filename, "wt" );
+  FILE *file = fopen (filename, "wt" );
     
-  if ( !output )
+  if (!file)
   {
-    fprintf ( stderr, "\n" );
-    fprintf ( stderr, "WRITE_RESULTS - Fatal error!\n" );
-    fprintf ( stderr, "  Could not open the output file.\n" );
-    exit ( 1 );
+    fprintf (stderr, "\n" );
+
+    fprintf (stderr, "WRITE_RESULTS - Fatal error!\n");
+
+    fprintf (stderr, "  Could not open the output file.\n");
+
+    exit (1);
   }
+
+  else
+  {  
+    //Write the data.
+    for ( i = 0; i < ny; i++ ) 
+      for ( j = 0; j < nx; j++ )
+      {
+        id = ID_2D(i + 1, j + 1, nx);
+        fprintf ( file, "%24.16g\t%24.16g\t%24.16g\t %24.16g\t %24.16g\n", x[j], y[i], h[id], uh[id], vh[id]);
+      }
     
-  //Write the data.
-  for ( i = 0; i < ny; i++ ) 
-    for ( j = 0; j < nx; j++ )
-    {
-        id  =ID_2D(i + 1, j + 1,nx);
-	      fprintf ( output, "  %24.16g\t%24.16g\t%24.16g\t %24.16g\t %24.16g\n", x[j], y[i],h[id], uh[id], vh[id]);
-    }
-    
-  //Close the file.
-  fclose ( output );
-  
+    //Close the file.
+    fclose (file);
+  }
+
   return;
 }
 /******************************************************************************/
@@ -473,6 +483,11 @@ int main ( int argc, char *argv[] )
   printf ( "SHALLOW_WATER_2D\n" );
   printf ( "\n" );
 
+  // set initial time & step counter
+  // set time to zero and step counter to zero
+  time = 0.0f;
+  k = 0;
+
   //Apply the initial conditions.
   //printf("Before initial conditions\n");
   initialConditionsGPU<<<gridSize, blockSize>>>(nx, ny, dx, dy, x_length, d_x, d_y, d_h, d_uh, d_vh);
@@ -486,7 +501,7 @@ int main ( int argc, char *argv[] )
   CHECK(cudaMemcpy(y, d_y, nx * sizeof ( float ), cudaMemcpyDeviceToHost));
 
   //Write initial condition to a file
-  writeResults("tc2d_init.dat", nx, ny, x, y, h, uh, vh);
+  writeResults(h, uh, vh, x, y, time, nx, ny);
 
   //Move data to the device for calculations
   CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
@@ -494,11 +509,6 @@ int main ( int argc, char *argv[] )
   CHECK(cudaMemcpy(d_vh, vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
 
   // ******************************************************************** COMPUTATION SECTION ******************************************************************** //
-  
-  // set initial time & step counter
-  // set time to zero and step counter to zero
-  time = 0.0f;
-  k = 0;
 
   //start timer
   clock_t time_start = clock();
@@ -537,7 +547,7 @@ int main ( int argc, char *argv[] )
   CHECK(cudaMemcpy(uh, d_uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
   CHECK(cudaMemcpy(vh, d_vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
 
-  writeResults("tc2d_final.dat", nx, ny, x, y, h, uh, vh);
+  writeResults(h, uh, vh, x, y, time, nx, ny);
 
   // ******************************************************************** DEALLOCATE MEMORY ******************************************************************** //
 
@@ -787,28 +797,3 @@ for ( i = 1; i < nx+1; i++ )
   CHECK(cudaMemcpy(d_vh, vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
 
 */
-
-void saveDataToFile(float *h_u, int step, int nx, int ny) 
-{
-  char filename[50];
-  sprintf(filename, "water_step_%04d.dat", step);
-  FILE *file = fopen(filename, "w");
-  if (file) 
-  {
-    for (int j = 0; j < ny; j++) 
-    {
-      for (int i = 0; i < nx; i++) 
-      {
-        fprintf(file, "%f ", h_u[j * nx + i]);
-      }
-      fprintf(file, "\n");
-    }
-    fclose(file);
-  }
-  else 
-  {
-    printf("Error opening file %s for writing.\n", filename);
-  }
-}
-
-writeResults("tc2d_final.dat", nx, ny, x, y, h, uh, vh);
