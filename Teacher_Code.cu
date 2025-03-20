@@ -48,7 +48,7 @@ void writeResults(float h[], float uh[], float vh[], float x[], float y[], float
   int i, j, id;
 
   //Create the filename based on the time step.
-  sprintf(filename, "tc2d_%04d.dat", time);
+  sprintf(filename, "tc_2d_%08.6f.dat", time);
 
   //Open the file.
   FILE *file = fopen (filename, "wt" );
@@ -88,8 +88,6 @@ __global__ void initialConditionsGPU( int nx, int ny, float dx, float dy,  float
   unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
   unsigned int id, id_boundary;
 
-  float h_safe;
-
   if (i > 0 && i < ny + 1)
   {
     x[i - 1] = -x_length / 2 + dx / 2 + (i - 1) * dx;
@@ -121,7 +119,7 @@ __global__ void initialConditionsGPU( int nx, int ny, float dx, float dy,  float
     id = ID_2D(i, j, nx);
     id_boundary = ID_2D(i + 1, j, nx);
 
-    h_safe = fmaxf(h[id], EPSILON); // Prevent division by zero
+    float h_safe = fmaxf(h[id], EPSILON); // Prevent division by zero
 
     h_safe = h[id_boundary];
     uh[id] = 0.0;
@@ -134,7 +132,7 @@ __global__ void initialConditionsGPU( int nx, int ny, float dx, float dy,  float
     id = ID_2D(i, j, nx);
     id_boundary = ID_2D(i - 1, j, nx);
 
-    h_safe = fmaxf(h[id], EPSILON); // Prevent division by zero
+    float h_safe = fmaxf(h[id], EPSILON); // Prevent division by zero
 
     h_safe = h[id_boundary];
     uh[id] = 0.0;
@@ -147,7 +145,7 @@ __global__ void initialConditionsGPU( int nx, int ny, float dx, float dy,  float
     id = ID_2D(i, j, nx);
     id_boundary = ID_2D(i, j + 1, nx);
 
-    h_safe = fmaxf(h[id], EPSILON); // Prevent division by zero
+    float h_safe = fmaxf(h[id], EPSILON); // Prevent division by zero
 
     h_safe = h[id_boundary];
     uh[id] = 0.0;
@@ -160,7 +158,7 @@ __global__ void initialConditionsGPU( int nx, int ny, float dx, float dy,  float
     id = ID_2D(i, j, nx);
     id_boundary = ID_2D(i, j - 1, nx);
 
-    h_safe = fmaxf(h[id], EPSILON); // Prevent division by zero
+    float h_safe = fmaxf(h[id], EPSILON); // Prevent division by zero
 
     h_safe = h[id_boundary];
     uh[id] = 0.0;
