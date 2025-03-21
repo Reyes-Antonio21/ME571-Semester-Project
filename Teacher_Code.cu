@@ -467,10 +467,10 @@ int main ( int argc, char *argv[] )
 
   float dx;
   float dy;
-  float dt;
+  double dt;
   float x_length;
 
-  float time; 
+  double time; 
   float t_final;
 
   // pointers to host, device memory 
@@ -498,8 +498,8 @@ int main ( int argc, char *argv[] )
   dx = x_length / ( float ) ( nx );
   dy = x_length / ( float ) ( nx );
 
-  float lambda_x = 0.5  *dt / dx;
-  float lambda_y = 0.5 * dt / dy;
+  float lambda_x = 0.5  * (float) dt / dx;
+  float lambda_y = 0.5 * (float) dt / dy;
 
   // Define the block and grid sizes
   int dimx = 32;
@@ -613,7 +613,15 @@ int main ( int argc, char *argv[] )
     // **** APPLY BOUNDARY CONDITIONS ****
     applyBoundaryConditionsGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, nx, ny, 3);  
 
+    CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+    CHECK(cudaMemcpy(uh, d_uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+    CHECK(cudaMemcpy(vh, d_vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+
     writeResults(h, uh, vh, x, y, time, nx, ny);
+
+    CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
+    CHECK(cudaMemcpy(d_uh, uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
+    CHECK(cudaMemcpy(d_vh, vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
 
   } // end time loop
 

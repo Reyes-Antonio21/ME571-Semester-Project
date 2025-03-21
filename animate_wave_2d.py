@@ -16,7 +16,7 @@ def load_data(file_path):
     return x_cords, y_cords, water_height
 
 # File pattern to match all .dat files (assumes they are named with time steps)
-file_list = sorted(glob.glob("tc_2d_0.*.dat"))  # Sort to ensure correct time order
+file_list = sorted(glob.glob("tc2d_*.dat"))  # Sort to ensure correct time order
 
 # Load first file to set up the plot
 x_cords, y_cords, water_height = load_data(file_list[0])
@@ -61,7 +61,7 @@ def update(frame):
     ax.set_xlabel("X Coordinate")
     ax.set_ylabel("Y Coordinate")
     ax.set_zlabel("Water Height")
-    ax.set_title(f"Water Height at Time Step: {frame * 0.004:.3f} sec")
+    ax.set_title(f"Water Height at Time Step: {frame * 0.008:.3f} sec")
     ax.view_init(elev = 30, azim = 220)
     return ax,
 
