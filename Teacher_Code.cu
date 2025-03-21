@@ -14,7 +14,8 @@
 
 void getArgs(int *nx, float *dt, float *x_length, float *t_final, int argc, char *argv[])
 {
- 
+  // Get the quadrature file root name:
+
   if ( argc <= 1 ){
     *nx = 401;
   }else{
@@ -77,6 +78,86 @@ void writeResults(float h[], float uh[], float vh[], float x[], float y[], float
     //Close the file.
     fclose (file);
   }
+
+  return;
+}
+/******************************************************************************/
+
+void initial_conditions ( int nx, int ny, float dx, float dy,  float x_length, float x[],float y[], float h[], float uh[] ,float vh[])
+{
+  int i,j, id, id1;
+
+  for ( i = 1; i < nx+1; i++ )
+    {
+      x[i-1] = -x_length/2+dx/2+(i-1)*dx;
+      y[i-1] = -x_length/2+dy/2+(i-1)*dy;
+    }
+
+  for ( i = 1; i < nx+1; i++ )
+    for( j = 1; j < ny+1; j++)
+    {
+      float xx = x[j-1];
+      float yy = y[i-1];
+      id=ID_2D(i,j,nx);
+      h[id] = 1.0 + 0.4*exp ( -5 * ( xx*xx + yy*yy) );
+    }
+  
+  for ( i = 1; i < nx+1; i++ )
+    for( j = 1; j < ny+1; j++)
+    {
+      id=ID_2D(i,j,nx);
+      uh[id] = 0.0;
+      vh[id] = 0.0;
+    }
+
+  //set boundaries
+  //bottom
+  i=0;
+  for( j = 1; j < nx+1; j++)
+    {
+      id=ID_2D(i,j,nx);
+      id1=ID_2D(i+1,j,nx);
+
+      h[id] = h[id1];
+      uh[id] = 0.0;
+      vh[id] = 0.0;
+    }
+
+  //top
+  i=nx+1;
+  for( j = 1; j < nx+1; j++)
+    {
+      id=ID_2D(i,j,nx);
+      id1=ID_2D(i-1,j,nx);
+
+      h[id] = h[id1];
+      uh[id] = 0.0;
+      vh[id] = 0.0;
+    }
+
+  //left
+  j=0;
+  for( i = 1; i < ny+1; i++)
+    {
+      id=ID_2D(i,j,nx);
+      id1=ID_2D(i,j+1,nx);
+
+      h[id] = h[id1];
+      uh[id] = 0.0;
+      vh[id] = 0.0;
+    }
+
+  //right
+  j=nx+1;
+  for( i = 1; i < ny+1; i++)
+    {
+      id=ID_2D(i,j,nx);
+      id1=ID_2D(i,j-1,nx);
+
+      h[id] = h[id1];
+      uh[id] = 0.0;
+      vh[id] = 0.0;
+    }
 
   return;
 }
@@ -486,15 +567,20 @@ int main ( int argc, char *argv[] )
   k = 0;
 
   // Apply the initial conditions.
-  initialConditionsGPU<<<gridSize, blockSize>>>(nx, ny, dx, dy, x_length, d_x, d_y, d_h, d_uh, d_vh);
+  //initialConditionsGPU<<<gridSize, blockSize>>>(nx, ny, dx, dy, x_length, d_x, d_y, d_h, d_uh, d_vh);
 
   // Move data to the Host for initial conditions file write
-  CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-  CHECK(cudaMemcpy(uh, d_uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-  CHECK(cudaMemcpy(vh, d_vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+  //CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+  //CHECK(cudaMemcpy(uh, d_uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+  //CHECK(cudaMemcpy(vh, d_vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
 
-  CHECK(cudaMemcpy(x, d_x, nx * sizeof ( float ), cudaMemcpyDeviceToHost));
-  CHECK(cudaMemcpy(y, d_y, nx * sizeof ( float ), cudaMemcpyDeviceToHost));
+  //CHECK(cudaMemcpy(x, d_x, nx * sizeof ( float ), cudaMemcpyDeviceToHost));
+  //CHECK(cudaMemcpy(y, d_y, nx * sizeof ( float ), cudaMemcpyDeviceToHost));
+
+  // **** INITIAL CONDITIONS ****
+  //Apply the initial conditions.
+  //printf("Before initial conditions\n");
+  initial_conditions(nx, ny, dx, dy, x_length, x, y, h, uh, vh);
 
   // Write initial condition to a file
   writeResults(h, uh, vh, x, y, time, nx, ny);
@@ -527,6 +613,8 @@ int main ( int argc, char *argv[] )
     // **** APPLY BOUNDARY CONDITIONS ****
     applyBoundaryConditionsGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, nx, ny, 3);  
 
+    writeResults(h, uh, vh, x, y, time, nx, ny);
+
   } // end time loop
 
   // stop timer
@@ -539,11 +627,11 @@ int main ( int argc, char *argv[] )
   // ******************************************************************** POSTPROCESSING ******************************************************************** //
 
   // Move data back to the host
-  CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-  CHECK(cudaMemcpy(uh, d_uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-  CHECK(cudaMemcpy(vh, d_vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+  //CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+  //CHECK(cudaMemcpy(uh, d_uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+  //CHECK(cudaMemcpy(vh, d_vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
 
-  writeResults(h, uh, vh, x, y, time, nx, ny);
+  //writeResults(h, uh, vh, x, y, time, nx, ny);
 
   // ******************************************************************** DEALLOCATE MEMORY ******************************************************************** //
 

@@ -14,7 +14,6 @@
 
 void getArgs(int *nx, float *dt, float *x_length, float *t_final, int argc, char *argv[])
 {
-  
   // Get the quadrature file root name:
   
   if ( argc <= 1 ){
@@ -89,7 +88,6 @@ __global__ void initialConditionsGPU( int nx, int ny, float dx, float dy,  float
   unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
   unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
   unsigned int id, id_boundary;
-
 
   if (i > 0 && i < ny + 1)
   {
