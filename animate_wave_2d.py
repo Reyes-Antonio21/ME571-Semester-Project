@@ -14,37 +14,48 @@ file_list = sorted(glob.glob("tc_2d_0.*.dat"))  # Sort to ensure correct time or
 # Function to load data from a given file
 def load_data(file_path):
     data = np.loadtxt(file_path, delimiter="\t")
-    x_coords = data[:, 0]
-    y_coords = data[:, 1]
+    x_cords = data[:, 0]
+    y_cords = data[:, 1]
     water_height = data[:, 2]
-    return x_coords, y_coords, water_height
+    return x_cords, y_cords, water_height
 
 
 # Load first file to set up the plot
-x_coords, y_coords, water_height = load_data(file_list[0])
+x_cords, y_cords, water_height = load_data(file_list[0])
 
-nx = int(math.sqrt(len(x_coords)))
+nx = int(math.sqrt(len(x_cords)))
 
 # Set up a regular grid of interpolation points
-xi, yi = np.linspace(min(x_coords), max(x_coords), nx), np.linspace(min(y_coords), max(y_coords), nx)
+xi, yi = np.linspace(min(x_cords), max(x_cords), nx), np.linspace(min(y_cords), max(y_cords), nx)
 xi, yi = np.meshgrid(xi, yi)
 
+# Interpolate; there's also method='cubic' for 2-D data such as here
+water_height = scipy.interpolate.griddata((x_cords, y_cords), water_height, (xi, yi), method='linear')
+
 # Set up the figure and 3D axis
-fig = plt.figure(figsize=(8, 6))
-ax = fig.add_subplot(111, projection='3d')
-sc = ax.scatter(x_coords, y_coords, water_height, c=water_height, cmap="viridis", marker="o")
-cbar = plt.colorbar(sc, label="Water Height")
+fig = plt.figure()
+
+# `ax` is a 3D-aware axis instance, because of the projection='3d' keyword argument to add_subplot
+ax = fig.add_subplot(1, 1, 1, projection='3d')
+ax.plot_surface(xi, yi, water_height, rstride = 1, cstride = 1, cmap = cm.coolwarm, linewidth = 0, alpha = 0.75)
+
+# Set limits for x, y, & z axes
+ax.set_xlim(min(x_cords), max(x_cords)) 
+ax.set_ylim(min(y_cords), max(y_cords))
+ax.set_zlim(0.75, 1.25)
+
+# Set axis labels and title
 ax.set_xlabel("X Coordinate")
 ax.set_ylabel("Y Coordinate")
 ax.set_zlabel("Water Height")
 ax.set_title("Water Height Animation (3D)")
-ax.view_init(elev=30, azim=220)  # Adjust viewing angle
+ax.view_init(elev = 30, azim = 220)  # Adjust viewing angle
 
 # Update function for animation
 def update(frame):
-    x_coords, y_coords, water_height = load_data(file_list[frame])
+    x_cords, y_cords, water_height = load_data(file_list[frame])
     ax.cla()
-    ax.scatter(x_coords, y_coords, water_height, c=water_height, cmap="viridis", marker="o")
+    ax.plot_surface(xi, yi, water_height, rstride = 1, cstride = 1, cmap = cm.coolwarm, linewidth = 0, alpha = 0.75)
     ax.set_xlabel("X Coordinate")
     ax.set_ylabel("Y Coordinate")
     ax.set_zlabel("Water Height")
