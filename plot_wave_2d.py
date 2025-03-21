@@ -38,7 +38,5 @@ ax.set_ylim(min(y), max(y));
 
 ax.set_xlabel('x [m]');
 ax.set_ylabel('y [m]');
-#plt.contour(zi, vmin=rho.min(), vmax=rho.max(), origin='lower',
-#           extent=[x.min(), x.max(), y.min(), y.max()])
 
 plt.show()
