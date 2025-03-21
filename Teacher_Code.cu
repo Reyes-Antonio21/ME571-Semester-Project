@@ -12,7 +12,7 @@
 
 //************************************************ UTILITIES ************************************************//
 
-void getArgs(int *nx, float *dt, float *x_length, float *t_final, int argc, char *argv[])
+void getArgs(int *nx, double *dt, float *x_length, float *t_final, int argc, char *argv[])
 {
   // Get the quadrature file root name:
 
