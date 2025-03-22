@@ -28,14 +28,11 @@ xi, yi = np.linspace(min(x_cords), max(x_cords), nx), np.linspace(min(y_cords), 
 xi, yi = np.meshgrid(xi, yi)
 
 # Interpolate; there's also method='cubic' for 2-D data such as here
-water_height_initial = scipy.interpolate.griddata((x_cords, y_cords), water_height, (xi, yi), method='linear')
+water_height_initial = scipy.interpolate.griddata((x_cords, y_cords), water_height, (xi, yi), method ='linear')
 
 # Set up the figure and 3D axis
 fig = plt.figure()
-
-# `ax` is a 3D-aware axis instance, because of the projection='3d' keyword argument to add_subplot
-ax = fig.add_subplot(1, 1, 1, projection ='3d')
-ax.plot_surface(xi, yi, water_height_initial, rstride = 1, cstride = 1, cmap = cm.coolwarm, linewidth = 0, alpha = 0.75)
+ax = fig.add_subplot(1, 1, 1, projection='3d')
 
 # Set limits for x, y, & z axes
 ax.set_xlim(min(x_cords), max(x_cords)) 
@@ -47,26 +44,30 @@ ax.set_xlabel("X Coordinate")
 ax.set_ylabel("Y Coordinate")
 ax.set_zlabel("Water Height")
 ax.set_title("Water Height Animation")
-ax.view_init(elev = 30, azim = 220)  # Adjust viewing angle
 
 # Update function for animation
 def update(frame):
     x_cords, y_cords, water_height = load_data(file_list[frame])
     nx = int(math.sqrt(len(x_cords)))
-    xn, yn = np.linspace(min(x_cords), max(x_cords), nx), np.linspace(min(y_cords), max(y_cords), nx)
-    xn, yn = np.meshgrid(xn, yn)
-    water_height_n = scipy.interpolate.griddata((x_cords, y_cords), water_height, (xn, yn), method='linear')
+    water_height_n = scipy.interpolate.griddata((x_cords, y_cords), water_height, (xi, yi), method = 'linear')
+    
     ax.cla()
-    ax.plot_surface(xn, yn, water_height_n, rstride = 1, cstride = 1, cmap = cm.coolwarm, linewidth = 0, alpha = 0.75)
+    ax.plot_surface(xi, yi, water_height_n, rstride = 1, cstride = 1, cmap = cm.coolwarm, linewidth = 0, alpha = 0.75)
     ax.set_xlabel("X Coordinate")
     ax.set_ylabel("Y Coordinate")
     ax.set_zlabel("Water Height")
     ax.set_title(f"Water Height at Time Step: {frame * 0.008:.3f} sec")
-    ax.view_init(elev = 30, azim = 220)
+    
     return ax,
 
 # Create the animation
-ani = animation.FuncAnimation(fig, update, frames = len(file_list), interval = 100, blit = False)
+ani = animation.FuncAnimation(fig, update, frames=len(file_list), interval=100, blit=False)
+
+# Save the animation as a .gif
+gif_filename = "water_height_animation.gif"
+ani.save(gif_filename, writer=animation.PillowWriter(fps = 125))
+
+print(f"Animation saved as {gif_filename}")
 
 # Show the animation
 plt.show()
