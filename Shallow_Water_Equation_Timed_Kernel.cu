@@ -491,9 +491,6 @@ int main ( int argc, char *argv[] )
 
   initial_conditions(nx, ny, dx, dy, x_length, x, y, h, uh, vh);
 
-  // Write initial condition to a file
-  writeResults(h, uh, vh, x, y, time, nx, ny);
-
   // Move data to the device for calculations
   CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
   CHECK(cudaMemcpy(d_uh, uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
@@ -582,15 +579,6 @@ int main ( int argc, char *argv[] )
   printf("Average time elapsed for compute variables: %f s\n", avg_time_elapsed_cv);
   printf("Average time elapsed for update variables: %f s\n", avg_time_elapsed_uv);
   printf("Average time elapsed for apply boundary conditions: %f s\n", avg_time_elapsed_bc);
-
-  // ******************************************************************** POSTPROCESSING ******************************************************************** //
-
-  // Move data back to the host
-  CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-  CHECK(cudaMemcpy(uh, d_uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-  CHECK(cudaMemcpy(vh, d_vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-
-  writeResults(h, uh, vh, x, y, time, nx, ny);
 
   // ******************************************************************** DEALLOCATE MEMORY ******************************************************************** //
 
