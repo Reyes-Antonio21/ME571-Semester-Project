@@ -384,11 +384,11 @@ int main ( int argc, char *argv[] )
   float *x;
   float *y;
 
-  double dt;
   float dx;
   float dy;
   float x_length;
 
+  double dt;
   double time; 
   double t_final;
   double time_elapsed_cf = 0.0;
@@ -576,6 +576,13 @@ int main ( int argc, char *argv[] )
   printf("Average time elapsed for compute variables: %f s\n", avg_time_elapsed_cv);
   printf("Average time elapsed for update variables: %f s\n", avg_time_elapsed_uv);
   printf("Average time elapsed for apply boundary conditions: %f s\n", avg_time_elapsed_bc);
+
+  // ******************************************************************** WRITE RESULTS ******************************************************************** //
+  CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+  CHECK(cudaMemcpy(uh, d_uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+  CHECK(cudaMemcpy(vh, d_vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+
+  writeResults(h, uh, vh, x, y, time, nx, ny);
 
   // ******************************************************************** DEALLOCATE MEMORY ******************************************************************** //
 

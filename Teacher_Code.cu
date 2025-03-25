@@ -8,11 +8,9 @@
 
 #define ID_2D(i,j,nx) ((i)*(nx+2)+(j))
 
-#define EPSILON 1e-6f  // Small value to prevent division by zero
-
 //************************************************ UTILITIES ************************************************//
 
-void getArgs(int *nx, double *dt, float *x_length, float *t_final, int argc, char *argv[])
+void getArgs(int *nx, double *dt, float *x_length, double *t_final, int argc, char *argv[])
 {
   // Get the quadrature file root name:
 
@@ -83,7 +81,7 @@ void writeResults(float h[], float uh[], float vh[], float x[], float y[], float
 }
 /******************************************************************************/
 
-void initial_conditions ( int nx, int ny, float dx, float dy,  float x_length, float x[],float y[], float h[], float uh[] ,float vh[])
+void initial_conditions (int nx, int ny, float dx, float dy,  float x_length, float x[],float y[], float h[], float uh[] ,float vh[])
 {
   int i,j, id, id1;
 
@@ -163,127 +161,48 @@ void initial_conditions ( int nx, int ny, float dx, float dy,  float x_length, f
 }
 /******************************************************************************/
 
-__global__ void initialConditionsGPU( int nx, int ny, float dx, float dy,  float x_length, float x[],float y[], float h[], float uh[] ,float vh[])
-{
-  unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
-  unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
-  unsigned int id, id_boundary;
-
-  if (i > 0 && i < ny + 1)
-  {
-    x[i - 1] = -x_length / 2 + dx / 2 + (i - 1) * dx;
-    y[i - 1] = -x_length / 2 + dy / 2 + (i - 1) * dy; 
-  }
-
-  if ( i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
-  {
-    id = ID_2D(i, j, nx);
-
-    float xx = x[j - 1];
-    float yy = y[i - 1];
-
-    h[id] = 1.0 + 0.4 * exp( -5 * ( xx * xx + yy * yy) );
-  }
-  
-  if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
-  {
-    id = ID_2D(i, j, nx);
-
-    uh[id] = 0.0;
-    vh[id] = 0.0;
-  }
-
-  //set boundaries
-  //bottom
-  if (i == 0 && j > 0 && j < nx + 1)
-  {
-    id = ID_2D(i, j, nx);
-    id_boundary = ID_2D(i + 1, j, nx);
-
-    h[id] = h[id_boundary];
-    uh[id] = 0.0;
-    vh[id] = 0.0;
-  }
-
-  //top
-  if (i == ny + 1 && j > 0 && j < nx + 1)
-  {
-    id = ID_2D(i, j, nx);
-    id_boundary = ID_2D(i - 1, j, nx);
-
-    h[id] = h[id_boundary];
-    uh[id] = 0.0;
-    vh[id] = 0.0;
-  }
-
-  //left
-  if ( j == 0 && i > 0 && i < ny + 1)
-  {
-    id = ID_2D(i, j, nx);
-    id_boundary = ID_2D(i, j + 1, nx);
-
-    h[id] = h[id_boundary];
-    uh[id] = 0.0;
-    vh[id] = 0.0;
-  }
-
-  //right
-  if (j == nx + 1 && i > 0 && i < ny + 1)
-  {
-    id = ID_2D(i, j, nx);
-    id_boundary = ID_2D(i, j - 1, nx);
-
-    h[id] = h[id_boundary];
-    uh[id] = 0.0;
-    vh[id] = 0.0;
-  }
-  return;
-}
-/******************************************************************************/
-
 __global__ void computeFluxesGPU(float *h, float *uh, float *vh, float *fh, float *fuh, float *fvh, float *gh, float *guh, float *gvh, int nx, int ny) 
 {
-  unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
-  unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
+  unsigned int i = threadIdx.y + blockIdx.y * blockDim.y;
+  unsigned int j = threadIdx.x + blockIdx.x * blockDim.x;
   
-  if (i >= nx + 2 || j >= ny + 2) // Bounds check
-  return;
-  
-  unsigned int id = ID_2D(i, j, nx);
+  unsigned int id = ((i) * (nx + 2) + (j));
 
   float g = 9.81f; // Gravitational acceleration
-  float h_safe = fmaxf(h[id], EPSILON); // Prevent division by zero
+  float h_safe = fmaxf(h[id], 1e-6f); // Prevent division by zero
   
-  // Compute fluxes safely
-  fh[id] = uh[id];
+  if (i < ny + 2 && j < nx + 2)
+  {
+    // Compute fluxes safely
+    fh[id] = uh[id];
 
-  fuh[id] = uh[id] * uh[id] / h_safe + 0.5f * g * h_safe * h_safe;
+    fuh[id] = uh[id] * uh[id] / h_safe + 0.5f * g * h_safe * h_safe;
 
-  fvh[id] = uh[id] * vh[id] / h_safe;
+    fvh[id] = uh[id] * vh[id] / h_safe;
 
-  gh[id] = vh[id];
+    gh[id] = vh[id];
 
-  guh[id] = uh[id] * vh[id] / h_safe;
+    guh[id] = uh[id] * vh[id] / h_safe;
 
-  gvh[id] = vh[id] * vh[id] / h_safe + 0.5f * g * h_safe * h_safe;
-  
+    gvh[id] = vh[id] * vh[id] / h_safe + 0.5f * g * h_safe * h_safe;
+  }
 }
 /******************************************************************************/
 
 __global__ void computeVariablesGPU(float *hm, float *uhm, float *vhm, float *fh, float *fuh, float *fvh, float *gh, float *guh, float *gvh, float *h, float *uh, float *vh, float lambda_x, float lambda_y, int nx, int ny)
 {
-  unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
-  unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
+  unsigned int i = threadIdx.y + blockIdx.y * blockDim.y;
+  unsigned int j = threadIdx.x + blockIdx.x * blockDim.x;
   unsigned int id, id_left, id_right, id_bottom, id_top;
 
   if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)  // Ensure proper bounds
   {
-    id = ID_2D(i, j, nx);
+    id = ((i) * (nx + 2) + (j));
 
-    id_left   = ID_2D(i, j - 1, nx);
-    id_right  = ID_2D(i, j + 1, nx);
-    id_bottom = ID_2D(i - 1, j, nx);
-    id_top    = ID_2D(i + 1, j, nx);
+    id_left   = ((i) * (nx + 2) + (j - 1));
+    id_right  = ((i) * (nx + 2) + (j + 1));
+    id_bottom = ((i - 1) * (nx + 2) + (j));
+    id_top    = ((i + 1) * (nx + 2) + (j));
 
     hm[id] = 0.25 * (h[id_left] + h[id_right] + h[id_bottom] + h[id_top])
           - lambda_x * (fh[id_right] - fh[id_left])
@@ -302,13 +221,13 @@ __global__ void computeVariablesGPU(float *hm, float *uhm, float *vhm, float *fh
 
 __global__ void updateVariablesGPU(float *h, float *uh, float *vh, float *hm, float *uhm, float *vhm, int nx, int ny)
 {
-  unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
-  unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
+  unsigned int i = threadIdx.y + blockIdx.y * blockDim.y;
+  unsigned int j = threadIdx.x + blockIdx.x * blockDim.x;
   unsigned int id;
 
   if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)  // Ensure proper bounds
   {
-    id = ID_2D(i, j, nx);
+    id = ((i) * (nx + 2) + (j));
 
     h[id] = hm[id];
     uh[id] = uhm[id];
@@ -319,8 +238,8 @@ __global__ void updateVariablesGPU(float *h, float *uh, float *vh, float *hm, fl
 
 __global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int nx, int ny, int bc_type)
 {
-  unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
-  unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
+  unsigned int i = threadIdx.y + blockIdx.y * blockDim.y;
+  unsigned int j = threadIdx.x + blockIdx.x * blockDim.x;
 
   unsigned int id, id_ghost;
 
@@ -414,8 +333,8 @@ __global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int n
     // Left Boundary (j = 1) - Reflective
     if (j == 1 && i > 0 && i < ny + 1) 
     {
-      id = ID_2D(i, j, nx);
-      id_ghost = ID_2D(i, j - 1, nx);
+      id = ((i) * (nx + 2) + (j));
+      id_ghost = ((i) * (nx + 2) + (j - 1));
       h[id_ghost]  = h[id];
       uh[id_ghost] = -uh[id];  // Flip normal velocity
       vh[id_ghost] = vh[id];   // Keep tangential velocity
@@ -424,8 +343,8 @@ __global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int n
     // Right Boundary (j = nx) - Reflective
     if (j == nx && i > 0 && i < ny + 1) 
     {
-      id = ID_2D(i, j, nx);
-      id_ghost = ID_2D(i, j + 1, nx);
+      id = ((i) * (nx + 2) + (j));
+      id_ghost = ((i) * (nx + 2) + (j + 1));
       h[id_ghost]  = h[id];
       uh[id_ghost] = -uh[id];  // Flip normal velocity
       vh[id_ghost] = vh[id];   // Keep tangential velocity
@@ -434,8 +353,8 @@ __global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int n
     // Bottom Boundary (i = 1) - Reflective
     if (i == 1 && j > 0 && j < nx + 1) 
     {
-      id = ID_2D(i, j, nx);
-      id_ghost = ID_2D(i - 1, j, nx);
+      id = ((i) * (nx + 2) + (j));
+      id_ghost = ((i - 1) * (nx + 2) + (j));
       h[id_ghost]  = h[id];
       uh[id_ghost] = uh[id];   // Keep tangential velocity
       vh[id_ghost] = -vh[id];  // Flip normal velocity
@@ -444,8 +363,8 @@ __global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int n
     // Top Boundary (i = ny) - Reflective
     if (i == ny && j > 0 && j < nx + 1) 
     {
-      id = ID_2D(i, j, nx);
-      id_ghost = ID_2D(i + 1, j, nx);
+      id = ((i) * (nx + 2) + (j));
+      id_ghost = ((i + 1) * (nx + 2) + (j));
       h[id_ghost]  = h[id];
       uh[id_ghost] = uh[id];   // Keep tangential velocity
       vh[id_ghost] = -vh[id];  // Flip normal velocity
@@ -467,11 +386,11 @@ int main ( int argc, char *argv[] )
 
   float dx;
   float dy;
-  double dt;
   float x_length;
 
+  double dt;
   double time; 
-  float t_final;
+  double t_final;
 
   // pointers to host, device memory 
   float *h, *d_h;
