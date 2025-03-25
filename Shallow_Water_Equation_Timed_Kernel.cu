@@ -394,6 +394,10 @@ int main ( int argc, char *argv[] )
 
   double time; 
   float t_final;
+  double time_elapsed_cf = 0.0;
+  double time_elapsed_cv = 0.0;
+  double time_elapsed_uv = 0.0;
+  double time_elapsed_bc = 0.0;
 
   // pointers to host, device memory 
   float *h, *d_h;
@@ -517,7 +521,7 @@ int main ( int argc, char *argv[] )
     clock_t time_end_cf = clock();
 
     // calculate time elapsed for compute fluxes
-    double time_elapsed_cf += (double)(time_end_cf - time_start_cf) / CLOCKS_PER_SEC;
+    time_elapsed_cf += (double)(time_end_cf - time_start_cf) / CLOCKS_PER_SEC;
 
     // ************************************************************************************** //
 
@@ -531,7 +535,7 @@ int main ( int argc, char *argv[] )
     clock_t time_end_cv = clock();
 
     // calculate time elapsed for compute variables
-    double time_elapsed_cv += (double)(time_end_cv - time_start_cv) / CLOCKS_PER_SEC;
+    time_elapsed_cv += (double)(time_end_cv - time_start_cv) / CLOCKS_PER_SEC;
     // ************************************************************************************** //
 
     // Start timing update variables calculations
@@ -544,7 +548,7 @@ int main ( int argc, char *argv[] )
     clock_t time_end_uv = clock();
 
     // calculate time elapsed for update variables
-    double time_elapsed_uv += (double)(time_end_uv - time_start_uv) / CLOCKS_PER_SEC;
+    time_elapsed_uv += (double)(time_end_uv - time_start_uv) / CLOCKS_PER_SEC;
 
     // ************************************************************************************** //
 
@@ -558,7 +562,7 @@ int main ( int argc, char *argv[] )
     clock_t time_end_bc = clock();
 
     // calculate time elapsed for apply boundary conditions
-    double time_elapsed_bc += (double)(time_end_bc - time_start_bc) / CLOCKS_PER_SEC;
+    time_elapsed_bc += (double)(time_end_bc - time_start_bc) / CLOCKS_PER_SEC;
 
     // ************************************************************************************** //
 
