@@ -8,11 +8,10 @@
 
 #define ID_2D(i,j,nx) ((i)*(nx+2)+(j))
 
-#define EPSILON 1e-6f  // Small value to prevent division by zero
 
 //************************************************ UTILITIES ************************************************//
 
-void getArgs(int *nx, double *dt, float *x_length, float *t_final, int argc, char *argv[])
+void getArgs(int *nx, double *dt, float *x_length, double *t_final, int argc, char *argv[])
 {
   // Get the quadrature file root name:
 
@@ -165,37 +164,36 @@ void initial_conditions (int nx, int ny, float dx, float dy,  float x_length, fl
 
 __global__ void computeFluxesGPU(float *h, float *uh, float *vh, float *fh, float *fuh, float *fvh, float *gh, float *guh, float *gvh, int nx, int ny) 
 {
-  unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
-  unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
-  
-  if (i >= nx + 2 || j >= ny + 2) // Bounds check
-  return;
+  unsigned int i = threadIdx.y + blockIdx.y * blockDim.y;
+  unsigned int j = threadIdx.x + blockIdx.x * blockDim.x;
   
   unsigned int id = ID_2D(i, j, nx);
 
   float g = 9.81f; // Gravitational acceleration
-  float h_safe = fmaxf(h[id], EPSILON); // Prevent division by zero
+  float h_safe = fmaxf(h[id], 1e-6f); // Prevent division by zero
   
-  // Compute fluxes safely
-  fh[id] = uh[id];
+  if (i < ny + 2 && j < nx + 2)
+  {
+    // Compute fluxes safely
+    fh[id] = uh[id];
 
-  fuh[id] = uh[id] * uh[id] / h_safe + 0.5f * g * h_safe * h_safe;
+    fuh[id] = uh[id] * uh[id] / h_safe + 0.5f * g * h_safe * h_safe;
 
-  fvh[id] = uh[id] * vh[id] / h_safe;
+    fvh[id] = uh[id] * vh[id] / h_safe;
 
-  gh[id] = vh[id];
+    gh[id] = vh[id];
 
-  guh[id] = uh[id] * vh[id] / h_safe;
+    guh[id] = uh[id] * vh[id] / h_safe;
 
-  gvh[id] = vh[id] * vh[id] / h_safe + 0.5f * g * h_safe * h_safe;
-  
+    gvh[id] = vh[id] * vh[id] / h_safe + 0.5f * g * h_safe * h_safe;
+  }
 }
 /******************************************************************************/
 
 __global__ void computeVariablesGPU(float *hm, float *uhm, float *vhm, float *fh, float *fuh, float *fvh, float *gh, float *guh, float *gvh, float *h, float *uh, float *vh, float lambda_x, float lambda_y, int nx, int ny)
 {
-  unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
-  unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
+  unsigned int i = threadIdx.y + blockIdx.y * blockDim.y;
+  unsigned int j = threadIdx.x + blockIdx.x * blockDim.x;
   unsigned int id, id_left, id_right, id_bottom, id_top;
 
   if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)  // Ensure proper bounds
@@ -224,8 +222,8 @@ __global__ void computeVariablesGPU(float *hm, float *uhm, float *vhm, float *fh
 
 __global__ void updateVariablesGPU(float *h, float *uh, float *vh, float *hm, float *uhm, float *vhm, int nx, int ny)
 {
-  unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
-  unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
+  unsigned int i = threadIdx.y + blockIdx.y * blockDim.y;
+  unsigned int j = threadIdx.x + blockIdx.x * blockDim.x;
   unsigned int id;
 
   if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)  // Ensure proper bounds
@@ -241,8 +239,8 @@ __global__ void updateVariablesGPU(float *h, float *uh, float *vh, float *hm, fl
 
 __global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int nx, int ny, int bc_type)
 {
-  unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
-  unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
+  unsigned int i = threadIdx.y + blockIdx.y * blockDim.y;
+  unsigned int j = threadIdx.x + blockIdx.x * blockDim.x;
 
   unsigned int id, id_ghost;
 
@@ -387,13 +385,13 @@ int main ( int argc, char *argv[] )
   float *x;
   float *y;
 
+  double dt;
   float dx;
   float dy;
-  double dt;
   float x_length;
 
   double time; 
-  float t_final;
+  double t_final;
   double time_elapsed_cf = 0.0;
   double time_elapsed_cv = 0.0;
   double time_elapsed_uv = 0.0;
@@ -618,7 +616,7 @@ int main ( int argc, char *argv[] )
   // Terminate.
   printf ( "\n" );
   printf ( "SHALLOW_WATER_2D:\n" );
-  printf ( "  Normal end of execution.\n" );
+  printf ( "Normal end of execution.\n" );
   printf ( "\n" );
 
   return 0;
