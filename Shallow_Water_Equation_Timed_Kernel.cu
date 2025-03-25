@@ -6,8 +6,7 @@
 # include <time.h>
 # include <cuda_runtime.h>
 
-#define ID_2D(i,j,nx) ((i)*(nx+2)+(j))
-
+# define ID_2D(i,j,nx) ((i)*(nx+2)+(j))
 
 //************************************************ UTILITIES ************************************************//
 
@@ -167,7 +166,7 @@ __global__ void computeFluxesGPU(float *h, float *uh, float *vh, float *fh, floa
   unsigned int i = threadIdx.y + blockIdx.y * blockDim.y;
   unsigned int j = threadIdx.x + blockIdx.x * blockDim.x;
   
-  unsigned int id = ID_2D(i, j, nx);
+  unsigned int id = ((i) * (nx + 2) + (j));
 
   float g = 9.81f; // Gravitational acceleration
   float h_safe = fmaxf(h[id], 1e-6f); // Prevent division by zero
@@ -198,12 +197,12 @@ __global__ void computeVariablesGPU(float *hm, float *uhm, float *vhm, float *fh
 
   if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)  // Ensure proper bounds
   {
-    id = ID_2D(i, j, nx);
+    id = ((i) * (nx + 2) + (j));
 
-    id_left   = ID_2D(i, j - 1, nx);
-    id_right  = ID_2D(i, j + 1, nx);
-    id_bottom = ID_2D(i - 1, j, nx);
-    id_top    = ID_2D(i + 1, j, nx);
+    id_left   = ((i) * (nx + 2) + (j - 1));
+    id_right  = ((i) * (nx + 2) + (j + 1));
+    id_bottom = ((i - 1) * (nx + 2) + (j));
+    id_top    = ((i + 1) * (nx + 2) + (j));
 
     hm[id] = 0.25 * (h[id_left] + h[id_right] + h[id_bottom] + h[id_top])
           - lambda_x * (fh[id_right] - fh[id_left])
@@ -228,7 +227,7 @@ __global__ void updateVariablesGPU(float *h, float *uh, float *vh, float *hm, fl
 
   if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)  // Ensure proper bounds
   {
-    id = ID_2D(i, j, nx);
+    id = ((i) * (nx + 2) + (j));
 
     h[id] = hm[id];
     uh[id] = uhm[id];
@@ -334,8 +333,8 @@ __global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int n
     // Left Boundary (j = 1) - Reflective
     if (j == 1 && i > 0 && i < ny + 1) 
     {
-      id = ID_2D(i, j, nx);
-      id_ghost = ID_2D(i, j - 1, nx);
+      id = ((i) * (nx + 2) + (j));
+      id_ghost = ((i) * (nx + 2) + (j - 1));
       h[id_ghost]  = h[id];
       uh[id_ghost] = -uh[id];  // Flip normal velocity
       vh[id_ghost] = vh[id];   // Keep tangential velocity
@@ -344,8 +343,8 @@ __global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int n
     // Right Boundary (j = nx) - Reflective
     if (j == nx && i > 0 && i < ny + 1) 
     {
-      id = ID_2D(i, j, nx);
-      id_ghost = ID_2D(i, j + 1, nx);
+      id = ((i) * (nx + 2) + (j));
+      id_ghost = ((i) * (nx + 2) + (j + 1));
       h[id_ghost]  = h[id];
       uh[id_ghost] = -uh[id];  // Flip normal velocity
       vh[id_ghost] = vh[id];   // Keep tangential velocity
@@ -354,8 +353,8 @@ __global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int n
     // Bottom Boundary (i = 1) - Reflective
     if (i == 1 && j > 0 && j < nx + 1) 
     {
-      id = ID_2D(i, j, nx);
-      id_ghost = ID_2D(i - 1, j, nx);
+      id = ((i) * (nx + 2) + (j));
+      id_ghost = ((i - 1) * (nx + 2) + (j));
       h[id_ghost]  = h[id];
       uh[id_ghost] = uh[id];   // Keep tangential velocity
       vh[id_ghost] = -vh[id];  // Flip normal velocity
@@ -364,8 +363,8 @@ __global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int n
     // Top Boundary (i = ny) - Reflective
     if (i == ny && j > 0 && j < nx + 1) 
     {
-      id = ID_2D(i, j, nx);
-      id_ghost = ID_2D(i + 1, j, nx);
+      id = ((i) * (nx + 2) + (j));
+      id_ghost = ((i + 1) * (nx + 2) + (j));
       h[id_ghost]  = h[id];
       uh[id_ghost] = uh[id];   // Keep tangential velocity
       vh[id_ghost] = -vh[id];  // Flip normal velocity
