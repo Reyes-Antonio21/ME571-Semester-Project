@@ -391,7 +391,6 @@ int main ( int argc, char *argv[] )
   double dt;
   double time; 
   double t_final;
-  double time_elapsed_dt = 0.0;
 
   // pointers to host, device memory 
   float *h, *d_h;
