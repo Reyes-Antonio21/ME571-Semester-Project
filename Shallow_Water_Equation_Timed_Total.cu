@@ -472,15 +472,14 @@ int main ( int argc, char *argv[] )
   CHECK(cudaMalloc((void **)&d_vhm, (nx+2)*(ny+2) * sizeof ( float )));
 
   // ************************************************ INITIAL CONDITIONS ************************************************ //
+
+  printf ( "\n" );
+  printf ( "SHALLOW_WATER_2D\n" );
+  printf ( "\n" );
   
   k = 1;
-
-  if (k < 11)
+  while (k < 11)
   {
-    printf ( "\n" );
-    printf ( "SHALLOW_WATER_2D\n" );
-    printf ( "\n" );
-
     // set initial time & step counter
     // set time to zero and step counter to zero
     time = 0.0f;

@@ -482,7 +482,7 @@ int main ( int argc, char *argv[] )
   printf ( "\n" );
   
   l = 1;
-  if (l < 11)
+  while (l < 11)
   {
     // set initial time & step counter
     // set time to zero and step counter to zero

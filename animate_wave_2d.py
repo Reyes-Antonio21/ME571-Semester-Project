@@ -64,7 +64,7 @@ ani = animation.FuncAnimation(fig, update, frames=len(file_list), interval=4, bl
 
 # Save the animation as an MP4 video
 mp4_filename = "water_height_animation.mp4"
-writer = animation.FFMpegWriter(fps=2, bitrate=7500, extra_args=["-r", "250"])
+writer = animation.FFMpegWriter(fps=250, bitrate=7500, extra_args=["-r", "250"])
 ani.save(mp4_filename, writer=writer)
 
 print(f"Animation saved as {mp4_filename}")
