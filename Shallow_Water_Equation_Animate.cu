@@ -6,7 +6,7 @@
 # include <time.h>
 # include <cuda_runtime.h>
 
-# define ID_2D(i,j,nx) ((i)*(nx+2)+(j))
+#define ID_2D(i,j,nx) ((i)*(nx+2)+(j))
 
 //************************************************ UTILITIES ************************************************//
 
@@ -377,12 +377,12 @@ __global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int n
 int main ( int argc, char *argv[] )
 { 
 // ************************************************** INSTANTIATION ************************************************* //
-  int k, l;
+  int k;
   int nx; 
   int ny; 
 
-  float *x;
-  float *y;
+  float *x, *d_x;
+  float *y, *d_y;
 
   float dx;
   float dy;
@@ -391,10 +391,6 @@ int main ( int argc, char *argv[] )
   double dt;
   double time; 
   double t_final;
-  double time_elapsed_cf = 0.0;
-  double time_elapsed_cv = 0.0;
-  double time_elapsed_uv = 0.0;
-  double time_elapsed_bc = 0.0;
 
   // pointers to host, device memory 
   float *h, *d_h;
@@ -458,6 +454,9 @@ int main ( int argc, char *argv[] )
 
   // **** Allocate memory on device ****
 
+  CHECK(cudaMalloc((void **)&d_x, nx * sizeof ( float )));
+  CHECK(cudaMalloc((void **)&d_y, ny * sizeof ( float )));
+
   // Allocate space (nx+2)((nx+2) long, to account for ghosts
   CHECK(cudaMalloc((void **)&d_h, (nx+2)*(ny+2) * sizeof ( float )));
   CHECK(cudaMalloc((void **)&d_uh, (nx+2)*(ny+2) * sizeof ( float )));
@@ -475,114 +474,69 @@ int main ( int argc, char *argv[] )
   CHECK(cudaMalloc((void **)&d_uhm, (nx+2)*(ny+2) * sizeof ( float )));
   CHECK(cudaMalloc((void **)&d_vhm, (nx+2)*(ny+2) * sizeof ( float )));
 
-  // *********************************************************************** INITIAL CONDITIONS ********************************************************************** //
+  // ************************************************ INITIAL CONDITIONS ************************************************ //
 
   printf ( "\n" );
   printf ( "SHALLOW_WATER_2D\n" );
   printf ( "\n" );
-  
-  l = 1;
-  while (l < 11)
+
+  // set initial time & step counter
+  // set time to zero and step counter to zero
+  time = 0.0f;
+  k = 0;
+
+  //Apply the initial conditions.
+  initial_conditions(nx, ny, dx, dy, x_length, x, y, h, uh, vh);
+
+  // Write initial condition to a file
+  writeResults(h, uh, vh, x, y, time, nx, ny);
+
+  // Move data to the device for calculations
+  CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
+  CHECK(cudaMemcpy(d_uh, uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
+  CHECK(cudaMemcpy(d_vh, vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
+
+  // ******************************************************************** COMPUTATION SECTION ******************************************************************** //
+
+  // start timer
+  clock_t time_start = clock();
+
+  while (time < t_final) // time loop begins
   {
-    // set initial time & step counter
-    // set time to zero and step counter to zero
-    time = 0.0f;
-    k = 0;
+    // Take a time step and increase step counter
+    time = time + dt;
+    k++;
 
-    initial_conditions(nx, ny, dx, dy, x_length, x, y, h, uh, vh);
+    // **** COMPUTE FLUXES ****
+    computeFluxesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, nx, ny);
+    
+    // **** COMPUTE VARIABLES ****
+    computeVariablesGPU<<<gridSize, blockSize>>>(d_hm, d_uhm, d_vhm, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, d_h, d_uh, d_vh, lambda_x, lambda_y, nx, ny);
+  
+    // **** UPDATE VARIABLES ****
+    updateVariablesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_hm, d_uhm, d_vhm, nx, ny);
 
-    // Move data to the device for calculations
+    // **** APPLY BOUNDARY CONDITIONS ****
+    applyBoundaryConditionsGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, nx, ny, 3);  
+
+    CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+    CHECK(cudaMemcpy(uh, d_uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+    CHECK(cudaMemcpy(vh, d_vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+
+    writeResults(h, uh, vh, x, y, time, nx, ny);
+
     CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
     CHECK(cudaMemcpy(d_uh, uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
     CHECK(cudaMemcpy(d_vh, vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
 
-    // ******************************************************************** COMPUTATION SECTION ******************************************************************** //
+  } // end time loop
 
-    // start timer
-    clock_t time_start = clock();
+  // stop timer
+  clock_t time_end = clock();
+  double time_elapsed = (double)(time_end - time_start) / CLOCKS_PER_SEC;
 
-    while (time < t_final) // time loop begins
-    {
-      // Take a time step and increase step counter
-      time = time + dt;
-      k++;
-
-      // *********************************************************************************************************************************************************** //
-
-      // Start timing compute fluxes calculations
-      clock_t time_start_cf = clock();
-
-      // **** COMPUTE FLUXES ****
-      computeFluxesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, nx, ny);
-
-      // Stop timing compute fluxes calculations
-      clock_t time_end_cf = clock();
-
-      // calculate time elapsed for compute fluxes
-      time_elapsed_cf += (double)(time_end_cf - time_start_cf) / CLOCKS_PER_SEC;
-
-      // *********************************************************************************************************************************************************** //
-
-      // Start timing compute variable calculations
-      clock_t time_start_cv = clock();
-      
-      // **** COMPUTE VARIABLES ****
-      computeVariablesGPU<<<gridSize, blockSize>>>(d_hm, d_uhm, d_vhm, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, d_h, d_uh, d_vh, lambda_x, lambda_y, nx, ny);
-    
-      // Stop timing compute variable calculations
-      clock_t time_end_cv = clock();
-
-      // calculate time elapsed for compute variables
-      time_elapsed_cv += (double)(time_end_cv - time_start_cv) / CLOCKS_PER_SEC;
-      // *********************************************************************************************************************************************************** //
-
-      // Start timing update variables calculations
-      clock_t time_start_uv = clock();
-
-      // **** UPDATE VARIABLES ****
-      updateVariablesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_hm, d_uhm, d_vhm, nx, ny);
-
-      // Stop timing update variables calculations
-      clock_t time_end_uv = clock();
-
-      // calculate time elapsed for update variables
-      time_elapsed_uv += (double)(time_end_uv - time_start_uv) / CLOCKS_PER_SEC;
-
-      // *********************************************************************************************************************************************************** //
-
-      // Start timing apply boundary condition calculations
-      clock_t time_start_bc = clock();
-
-      // **** APPLY BOUNDARY CONDITIONS ****
-      applyBoundaryConditionsGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, nx, ny, 3);  
-
-      // Stop timing apply boundary condition calculations
-      clock_t time_end_bc = clock();
-
-      // calculate time elapsed for apply boundary conditions
-      time_elapsed_bc += (double)(time_end_bc - time_start_bc) / CLOCKS_PER_SEC;
-
-      // *********************************************************************************************************************************************************** //
-
-    } // end time loop
-
-    // stop timer
-    clock_t time_end = clock();
-    double time_elapsed = (double)(time_end - time_start) / CLOCKS_PER_SEC;
-    double avg_time_elapsed_cf = time_elapsed_cf / (double) k;
-    double avg_time_elapsed_cv = time_elapsed_cv / (double) k;
-    double avg_time_elapsed_uv = time_elapsed_uv / (double) k;
-    double avg_time_elapsed_bc = time_elapsed_bc / (double) k;
-
-    // Print out the results
-    printf("Problem size: %d, time steps taken: %d, iteration: %d,  elapsed time: %f s\n", nx, k, l, time_elapsed);
-    printf("Average time elapsed for compute fluxes: %f s\n", avg_time_elapsed_cf);
-    printf("Average time elapsed for compute variables: %f s\n", avg_time_elapsed_cv);
-    printf("Average time elapsed for update variables: %f s\n", avg_time_elapsed_uv);
-    printf("Average time elapsed for apply boundary conditions: %f s\n", avg_time_elapsed_bc);
-
-    l++;
-  }
+  // Print out the results
+  printf("Problem size: %d, time steps taken: %d,  elapsed time: %f s\n", nx, k, time_elapsed);
 
   // ******************************************************************** DEALLOCATE MEMORY ******************************************************************** //
 
@@ -603,6 +557,9 @@ int main ( int argc, char *argv[] )
   CHECK(cudaFree(d_uhm));
   CHECK(cudaFree(d_vhm));
 
+  CHECK(cudaFree(d_x));
+  CHECK(cudaFree(d_y));
+
   // Free host memory.
   free ( h );
   free ( uh );
@@ -622,7 +579,7 @@ int main ( int argc, char *argv[] )
   // Terminate.
   printf ( "\n" );
   printf ( "SHALLOW_WATER_2D:\n" );
-  printf ( "Normal end of execution.\n" );
+  printf ( "  Normal end of execution.\n" );
   printf ( "\n" );
 
   return 0;

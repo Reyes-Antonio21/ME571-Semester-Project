@@ -496,9 +496,7 @@ int main ( int argc, char *argv[] )
   //CHECK(cudaMemcpy(x, d_x, nx * sizeof ( float ), cudaMemcpyDeviceToHost));
   //CHECK(cudaMemcpy(y, d_y, nx * sizeof ( float ), cudaMemcpyDeviceToHost));
 
-  // **** INITIAL CONDITIONS ****
   //Apply the initial conditions.
-  //printf("Before initial conditions\n");
   initial_conditions(nx, ny, dx, dy, x_length, x, y, h, uh, vh);
 
   // Write initial condition to a file
@@ -531,17 +529,6 @@ int main ( int argc, char *argv[] )
 
     // **** APPLY BOUNDARY CONDITIONS ****
     applyBoundaryConditionsGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, nx, ny, 3);  
-
-    CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-    CHECK(cudaMemcpy(uh, d_uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-    CHECK(cudaMemcpy(vh, d_vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-
-    writeResults(h, uh, vh, x, y, time, nx, ny);
-
-    CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
-    CHECK(cudaMemcpy(d_uh, uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
-    CHECK(cudaMemcpy(d_vh, vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
-
   } // end time loop
 
   // stop timer
@@ -554,11 +541,11 @@ int main ( int argc, char *argv[] )
   // ******************************************************************** POSTPROCESSING ******************************************************************** //
 
   // Move data back to the host
-  //CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-  //CHECK(cudaMemcpy(uh, d_uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-  //CHECK(cudaMemcpy(vh, d_vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+  CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+  CHECK(cudaMemcpy(uh, d_uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+  CHECK(cudaMemcpy(vh, d_vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
 
-  //writeResults(h, uh, vh, x, y, time, nx, ny);
+  writeResults(h, uh, vh, x, y, time, nx, ny);
 
   // ******************************************************************** DEALLOCATE MEMORY ******************************************************************** //
 
@@ -607,204 +594,3 @@ int main ( int argc, char *argv[] )
   return 0;
 }
 // ******************************************************************************************************************************************** //
-
-// ************************************************ SERIAL CODE ************************************************ //
-// **** COMPUTE FLUXES ****
-//Compute fluxes (including ghosts)
-/* 
-for ( i = 0; i < ny+2; i++ )
-  for ( j = 0; j < nx+2; j++)
-  {
-    id = ID_2D(i,j,nx);
-
-    fh[id] = uh[id]; //flux for the height equation: u*h
-    fuh[id] = uh[id] * uh[id] / h[id] + 0.5 * g * h[id] * h[id]; //flux for the momentum equation: u^2*h + 0.5*g*h^2
-    fvh[id] = uh[id] * vh[id] / h[id]; //flux for the momentum equation: u*v**h 
-    gh[id] = vh[id]; //flux for the height equation: v*h
-    guh[id] = uh[id] * vh[id] / h[id]; //flux for the momentum equation: u*v**h 
-    gvh[id] = vh[id] * vh[id] / h[id] + 0.5 * g * h[id] * h[id]; //flux for the momentum equation: v^2*h + 0.5*g*h^2
-  }
-
-// **** COMPUTE VARIABLES ****
-//Compute updated variables
-for ( i = 1; i < ny + 1; i++ )
-  for ( j = 1; j < nx + 1; j++ )
-  {
-    id=ID_2D(i,j,nx);
-    id_left=ID_2D(i,j-1,nx);
-    id_right=ID_2D(i,j+1,nx);
-    id_bottom=ID_2D(i-1,j,nx);
-    id_top=ID_2D(i+1,j,nx);
-
-    hm[id] = 0.25*(h[id_left]+h[id_right]+h[id_bottom]+h[id_top]) 
-      - lambda_x * ( fh[id_right] - fh[id_left] ) 
-      - lambda_y * ( gh[id_top] - gh[id_bottom] );
-
-    uhm[id] = 0.25*(uh[id_left]+uh[id_right]+uh[id_bottom]+uh[id_top]) 
-      - lambda_x * ( fuh[id_right] - fuh[id_left] ) 
-      - lambda_y * ( guh[id_top] - guh[id_bottom] );
-
-    vhm[id] = 0.25*(vh[id_left]+vh[id_right]+vh[id_bottom]+vh[id_top]) 
-      - lambda_x * ( fvh[id_right] - fvh[id_left] ) 
-      - lambda_y * ( gvh[id_top] - gvh[id_bottom] );
-  }
-
-// **** UPDATE VARIABLES ****
-//update interior state variables
-for (i = 1; i < ny+1; i++)
-  for (j = 1; j < nx+1; j++)
-  {
-  id=ID_2D(i,j,nx);
-  h[id] = hm[id];
-  uh[id] = uhm[id];
-  vh[id] = vhm[id];
-  }
-
-// **** APPLY BOUNDARY CONDITIONS ****
-//Update the ghosts (boundary conditions)
-
-//left
-j = 1;
-for(i = 1; i < ny + 1; i++)
-  {
-
-    id = ID_2D(i, j, nx);
-
-    id_left = ID_2D(i, j - 1, nx);
-
-    h[id_left]  = h[id];
-
-    uh[id_left] = - uh[id];
-
-    vh[id_left] = vh[id];
-
-  }
-
-//right
-j = nx;
-for(i = 1; i < ny + 1; i++)
-  {
-
-    id = ID_2D(i, j, nx);
-
-    id_right = ID_2D(i, j + 1, nx);
-
-    h[id_right]  = h[id];
-
-    uh[id_right] = - uh[id];
-
-    vh[id_right] = vh[id];
-
-  }
-
-//bottom
-i = 1;
-for(j = 1; j < nx + 1; j++)
-  {
-
-    id = ID_2D(i, j, nx);
-
-    id_bottom = ID_2D(i - 1, j, nx);
-
-    h[id_bottom]  = h[id];
-
-    uh[id_bottom] = uh[id];
-
-    vh[id_bottom] = - vh[id];
-
-  }
-
-//top
-i = ny;
-for(j = 1; j < nx + 1; j++)
-  {
-
-    id = ID_2D(i, j, nx);
-
-    id_top = ID_2D(i + 1, j, nx);
-
-    h[id_top]  = h[id];
-
-    uh[id_top] = uh[id];
-
-    vh[id_top] = - vh[id];
-
-  }
-*/
-
-/*
-for ( i = 1; i < nx+1; i++ )
-  {
-    x[i-1] = -x_length/2+dx/2+(i-1)*dx;
-    y[i-1] = -x_length/2+dy/2+(i-1)*dy;
-  }
-
-for ( i = 1; i < nx+1; i++ )
-  for( j = 1; j < ny+1; j++)
-  {
-    float xx = x[j-1];
-    float yy = y[i-1];
-    id=ID_2D(i,j,nx);
-    h[id] = 1.0 + 0.4*exp ( -5 * ( xx*xx + yy*yy) );
-  } 
-for ( i = 1; i < nx+1; i++ )
-  for( j = 1; j < ny+1; j++)
-  {
-    id=ID_2D(i,j,nx);
-    uh[id] = 0.0;
-    vh[id] = 0.0;
-  }
-    
-  i = 0
-  for( j = 1; j < nx+1; j++)
-  {
-    id=ID_2D(i,j,nx);
-    id1=ID_2D(i+1,j,nx);
-
-    h[id] = h[id1];
-    uh[id] = 0.0;
-    vh[id] = 0.0;
-  }
-
-  i=nx+1;
-  for( j = 1; j < nx+1; j++)
-  {
-    id=ID_2D(i,j,nx);
-    id1=ID_2D(i-1,j,nx);
-
-    h[id] = h[id1];
-    uh[id] = 0.0;
-    vh[id] = 0.0;
-  } 
-      
-  j=0;
-  for( i = 1; i < ny+1; i++)
-  {
-    id=ID_2D(i,j,nx);
-    id1=ID_2D(i,j+1,nx);
-
-    h[id] = h[id1];
-    uh[id] = 0.0;
-    vh[id] = 0.0;
-  } 
-  
-  j=nx+1;
-  for( i = 1; i < ny+1; i++)
-  {
-    id=ID_2D(i,j,nx);
-    id1=ID_2D(i,j-1,nx);
-
-    h[id] = h[id1];
-    uh[id] = 0.0;
-    vh[id] = 0.0;
-  }
-
-*/
-
-/*
-//Move data to the device for all GPU calculations
-  CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
-  CHECK(cudaMemcpy(d_uh, uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
-  CHECK(cudaMemcpy(d_vh, vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
-
-*/

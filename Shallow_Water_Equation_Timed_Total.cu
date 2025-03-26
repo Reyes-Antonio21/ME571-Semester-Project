@@ -486,15 +486,15 @@ int main ( int argc, char *argv[] )
 
     initial_conditions(nx, ny, dx, dy, x_length, x, y, h, uh, vh);
 
-    clock_t time_start_dt = clock();
+    clock_t time_start_dthd = clock();
 
     // Move data to the device for calculations
     CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
     CHECK(cudaMemcpy(d_uh, uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
     CHECK(cudaMemcpy(d_vh, vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
 
-    clock_t time_end_dt = clock();
-    double time_elapsed_dt = (double)(time_end_dt - time_start_dt) / CLOCKS_PER_SEC;
+    clock_t time_end_dthd = clock();
+    double time_elapsed_dthd = (double)(time_end_dthd - time_start_dthd) / CLOCKS_PER_SEC;
 
     // ******************************************************************** COMPUTATION SECTION ******************************************************************** //
 
@@ -526,7 +526,7 @@ int main ( int argc, char *argv[] )
   
     // Print out the results
     printf("Problem size: %d, iteration: %d,  elapsed time: %f s\n", nx, k, time_elapsed);
-    printf("Time elapsed for host-device data transfer: %f s\n", time_elapsed_dt);
+    printf("Time elapsed for host-device data transfer: %f s\n", time_elapsed_dthd);
 
     k++;
   }  
