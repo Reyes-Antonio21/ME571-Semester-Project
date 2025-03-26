@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from matplotlib import cm
 import scipy.interpolate
-from mpl_toolkits.mplot3d import Axes3D
 import glob
 
 # Function to load data from a given file
@@ -27,8 +26,8 @@ nx = int(math.sqrt(len(x_cords)))
 xi, yi = np.linspace(min(x_cords), max(x_cords), nx), np.linspace(min(y_cords), max(y_cords), nx)
 xi, yi = np.meshgrid(xi, yi)
 
-# Interpolate; there's also method='cubic' for 2-D data such as here
-water_height_initial = scipy.interpolate.griddata((x_cords, y_cords), water_height, (xi, yi), method ='linear')
+# Interpolate initial water height data
+water_height_initial = scipy.interpolate.griddata((x_cords, y_cords), water_height, (xi, yi), method='linear')
 
 # Set up the figure and 3D axis
 fig = plt.figure()
@@ -48,26 +47,27 @@ ax.set_title("Water Height Animation")
 # Update function for animation
 def update(frame):
     x_cords, y_cords, water_height = load_data(file_list[frame])
-    nx = int(math.sqrt(len(x_cords)))
-    water_height_n = scipy.interpolate.griddata((x_cords, y_cords), water_height, (xi, yi), method = 'linear')
+    water_height_n = scipy.interpolate.griddata((x_cords, y_cords), water_height, (xi, yi), method='linear')
     
-    ax.cla()
-    ax.plot_surface(xi, yi, water_height_n, rstride = 1, cstride = 1, cmap = cm.coolwarm, linewidth = 0, alpha = 0.75)
+    ax.cla()  # Clear previous frame
+    ax.plot_surface(xi, yi, water_height_n, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, alpha=0.75)
     ax.set_xlabel("X Coordinate")
     ax.set_ylabel("Y Coordinate")
     ax.set_zlabel("Water Height")
-    ax.set_title(f"Water Height at Time Step: {frame * 0.008:.3f} sec")
+    ax.set_zlim(0.75, 1.25)
+    ax.set_title(f"Water Height at Time Step: {frame * 0.004:.3f} sec")
     
     return ax,
 
 # Create the animation
-ani = animation.FuncAnimation(fig, update, frames=len(file_list), interval=100, blit=False)
+ani = animation.FuncAnimation(fig, update, frames=len(file_list), interval=4, blit=False)  # interval=4ms (~250 FPS)
 
-# Save the animation as a .gif
-gif_filename = "water_height_animation.gif"
-ani.save(gif_filename, writer=animation.PillowWriter(fps = 125))
+# Save the animation as an MP4 video
+mp4_filename = "water_height_animation.mp4"
+writer = animation.FFMpegWriter(fps=250, bitrate=7500, extra_args=["-r", "250"])
+ani.save(mp4_filename, writer=writer)
 
-print(f"Animation saved as {gif_filename}")
+print(f"Animation saved as {mp4_filename}")
 
 # Show the animation
 plt.show()

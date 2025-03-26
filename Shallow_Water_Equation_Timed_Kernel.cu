@@ -81,7 +81,7 @@ void writeResults(float h[], float uh[], float vh[], float x[], float y[], float
 }
 /******************************************************************************/
 
-void initial_conditions (int nx, int ny, float dx, float dy,  float x_length, float x[],float y[], float h[], float uh[] ,float vh[])
+void initial_conditions(int nx, int ny, float dx, float dy,  float x_length, float x[],float y[], float h[], float uh[] ,float vh[])
 {
   int i,j, id, id1;
 
