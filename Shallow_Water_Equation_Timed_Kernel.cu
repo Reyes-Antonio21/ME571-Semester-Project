@@ -506,7 +506,6 @@ int main ( int argc, char *argv[] )
       // Take a time step and increase step counter
       time = time + dt;
       k++;
-      l++;
 
       // ************************************************************************************** //
 
@@ -581,6 +580,8 @@ int main ( int argc, char *argv[] )
     printf("Average time elapsed for compute variables: %f s\n", avg_time_elapsed_cv);
     printf("Average time elapsed for update variables: %f s\n", avg_time_elapsed_uv);
     printf("Average time elapsed for apply boundary conditions: %f s\n", avg_time_elapsed_bc);
+
+    l++;
   }
 
   // ******************************************************************** DEALLOCATE MEMORY ******************************************************************** //

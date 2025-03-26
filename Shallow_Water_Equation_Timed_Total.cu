@@ -506,7 +506,6 @@ int main ( int argc, char *argv[] )
     {
       // Take a time step and increase step counter
       time = time + dt;
-      k++;
 
       // **** COMPUTE FLUXES ****
       computeFluxesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, nx, ny);
@@ -529,6 +528,8 @@ int main ( int argc, char *argv[] )
     // Print out the results
     printf("Problem size: %d, iteration: %d,  elapsed time: %f s\n", nx, k, time_elapsed);
     printf("Time elapsed for host-device data transfer: %f s\n", time_elapsed_dt);
+
+    k++;
   }  
 
   // ******************************************************************** DEALLOCATE MEMORY ******************************************************************** //
