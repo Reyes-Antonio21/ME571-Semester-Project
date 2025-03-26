@@ -3,8 +3,8 @@ CFLAGS = -Wall -lm
 MPICC = mpicc
 CUDACC = nvcc
 
-swep_2d: Shallow_Water_Equation_Parallelized.cu
-	$(CUDACC) -o swep_2d Shallow_Water_Equation_Parallelized.cu
+swep_2d_tp: Shallow_Water_Equation_Parallelized.cu
+	$(CUDACC) -o swep_2d_tp Shallow_Water_Equation_Parallelized.cu
 
 swep_2d_tk: Shallow_Water_Equation_Timed_Kernel.cu
 	$(CUDACC) -o swep_2d_tk Shallow_Water_Equation_Timed_Kernel.cu
@@ -19,7 +19,7 @@ swep_2d_ex: Shallow_Water_Equation_Experimental.cu
 	$(CUDACC) -o swep_2d_ex Shallow_Water_Equation_Experimental.cu	
 
 clean:
-	rm -f swep_2d
+	rm -f swep_2d_tp
 	rm -f swep_2d_tk
 	rm -f swep_2d_an
 	rm -f swep_2d_tt
