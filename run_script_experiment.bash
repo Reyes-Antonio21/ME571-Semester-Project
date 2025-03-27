@@ -7,7 +7,7 @@
 #SBATCH -t 04:30:00
 #SBATCH --gres=gpu:1
 
-./swep_2d_ex 200 0.004 10 5
+./swep_2d_ex 200 0.004 10 0.5
 
 status=$?
 if [ $status -ne 0 ]; then
