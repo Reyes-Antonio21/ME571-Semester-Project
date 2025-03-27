@@ -85,14 +85,15 @@ void initial_conditions(int nx, int ny, float dx, float dy,  float x_length, flo
 {
   int i,j, id, id1;
 
-  for ( i = 1; i < nx+1; i++ )
+  for ( i = 1; i < ny + 2; i++ )
+    for (j = 1; j < nx + 2; j++)
     {
-      x[i-1] = -x_length/2+dx/2+(i-1)*dx;
+      x[j-1] = -x_length/2+dx/2+(j-1)*dx;
       y[i-1] = -x_length/2+dy/2+(i-1)*dy;
     }
 
-  for ( i = 1; i < nx+1; i++ )
-    for( j = 1; j < ny+1; j++)
+  for ( i = 1; i < ny+1; i++ )
+    for( j = 1; j < nx+1; j++)
     {
       float xx = x[j-1];
       float yy = y[i-1];
@@ -100,8 +101,8 @@ void initial_conditions(int nx, int ny, float dx, float dy,  float x_length, flo
       h[id] = 1.0 + 0.4*exp ( -15 * ( xx*xx + yy*yy) );
     }
   
-  for ( i = 1; i < nx+1; i++ )
-    for( j = 1; j < ny+1; j++)
+  for ( i = 1; i < ny+1; i++ )
+    for( j = 1; j < nx+1; j++)
     {
       id=ID_2D(i,j,nx);
       uh[id] = 0.0;
