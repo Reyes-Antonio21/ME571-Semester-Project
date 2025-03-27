@@ -97,7 +97,7 @@ void initial_conditions(int nx, int ny, float dx, float dy,  float x_length, flo
       float xx = x[j-1];
       float yy = y[i-1];
       id=ID_2D(i,j,nx);
-      h[id] = 1.0 + 0.4*exp ( -40 * ( xx*xx + yy*yy) );
+      h[id] = 1.0 + 0.4*exp ( -15 * ( xx*xx + yy*yy) );
     }
   
   for ( i = 1; i < nx+1; i++ )
