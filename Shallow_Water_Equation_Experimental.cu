@@ -168,18 +168,18 @@ __global__ void initialConditionsGPU( int nx, int ny, float dx, float dy,  float
   unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
   unsigned int id, id_boundary;
 
-  if (i > 0 && i < ny + 1 & j > 0 && j < nx + 1)
+  if (i > 0 && i < ny + 2 & j > 0 && j < nx + 2)
   {
-    x[j] = -x_length / 2 + dx / 2 + (j) * dx;
-    y[i] = -x_length / 2 + dy / 2 + (i) * dy; 
+    x[j - 1] = -x_length / 2 + dx / 2 + (j - 1) * dx;
+    y[i - 1] = -x_length / 2 + dy / 2 + (i - 1) * dy; 
   }
 
   if ( i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
   {
     id = ((i) * (nx + 2) + (j));
 
-    float xx = x[j];
-    float yy = y[i];
+    float xx = x[j - 1];
+    float yy = y[i - 1];
 
     h[id] = 1.0 + 0.4 * exp( -15 * ( xx * xx + yy * yy) );
   }
