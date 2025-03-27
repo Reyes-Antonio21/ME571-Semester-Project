@@ -564,7 +564,7 @@ int main ( int argc, char *argv[] )
   time = 0.0f;
   k = 0;
 
-  Apply the initial conditions.
+  // Apply the initial conditions.
   initialConditionsGPU<<<gridSize, blockSize>>>(nx, ny, dx, dy, x_length, d_x, d_y, d_h, d_uh, d_vh);
 
   // Move data to the Host for initial conditions file write
@@ -575,8 +575,8 @@ int main ( int argc, char *argv[] )
   CHECK(cudaMemcpy(x, d_x, nx * sizeof ( float ), cudaMemcpyDeviceToHost));
   CHECK(cudaMemcpy(y, d_y, nx * sizeof ( float ), cudaMemcpyDeviceToHost));
 
-  //Apply the initial conditions.
-  //intial_conditions(nx, ny, dx, dy, x_length, x, y, h, uh, vh);
+  // Apply the initial conditions.
+  // intial_conditions(nx, ny, dx, dy, x_length, x, y, h, uh, vh);
 
   // Write initial condition to a file
   writeResults(h, uh, vh, x, y, time, nx, ny);
