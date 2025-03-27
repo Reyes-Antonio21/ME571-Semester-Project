@@ -38,7 +38,7 @@ void getArgs(int *nx, double *dt, float *x_length, double *t_final, int argc, ch
     *t_final = atof ( argv[4] );
   }
 }
-/******************************************************************************/
+// ****************************************************************************** //
 
 void writeResults(float h[], float uh[], float vh[], float x[], float y[], float time, int nx, int ny)
 {
@@ -79,7 +79,7 @@ void writeResults(float h[], float uh[], float vh[], float x[], float y[], float
 
   return;
 }
-/******************************************************************************/
+// ****************************************************************************** //
 
 void initial_conditions(int nx, int ny, float dx, float dy,  float x_length, float x[],float y[], float h[], float uh[] ,float vh[])
 {
@@ -160,7 +160,85 @@ void initial_conditions(int nx, int ny, float dx, float dy,  float x_length, flo
 
   return;
 }
-/******************************************************************************/
+// ****************************************************************************** //
+
+__global__ void initialConditionsGPU( int nx, int ny, float dx, float dy,  float x_length, float x[],float y[], float h[], float uh[] ,float vh[])
+{
+  unsigned int i = threadIdx.x + blockIdx.x * blockDim.x;
+  unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
+  unsigned int id, id_boundary;
+
+  if (i > 0 && i < ny + 2 & j > 0 && j < nx + 2)
+  {
+    x[j - 1] = -x_length / 2 + dx / 2 + (j - 1) * dx;
+    y[i - 1] = -x_length / 2 + dy / 2 + (i - 1) * dy; 
+  }
+
+  if ( i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
+  {
+    id = ((i) * (nx + 2) + (j));
+
+    float xx = x[j - 1];
+    float yy = y[i - 1];
+
+    h[id] = 1.0 + 0.4 * exp( -15 * ( xx * xx + yy * yy) );
+  }
+  
+  if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
+  {
+    id = ((i) * (nx + 2) + (j));
+
+    uh[id] = 0.0;
+    vh[id] = 0.0;
+  }
+
+  //set boundaries
+  //bottom
+  if (i == 0 && j > 0 && j < nx + 1)
+  {
+    id = ((i) * (nx + 2) + (j));
+    id_boundary = ((i + 1) * (nx + 2) + (j));
+
+    h[id] = h[id_boundary];
+    uh[id] = 0.0;
+    vh[id] = 0.0;
+  }
+
+  //top
+  if (i == ny + 1 && j > 0 && j < nx + 1)
+  {
+    id = ((i) * (nx + 2) + (j));
+    id_boundary = ((i - 1) * (nx + 2) + (j));
+
+    h[id] = h[id_boundary];
+    uh[id] = 0.0;
+    vh[id] = 0.0;
+  }
+
+  //left
+  if ( j == 0 && i > 0 && i < ny + 1)
+  {
+    id = ((i) * (nx + 2) + (j));
+    id_boundary = ((i) * (nx + 2) + (j + 1));
+
+    h[id] = h[id_boundary];
+    uh[id] = 0.0;
+    vh[id] = 0.0;
+  }
+
+  //right
+  if (j == nx + 1 && i > 0 && i < ny + 1)
+  {
+    id = ((i) * (nx + 2) + (j));
+    id_boundary = ((i) * (nx + 2) + (j - 1));
+
+    h[id] = h[id_boundary];
+    uh[id] = 0.0;
+    vh[id] = 0.0;
+  }
+  return;
+}
+// ****************************************************************************** //
 
 __global__ void computeFluxesGPU(float *h, float *uh, float *vh, float *fh, float *fuh, float *fvh, float *gh, float *guh, float *gvh, int nx, int ny) 
 {
@@ -188,7 +266,7 @@ __global__ void computeFluxesGPU(float *h, float *uh, float *vh, float *fh, floa
     gvh[id] = vh[id] * vh[id] / h_safe + 0.5f * g * h_safe * h_safe;
   }
 }
-/******************************************************************************/
+// ****************************************************************************** //
 
 __global__ void computeVariablesGPU(float *hm, float *uhm, float *vhm, float *fh, float *fuh, float *fvh, float *gh, float *guh, float *gvh, float *h, float *uh, float *vh, float lambda_x, float lambda_y, int nx, int ny)
 {
@@ -218,7 +296,7 @@ __global__ void computeVariablesGPU(float *hm, float *uhm, float *vhm, float *fh
             - lambda_y * (gvh[id_top] - gvh[id_bottom]);
   }
 }
-/******************************************************************************/
+// ****************************************************************************** //
 
 __global__ void updateVariablesGPU(float *h, float *uh, float *vh, float *hm, float *uhm, float *vhm, int nx, int ny)
 {
@@ -235,7 +313,7 @@ __global__ void updateVariablesGPU(float *h, float *uh, float *vh, float *hm, fl
     vh[id] = vhm[id];
   }
 }
-/******************************************************************************/
+// ****************************************************************************** //
 
 __global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int nx, int ny, int bc_type)
 {
@@ -486,19 +564,19 @@ int main ( int argc, char *argv[] )
   time = 0.0f;
   k = 0;
 
-  // Apply the initial conditions.
-  //initialConditionsGPU<<<gridSize, blockSize>>>(nx, ny, dx, dy, x_length, d_x, d_y, d_h, d_uh, d_vh);
+  Apply the initial conditions.
+  initialConditionsGPU<<<gridSize, blockSize>>>(nx, ny, dx, dy, x_length, d_x, d_y, d_h, d_uh, d_vh);
 
   // Move data to the Host for initial conditions file write
-  //CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-  //CHECK(cudaMemcpy(uh, d_uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-  //CHECK(cudaMemcpy(vh, d_vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+  CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+  CHECK(cudaMemcpy(uh, d_uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+  CHECK(cudaMemcpy(vh, d_vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
 
-  //CHECK(cudaMemcpy(x, d_x, nx * sizeof ( float ), cudaMemcpyDeviceToHost));
-  //CHECK(cudaMemcpy(y, d_y, nx * sizeof ( float ), cudaMemcpyDeviceToHost));
+  CHECK(cudaMemcpy(x, d_x, nx * sizeof ( float ), cudaMemcpyDeviceToHost));
+  CHECK(cudaMemcpy(y, d_y, nx * sizeof ( float ), cudaMemcpyDeviceToHost));
 
   //Apply the initial conditions.
-  initial_conditions(nx, ny, dx, dy, x_length, x, y, h, uh, vh);
+  //intial_conditions(nx, ny, dx, dy, x_length, x, y, h, uh, vh);
 
   // Write initial condition to a file
   writeResults(h, uh, vh, x, y, time, nx, ny);

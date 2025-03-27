@@ -89,25 +89,25 @@ __global__ void initialConditionsGPU( int nx, int ny, float dx, float dy,  float
   unsigned int j = threadIdx.y + blockIdx.y * blockDim.y;
   unsigned int id, id_boundary;
 
-  if (i > 0 && i < ny + 1)
+  if (i > 0 && i < ny + 2 & j > 0 && j < nx + 2)
   {
-    x[i - 1] = -x_length / 2 + dx / 2 + (i - 1) * dx;
+    x[j - 1] = -x_length / 2 + dx / 2 + (j - 1) * dx;
     y[i - 1] = -x_length / 2 + dy / 2 + (i - 1) * dy; 
   }
 
   if ( i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
   {
-    id = ID_2D(i, j, nx);
+    id = ((i) * (nx + 2) + (j));
 
     float xx = x[j - 1];
     float yy = y[i - 1];
 
-    h[id] = 1.0 + 0.4 * exp( -5 * ( xx * xx + yy * yy) );
+    h[id] = 1.0 + 0.4 * exp( -15 * ( xx * xx + yy * yy) );
   }
   
   if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
   {
-    id = ID_2D(i, j, nx);
+    id = ((i) * (nx + 2) + (j));
 
     uh[id] = 0.0;
     vh[id] = 0.0;
@@ -117,8 +117,8 @@ __global__ void initialConditionsGPU( int nx, int ny, float dx, float dy,  float
   //bottom
   if (i == 0 && j > 0 && j < nx + 1)
   {
-    id = ID_2D(i, j, nx);
-    id_boundary = ID_2D(i + 1, j, nx);
+    id = ((i) * (nx + 2) + (j));
+    id_boundary = ((i + 1) * (nx + 2) + (j));
 
     h[id] = h[id_boundary];
     uh[id] = 0.0;
@@ -128,8 +128,8 @@ __global__ void initialConditionsGPU( int nx, int ny, float dx, float dy,  float
   //top
   if (i == ny + 1 && j > 0 && j < nx + 1)
   {
-    id = ID_2D(i, j, nx);
-    id_boundary = ID_2D(i - 1, j, nx);
+    id = ((i) * (nx + 2) + (j));
+    id_boundary = ((i - 1) * (nx + 2) + (j));
 
     h[id] = h[id_boundary];
     uh[id] = 0.0;
@@ -139,8 +139,8 @@ __global__ void initialConditionsGPU( int nx, int ny, float dx, float dy,  float
   //left
   if ( j == 0 && i > 0 && i < ny + 1)
   {
-    id = ID_2D(i, j, nx);
-    id_boundary = ID_2D(i, j + 1, nx);
+    id = ((i) * (nx + 2) + (j));
+    id_boundary = ((i) * (nx + 2) + (j + 1));
 
     h[id] = h[id_boundary];
     uh[id] = 0.0;
@@ -150,8 +150,8 @@ __global__ void initialConditionsGPU( int nx, int ny, float dx, float dy,  float
   //right
   if (j == nx + 1 && i > 0 && i < ny + 1)
   {
-    id = ID_2D(i, j, nx);
-    id_boundary = ID_2D(i, j - 1, nx);
+    id = ((i) * (nx + 2) + (j));
+    id_boundary = ((i) * (nx + 2) + (j - 1));
 
     h[id] = h[id_boundary];
     uh[id] = 0.0;
