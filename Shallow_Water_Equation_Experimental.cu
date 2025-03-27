@@ -174,7 +174,7 @@ __global__ void initialConditionsGPU( int nx, int ny, float dx, float dy,  float
     y[i - 1] = -x_length / 2 + dy / 2 + (i - 1) * dy; 
   }
 
-  if ( i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
+  if ( i > 0 && i < ny + 2 && j > 0 && j < nx + 2)
   {
     id = ((i) * (nx + 2) + (j));
 
@@ -184,7 +184,7 @@ __global__ void initialConditionsGPU( int nx, int ny, float dx, float dy,  float
     h[id] = 1.0 + 0.4 * exp( -15 * ( xx * xx + yy * yy) );
   }
   
-  if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
+  if (i > 0 && i < ny + 2 && j > 0 && j < nx + 2)
   {
     id = ((i) * (nx + 2) + (j));
 
