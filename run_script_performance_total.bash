@@ -4,7 +4,7 @@
 #SBATCH -c 1
 #SBATCH -N 1
 #SBATCH -p gpu
-#SBATCH -t 04:30:00
+#SBATCH -t 08:00:00
 #SBATCH --gres=gpu:1
 
 ./swep_2d_tt 200 0.004 10 0.5
