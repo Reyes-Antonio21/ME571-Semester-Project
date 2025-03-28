@@ -164,13 +164,10 @@ void initialConditions(int nx, int ny, float dx, float dy,  float x_length, floa
 
 void generateDrops( int nx, int ny, float x[], float y[], float h[])
 {
-  int i, j;
+  int i, j, id;
 
   unsigned int randNumber;
   unsigned int timeSeed;
-
-  // simplify 2D array into 1D array
-  unsigned int id = ID_2D(i,j,nx);
 
   // Determine a section's grid size
   // This value will be used to section off the nx x nx grid into 16 sections
@@ -189,6 +186,8 @@ void generateDrops( int nx, int ny, float x[], float y[], float h[])
   for (i = sectionStart + 1; i < sectionEnd; i++)
     for (j = sectionStart + 1; j < sectionEnd; j++) 
     {
+      id = ID_2D(i,j,nx);
+      
       float xx = x[j - 1];
       float yy = y[i - 1];
 
@@ -559,6 +558,18 @@ int main ( int argc, char *argv[] )
     programRuntime = programRuntime + dt;
     k++;
 
+    // **** COMPUTE FLUXES ****
+    computeFluxesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, nx, ny);
+    
+    // **** COMPUTE VARIABLES ****
+    computeVariablesGPU<<<gridSize, blockSize>>>(d_hm, d_uhm, d_vhm, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, d_h, d_uh, d_vh, lambda_x, lambda_y, nx, ny);
+  
+    // **** UPDATE VARIABLES ****
+    updateVariablesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_hm, d_uhm, d_vhm, nx, ny);
+
+    // **** APPLY BOUNDARY CONDITIONS ****
+    applyBoundaryConditionsGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, nx, ny, 3);
+
     // Interval Check
     clock_t now = clock();
 
@@ -579,21 +590,11 @@ int main ( int argc, char *argv[] )
 
       if (randNumber == 0 || 2 || 4 || 6 || 8)
       {
-        generateDrops(nx, ny, d_x, d_y, d_h);
+        generateDrops(nx, ny, x, y, h);
       }
     }
 
-    // **** COMPUTE FLUXES ****
-    computeFluxesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, nx, ny);
-    
-    // **** COMPUTE VARIABLES ****
-    computeVariablesGPU<<<gridSize, blockSize>>>(d_hm, d_uhm, d_vhm, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, d_h, d_uh, d_vh, lambda_x, lambda_y, nx, ny);
-  
-    // **** UPDATE VARIABLES ****
-    updateVariablesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_hm, d_uhm, d_vhm, nx, ny);
-
-    // **** APPLY BOUNDARY CONDITIONS ****
-    applyBoundaryConditionsGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, nx, ny, 3);
+    CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
 
   } // end time loop
 
