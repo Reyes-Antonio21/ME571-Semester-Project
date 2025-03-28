@@ -540,9 +540,6 @@ int main ( int argc, char *argv[] )
   CHECK(cudaMemcpy(d_uh, uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
   CHECK(cudaMemcpy(d_vh, vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
 
-  CHECK(cudaMemcpy(d_x, x, nx * sizeof ( float ), cudaMemcpyHostToDevice));
-  CHECK(cudaMemcpy(d_y, y, nx * sizeof ( float ), cudaMemcpyHostToDevice));
-
   // ******************************************************************** COMPUTATION SECTION ******************************************************************** //
 
   // start timer
@@ -569,6 +566,8 @@ int main ( int argc, char *argv[] )
 
     // **** APPLY BOUNDARY CONDITIONS ****
     applyBoundaryConditionsGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, nx, ny, 3);
+
+    CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
 
     // Interval Check
     clock_t now = clock();
