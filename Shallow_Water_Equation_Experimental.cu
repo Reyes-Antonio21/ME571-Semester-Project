@@ -162,10 +162,10 @@ void initialConditions(int nx, int ny, float dx, float dy,  float x_length, floa
 }
 // ****************************************************************************** //
 
-__global__ void generateDropsGPU( int nx, int ny, float x[], float y[], float h[])
+void generateDrops( int nx, int ny, float x[], float y[], float h[])
 {
-  unsigned int i = threadIdx.y + blockIdx.y * blockDim.y;
-  unsigned int j = threadIdx.x + blockIdx.x * blockDim.x;
+  int i;
+  int j;
 
   unsigned int randNumber;
   unsigned int timeSeed;
@@ -187,13 +187,14 @@ __global__ void generateDropsGPU( int nx, int ny, float x[], float y[], float h[
   unsigned int sectionStart = randNumber * sectionSquareLength;
   unsigned int sectionEnd = (randNumber + 1) * sectionSquareLength;
 
-  if (i > sectionStart && i < sectionEnd + 1 && j > sectionStart && j < sectionEnd + 1) 
-  {
-    float xx = x[j - 1];
-    float yy = y[i - 1];
+  for (i > sectionStart; i < sectionEnd; i++)
+    for (j > sectionStart; j < sectionEnd; j++) 
+    {
+      float xx = x[j - 1];
+      float yy = y[i - 1];
 
-    h[id] = 1.0f + 0.4f * expf(-15 * ( xx*xx + yy*yy));
-  }
+      h[id] = 1.0f + 0.4f * expf(-15 * ( xx*xx + yy*yy));
+    }
 }
 // ****************************************************************************** //
 
@@ -579,7 +580,7 @@ int main ( int argc, char *argv[] )
 
       if (randNumber == 0 || 2 || 4 || 6 || 8)
       {
-        generateDropsGPU<<<gridSize, blockSize>>>(nx, ny, d_x, d_y, d_h);
+        generateDrops(nx, ny, d_x, d_y, d_h);
       }
     }
 
