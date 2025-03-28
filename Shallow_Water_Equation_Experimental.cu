@@ -167,6 +167,57 @@ __global__ void generateDropsGPU( int nx, int ny, float *x[], float *y[], float 
   unsigned int i = threadIdx.y + blockIdx.y * blockDim.y;
   unsigned int j = threadIdx.x + blockIdx.x * blockDim.x;
   unsigned int id;
+  unsigned int randNumber;
+
+  srand(time(NULL));
+
+  randNumber = rand();
+  randNumber = randNumber % 10;
+
+  if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
+  {
+    if (randNumber == 0)
+    {
+
+    }
+    else if (randNumber == 1)
+    {
+
+    }
+    else if (randNumber == 2) 
+    {
+
+    }
+    else if (randNumber == 3)
+    {
+      
+    }
+    else if (randNumber == 4)
+    {
+      
+    }
+    else if (randNumber == 5)
+    {
+      
+    }
+    else if (randNumber == 6)
+    {
+      
+    }
+    else if (randNumber == 7)
+    {
+      
+    }
+    else if (randNumber == 8)
+    {
+      
+    }
+    else if (randNumber == 9)
+    {
+      
+    }
+  }
+
 
   if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
   {
@@ -400,6 +451,8 @@ int main ( int argc, char *argv[] )
   int nx; 
   int ny; 
 
+  int randNumber;
+
   float *x, *d_x;
   float *y, *d_y;
 
@@ -428,7 +481,7 @@ int main ( int argc, char *argv[] )
   float *uhm, *d_uhm;
   float *vhm, *d_vhm;
 
-  bool randNumber;
+  bool randOutcome;
 
   // get command line arguments
   getArgs(&nx, &dt, &x_length, &t_final, argc, argv);
@@ -446,6 +499,8 @@ int main ( int argc, char *argv[] )
   int dimy = 32;
   dim3 blockSize(dimx, dimy);
   dim3 gridSize((nx + 2 + blockSize.x - 1) / blockSize.x, (ny + 2 + blockSize.y - 1) / blockSize.y);
+
+  srand(time(NULL));
 
   // ************************************************ MEMORY ALLOCATIONS ************************************************ //
 
@@ -536,30 +591,53 @@ int main ( int argc, char *argv[] )
   // start timer
   clock_t time_start = clock();
 
+  // Drop generator timer and interval
+  clock_t last_trigger = clock();
+  clock_t interval = CLOCKS_PER_SEC / 1000;
+
   while (time < t_final) // time loop begins
   {
     // Take a time step and increase step counter
     time = time + dt;
     k++;
-    
 
-    if (randNumber == true)
+    // Interval Check
+    clock_t now = clock();
+
+    if ((now - last_trigger >= interval))
     {
-      generateDropsGPU<<<gridSize, blockSize>>>(nx, ny, d_x, d_y, d_h);
+      randOutcome = true;
+      last_trigger = now;
+    }
+    else 
+    {
+      randOutcome = false;
     }
 
-      // **** COMPUTE FLUXES ****
-      computeFluxesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, nx, ny);
-      
-      // **** COMPUTE VARIABLES ****
-      computeVariablesGPU<<<gridSize, blockSize>>>(d_hm, d_uhm, d_vhm, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, d_h, d_uh, d_vh, lambda_x, lambda_y, nx, ny);
-    
-      // **** UPDATE VARIABLES ****
-      updateVariablesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_hm, d_uhm, d_vhm, nx, ny);
+    if (randOutcome == true);
+    {
+      randNumber = rand();
+      randNumber = randNumber % 10;
 
-      // **** APPLY BOUNDARY CONDITIONS ****
-      applyBoundaryConditionsGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, nx, ny, 3);  
-    } // end time loop
+      if (randNumber == 0 || 2 || 4 || 6 || 8)
+      {
+        generateDropsGPU<<<gridSize, blockSize>>>(nx, ny, d_x, d_y, d_h);
+      }
+    }
+
+    // **** COMPUTE FLUXES ****
+    computeFluxesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, nx, ny);
+    
+    // **** COMPUTE VARIABLES ****
+    computeVariablesGPU<<<gridSize, blockSize>>>(d_hm, d_uhm, d_vhm, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, d_h, d_uh, d_vh, lambda_x, lambda_y, nx, ny);
+  
+    // **** UPDATE VARIABLES ****
+    updateVariablesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_hm, d_uhm, d_vhm, nx, ny);
+
+    // **** APPLY BOUNDARY CONDITIONS ****
+    applyBoundaryConditionsGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, nx, ny, 3);
+
+  } // end time loop
 
     // stop timer
     clock_t time_end = clock();
