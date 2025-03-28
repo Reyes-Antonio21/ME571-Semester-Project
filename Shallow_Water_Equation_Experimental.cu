@@ -162,158 +162,35 @@ void initial_conditions(int nx, int ny, float dx, float dy,  float x_length, flo
 }
 // ****************************************************************************** //
 
-void find_section_dimensions(int nx, int *sec_width, int *sec_height) 
-{
-  int total_cells = (nx * nx) / 10;
-  int best_w = 1, best_h = total_cells;
-  
-  for (int w = 1; w <= sqrt(total_cells); w++) 
-  {
-    if (total_cells % w == 0) 
-    {
-      int h = total_cells / w;
-      if (w <= nx && h <= nx) // Ensure it fits within nx × nx
-      { 
-        best_w = w;
-        best_h = h;
-      }
-    }
-  }
-  
-  *sec_width = best_w;
-  *sec_height = best_h;
-}
-// ****************************************************************************** //
-
-void assign_sections(int nx) 
-{
-  int sec_width, sec_height;
-  find_section_dimensions(nx, &sec_width, &sec_height);
-  
-  printf("Each section has dimensions: %d × %d\n", sec_width, sec_height);
-  
-  int section_count = 0;
-  for (int i = 0; i < nx; i += sec_height) 
-    for (int j = 0; j < nx; j += sec_width) 
-    {
-      if (section_count >= 10) break;
-      printf("Section %d: Start at (%d, %d), Size: %d × %d\n", 
-              section_count + 1, i, j, sec_width, sec_height);
-      section_count++;
-    }
-}
-// ****************************************************************************** //
-
 __global__ void generateDropsGPU( int nx, int ny, float *x[], float *y[], float *h[])
 {
   unsigned int i = threadIdx.y + blockIdx.y * blockDim.y;
   unsigned int j = threadIdx.x + blockIdx.x * blockDim.x;
-  unsigned int id;
+
   unsigned int randNumber;
 
+  // simplify 2D array into 1D array
+  unsigned int id = ((i)*(nx+2)+(j));
+
+  // Determine a section's grid size
+  // This value will be used to section off the nx x nx grid into 16 sections
+  unsigned int sectionSquareLength = (nx * ny) / 16;
+  
   srand(time(NULL));
 
-  randNumber = rand();
-  randNumber = randNumber % 10;
+  // Generate a random number between 0 & 15
+  randNumber = rand() % 16;
 
-  if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
+  // Determine section bounds based on random number
+  unsigned int sectionStart = randNumber * sectionSquareLength;
+  unsigned int sectionEnd = (randNumber + 1) * sectionSquareLength;
+
+  if (i > sectionStart && i < sectionEnd + 1 && j > sectionStart && j < sectionEnd + 1) 
   {
-    int total_cells = (nx * ny) / 10;
-    int sectionWidth = 1, sectionHeight = total_cells;
-    
-    for (int w = 1; w <= sqrt(total_cells); w++) 
-    {
-      if (total_cells % w == 0) 
-      {
-        int h = total_cells / w;
-        if (w <= nx && h <= nx) // Ensure it fits within nx × nx
-        { 
-          sectionWidth = w;
-          sectionHeight = h;
-        }
-      }
-    }
+    float xx = x[j - 1];
+    float yy = y[i - 1];
 
-    int section_count = 0;
-    for (int i = 0; i < nx; i += sec_height) {
-        for (int j = 0; j < nx; j += sec_width) {
-            if (section_count >= 10) break;
-            printf("Section %d: Start at (%d, %d), Size: %d × %d\n", 
-                   section_count + 1, i, j, sec_width, sec_height);
-            section_count++;
-        }
-    }
-
-    if (randNumber == 0)
-    {
-      float xx = x[j - 1];
-      float yy = y[i - 1];
-
-      h[id] = 1.0 + 0.4 * exp(-15 * ( xx * xx + yy * yy));
-    }
-    else if (randNumber == 1)
-    {
-      float xx = x[j - 1];
-      float yy = y[i - 1];
-  
-      h[id] = 1.0 + 0.4 * exp(-15 * ( xx * xx + yy * yy));
-    }
-    else if (randNumber == 2) 
-    {
-      float xx = x[j - 1];
-      float yy = y[i - 1];
-  
-      h[id] = 1.0 + 0.4 * exp(-15 * ( xx * xx + yy * yy));
-    }
-    else if (randNumber == 3)
-    {
-      float xx = x[j - 1];
-      float yy = y[i - 1];
-
-      h[id] = 1.0 + 0.4 * exp(-15 * ( xx * xx + yy * yy));
-    }
-    else if (randNumber == 4)
-    {
-      float xx = x[j - 1];
-      float yy = y[i - 1];
-
-      h[id] = 1.0 + 0.4 * exp(-15 * ( xx * xx + yy * yy));
-    }
-    else if (randNumber == 5)
-    {
-      float xx = x[j - 1];
-      float yy = y[i - 1];
-
-      h[id] = 1.0 + 0.4 * exp(-15 * ( xx * xx + yy * yy));
-    }
-    else if (randNumber == 6)
-    {
-      float xx = x[j - 1];
-      float yy = y[i - 1];
-
-      h[id] = 1.0 + 0.4 * exp(-15 * ( xx * xx + yy * yy));
-    }
-    else if (randNumber == 7)
-    {
-      float xx = x[j - 1];
-      float yy = y[i - 1];
-
-      h[id] = 1.0 + 0.4 * exp(-15 * ( xx * xx + yy * yy));  
-    }
-    else if (randNumber == 8)
-    {
-      float xx = x[j - 1];
-      float yy = y[i - 1];
-  
-      h[id] = 1.0 + 0.4 * exp(-15 * ( xx * xx + yy * yy)); 
-    }
-    else if (randNumber == 9)
-    {
-      float xx = x[j - 1];
-      float yy = y[i - 1];
-
-      h[id] = 1.0 + 0.4 * exp(-15 * ( xx * xx + yy * yy));
-    }
+    h[id] = 1.0 + 0.4 * expf(-15 * (xx * xx + yy * yy));
   }
 }
 // ****************************************************************************** //
