@@ -81,7 +81,7 @@ void writeResults(float h[], float uh[], float vh[], float x[], float y[], float
 }
 // ****************************************************************************** //
 
-void initialConditions(int nx, int ny, float dx, float dy,  float x_length, float x[],float y[], float h[], float uh[] ,float vh[])
+void initialConditions(int nx, int ny, float dx, float dy,  float x_length, float x[], float y[], float h[], float uh[] ,float vh[])
 {
   int i,j, id, id1;
 
@@ -162,7 +162,7 @@ void initialConditions(int nx, int ny, float dx, float dy,  float x_length, floa
 }
 // ****************************************************************************** //
 
-__global__ void generateDropsGPU( int nx, int ny, float *x[], float *y[], float *h[])
+__global__ void generateDropsGPU( int nx, int ny, float x[], float y[], float *h[])
 {
   unsigned int i = threadIdx.y + blockIdx.y * blockDim.y;
   unsigned int j = threadIdx.x + blockIdx.x * blockDim.x;
@@ -189,8 +189,8 @@ __global__ void generateDropsGPU( int nx, int ny, float *x[], float *y[], float 
 
   if (i > sectionStart && i < sectionEnd + 1 && j > sectionStart && j < sectionEnd + 1) 
   {
-    float *xx = x[j - 1];
-    float *yy = y[i - 1];
+    float xx = x[j - 1];
+    float yy = y[i - 1];
 
     h[id] = 1.0 + 0.4 * exp(-15 * (xx * xx + yy * yy));
   }
@@ -429,8 +429,8 @@ int main ( int argc, char *argv[] )
   float x_length;
 
   double dt;
-  double time; 
-  double t_final;
+  double programRuntime; 
+  double finalRuntime;
 
   // pointers to host, device memory 
   float *h, *d_h;
@@ -452,7 +452,7 @@ int main ( int argc, char *argv[] )
   bool randOutcome;
 
   // get command line arguments
-  getArgs(&nx, &dt, &x_length, &t_final, argc, argv);
+  getArgs(&nx, &dt, &x_length, &finalRuntime, argc, argv);
   ny = nx; // we assume this, does not have to be this way
 
   // Define the locations of the nodes and time steps and the spacing.
@@ -527,14 +527,14 @@ int main ( int argc, char *argv[] )
 
   // set initial time & step counter
   // set time to zero and step counter to zero
-  time = 0.0f;
+  programRuntime = 0.0f;
   k = 0;
 
   // Apply the initial conditions.
   initialConditions(nx, ny, dx, dy, x_length, x, y, h, uh, vh);
 
   // Write initial condition to a file
-  writeResults(h, uh, vh, x, y, time, nx, ny);
+  writeResults(h, uh, vh, x, y, programRuntime, nx, ny);
 
   // Move data to the device for calculations
   CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
@@ -553,10 +553,10 @@ int main ( int argc, char *argv[] )
   clock_t last_trigger = clock();
   clock_t interval = CLOCKS_PER_SEC / 1000;
 
-  while (time < t_final) // time loop begins
+  while (programRuntime < finalRuntime) // time loop begins
   {
     // Take a time step and increase step counter
-    time = time + dt;
+    programRuntime = programRuntime + dt;
     k++;
 
     // Interval Check
@@ -611,7 +611,7 @@ int main ( int argc, char *argv[] )
   CHECK(cudaMemcpy(uh, d_uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
   CHECK(cudaMemcpy(vh, d_vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
 
-  writeResults(h, uh, vh, x, y, time, nx, ny);
+  writeResults(h, uh, vh, x, y, programRuntime, nx, ny);
 
   // ******************************************************************** DEALLOCATE MEMORY ******************************************************************** //
 
