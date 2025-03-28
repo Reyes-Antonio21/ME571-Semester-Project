@@ -162,7 +162,7 @@ void initialConditions(int nx, int ny, float dx, float dy,  float x_length, floa
 }
 // ****************************************************************************** //
 
-__global__ void generateDropsGPU( int nx, int ny, float x[], float y[], float *h[])
+__global__ void generateDropsGPU( int nx, int ny, float x[], float y[], float h[])
 {
   unsigned int i = threadIdx.y + blockIdx.y * blockDim.y;
   unsigned int j = threadIdx.x + blockIdx.x * blockDim.x;
