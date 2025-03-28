@@ -81,7 +81,7 @@ void writeResults(float h[], float uh[], float vh[], float x[], float y[], float
 }
 // ****************************************************************************** //
 
-void initial_conditions(int nx, int ny, float dx, float dy,  float x_length, float x[],float y[], float h[], float uh[] ,float vh[])
+void initialConditions(int nx, int ny, float dx, float dy,  float x_length, float x[],float y[], float h[], float uh[] ,float vh[])
 {
   int i,j, id, id1;
 
@@ -168,6 +168,7 @@ __global__ void generateDropsGPU( int nx, int ny, float *x[], float *y[], float 
   unsigned int j = threadIdx.x + blockIdx.x * blockDim.x;
 
   unsigned int randNumber;
+  unsigned int timeSeed;
 
   // simplify 2D array into 1D array
   unsigned int id = ((i)*(nx+2)+(j));
@@ -176,7 +177,7 @@ __global__ void generateDropsGPU( int nx, int ny, float *x[], float *y[], float 
   // This value will be used to section off the nx x nx grid into 16 sections
   unsigned int sectionSquareLength = (nx * ny) / 16;
   
-  srand(time(NULL));
+  srand(timeSeed(NULL));
 
   // Generate a random number between 0 & 15
   randNumber = rand() % 16;
@@ -187,10 +188,10 @@ __global__ void generateDropsGPU( int nx, int ny, float *x[], float *y[], float 
 
   if (i > sectionStart && i < sectionEnd + 1 && j > sectionStart && j < sectionEnd + 1) 
   {
-    float xx = x[j - 1];
-    float yy = y[i - 1];
+    float *xx = x[j - 1];
+    float *yy = y[i - 1];
 
-    h[id] = 1.0 + 0.4 * expf(-15 * (xx * xx + yy * yy));
+    h[id] = 1.0 + 0.4 * exp(-15 * (xx * xx + yy * yy));
   }
 }
 // ****************************************************************************** //
@@ -411,11 +412,13 @@ __global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int n
 int main ( int argc, char *argv[] )
 { 
 // ************************************************** INSTANTIATION ************************************************* //
+  
+  unsigned int randNumber;
+  unsigned int timeSeed;
+
   int k;
   int nx; 
   int ny; 
-
-  int randNumber;
 
   float *x, *d_x;
   float *y, *d_y;
@@ -464,7 +467,7 @@ int main ( int argc, char *argv[] )
   dim3 blockSize(dimx, dimy);
   dim3 gridSize((nx + 2 + blockSize.x - 1) / blockSize.x, (ny + 2 + blockSize.y - 1) / blockSize.y);
 
-  srand(time(NULL));
+  srand(timeSeed(NULL));
 
   // ************************************************ MEMORY ALLOCATIONS ************************************************ //
 
@@ -526,7 +529,7 @@ int main ( int argc, char *argv[] )
   k = 0;
 
   // Apply the initial conditions.
-  intial_conditions(nx, ny, dx, dy, x_length, x, y, h, uh, vh);
+  initialConditions(nx, ny, dx, dy, x_length, x, y, h, uh, vh);
 
   // Write initial condition to a file
   writeResults(h, uh, vh, x, y, time, nx, ny);
