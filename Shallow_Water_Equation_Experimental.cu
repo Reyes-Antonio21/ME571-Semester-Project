@@ -192,7 +192,7 @@ __global__ void generateDropsGPU( int nx, int ny, float x[], float y[], float *h
     float xx = x[j - 1];
     float yy = y[i - 1];
 
-    h[id] = 1.0 + 0.4 * exp(-15 * (xx * xx + yy * yy));
+    h[id] = 1.0 + 0.4*exp ( -15 * ( xx*xx + yy*yy) );
   }
 }
 // ****************************************************************************** //
