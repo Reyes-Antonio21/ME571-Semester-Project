@@ -162,6 +162,48 @@ void initial_conditions(int nx, int ny, float dx, float dy,  float x_length, flo
 }
 // ****************************************************************************** //
 
+void find_section_dimensions(int nx, int *sec_width, int *sec_height) 
+{
+  int total_cells = (nx * nx) / 10;
+  int best_w = 1, best_h = total_cells;
+  
+  for (int w = 1; w <= sqrt(total_cells); w++) 
+  {
+    if (total_cells % w == 0) 
+    {
+      int h = total_cells / w;
+      if (w <= nx && h <= nx) // Ensure it fits within nx × nx
+      { 
+        best_w = w;
+        best_h = h;
+      }
+    }
+  }
+  
+  *sec_width = best_w;
+  *sec_height = best_h;
+}
+// ****************************************************************************** //
+
+void assign_sections(int nx) 
+{
+  int sec_width, sec_height;
+  find_section_dimensions(nx, &sec_width, &sec_height);
+  
+  printf("Each section has dimensions: %d × %d\n", sec_width, sec_height);
+  
+  int section_count = 0;
+  for (int i = 0; i < nx; i += sec_height) 
+    for (int j = 0; j < nx; j += sec_width) 
+    {
+      if (section_count >= 10) break;
+      printf("Section %d: Start at (%d, %d), Size: %d × %d\n", 
+              section_count + 1, i, j, sec_width, sec_height);
+      section_count++;
+    }
+}
+// ****************************************************************************** //
+
 __global__ void generateDropsGPU( int nx, int ny, float *x[], float *y[], float *h[])
 {
   unsigned int i = threadIdx.y + blockIdx.y * blockDim.y;
@@ -176,57 +218,102 @@ __global__ void generateDropsGPU( int nx, int ny, float *x[], float *y[], float 
 
   if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
   {
+    int total_cells = (nx * ny) / 10;
+    int sectionWidth = 1, sectionHeight = total_cells;
+    
+    for (int w = 1; w <= sqrt(total_cells); w++) 
+    {
+      if (total_cells % w == 0) 
+      {
+        int h = total_cells / w;
+        if (w <= nx && h <= nx) // Ensure it fits within nx × nx
+        { 
+          sectionWidth = w;
+          sectionHeight = h;
+        }
+      }
+    }
+
+    int section_count = 0;
+    for (int i = 0; i < nx; i += sec_height) {
+        for (int j = 0; j < nx; j += sec_width) {
+            if (section_count >= 10) break;
+            printf("Section %d: Start at (%d, %d), Size: %d × %d\n", 
+                   section_count + 1, i, j, sec_width, sec_height);
+            section_count++;
+        }
+    }
+
     if (randNumber == 0)
     {
+      float xx = x[j - 1];
+      float yy = y[i - 1];
 
+      h[id] = 1.0 + 0.4 * exp(-15 * ( xx * xx + yy * yy));
     }
     else if (randNumber == 1)
     {
-
+      float xx = x[j - 1];
+      float yy = y[i - 1];
+  
+      h[id] = 1.0 + 0.4 * exp(-15 * ( xx * xx + yy * yy));
     }
     else if (randNumber == 2) 
     {
-
+      float xx = x[j - 1];
+      float yy = y[i - 1];
+  
+      h[id] = 1.0 + 0.4 * exp(-15 * ( xx * xx + yy * yy));
     }
     else if (randNumber == 3)
     {
-      
+      float xx = x[j - 1];
+      float yy = y[i - 1];
+
+      h[id] = 1.0 + 0.4 * exp(-15 * ( xx * xx + yy * yy));
     }
     else if (randNumber == 4)
     {
-      
+      float xx = x[j - 1];
+      float yy = y[i - 1];
+
+      h[id] = 1.0 + 0.4 * exp(-15 * ( xx * xx + yy * yy));
     }
     else if (randNumber == 5)
     {
-      
+      float xx = x[j - 1];
+      float yy = y[i - 1];
+
+      h[id] = 1.0 + 0.4 * exp(-15 * ( xx * xx + yy * yy));
     }
     else if (randNumber == 6)
     {
-      
+      float xx = x[j - 1];
+      float yy = y[i - 1];
+
+      h[id] = 1.0 + 0.4 * exp(-15 * ( xx * xx + yy * yy));
     }
     else if (randNumber == 7)
     {
-      
+      float xx = x[j - 1];
+      float yy = y[i - 1];
+
+      h[id] = 1.0 + 0.4 * exp(-15 * ( xx * xx + yy * yy));  
     }
     else if (randNumber == 8)
     {
-      
+      float xx = x[j - 1];
+      float yy = y[i - 1];
+  
+      h[id] = 1.0 + 0.4 * exp(-15 * ( xx * xx + yy * yy)); 
     }
     else if (randNumber == 9)
     {
-      
+      float xx = x[j - 1];
+      float yy = y[i - 1];
+
+      h[id] = 1.0 + 0.4 * exp(-15 * ( xx * xx + yy * yy));
     }
-  }
-
-
-  if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
-  {
-    id = ((i) * (nx + 2) + (j));
-
-    float xx = x[j - 1];
-    float yy = y[i - 1];
-
-    h[id] = 1.0 + 0.4 * exp(-15 * ( xx * xx + yy * yy));
   }
 }
 // ****************************************************************************** //
@@ -560,17 +647,6 @@ int main ( int argc, char *argv[] )
   // set time to zero and step counter to zero
   time = 0.0f;
   k = 0;
-
-  // Apply the initial conditions.
-  //initialConditionsGPU<<<gridSize, blockSize>>>(nx, ny, dx, dy, x_length, d_x, d_y, d_h, d_uh, d_vh);
-
-  // Move data to the Host for initial conditions file write
-  //CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-  //CHECK(cudaMemcpy(uh, d_uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-  //CHECK(cudaMemcpy(vh, d_vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-
-  //CHECK(cudaMemcpy(x, d_x, nx * sizeof ( float ), cudaMemcpyDeviceToHost));
-  //CHECK(cudaMemcpy(y, d_y, nx * sizeof ( float ), cudaMemcpyDeviceToHost));
 
   // Apply the initial conditions.
   intial_conditions(nx, ny, dx, dy, x_length, x, y, h, uh, vh);
