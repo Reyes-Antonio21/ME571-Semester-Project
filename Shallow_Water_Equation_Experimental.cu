@@ -177,7 +177,8 @@ __global__ void generateDropsGPU( int nx, int ny, float *x[], float *y[], float 
   // This value will be used to section off the nx x nx grid into 16 sections
   unsigned int sectionSquareLength = (nx * ny) / 16;
   
-  srand(timeSeed(NULL));
+  timeSeed = time(NULL);
+  srand(timeSeed);
 
   // Generate a random number between 0 & 15
   randNumber = rand() % 16;
@@ -467,7 +468,8 @@ int main ( int argc, char *argv[] )
   dim3 blockSize(dimx, dimy);
   dim3 gridSize((nx + 2 + blockSize.x - 1) / blockSize.x, (ny + 2 + blockSize.y - 1) / blockSize.y);
 
-  srand(timeSeed(NULL));
+  timeSeed = time(NULL);
+  srand(timeSeed);
 
   // ************************************************ MEMORY ALLOCATIONS ************************************************ //
 
