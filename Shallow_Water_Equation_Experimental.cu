@@ -164,14 +164,13 @@ void initialConditions(int nx, int ny, float dx, float dy,  float x_length, floa
 
 void generateDrops( int nx, int ny, float x[], float y[], float h[])
 {
-  int i;
-  int j;
+  int i, j;
 
   unsigned int randNumber;
   unsigned int timeSeed;
 
   // simplify 2D array into 1D array
-  unsigned int id = ((i)*(nx+2)+(j));
+  unsigned int id = ID_2D(i,j,nx);
 
   // Determine a section's grid size
   // This value will be used to section off the nx x nx grid into 16 sections
@@ -187,8 +186,8 @@ void generateDrops( int nx, int ny, float x[], float y[], float h[])
   unsigned int sectionStart = randNumber * sectionSquareLength;
   unsigned int sectionEnd = (randNumber + 1) * sectionSquareLength;
 
-  for (i > sectionStart; i < sectionEnd; i++)
-    for (j > sectionStart; j < sectionEnd; j++) 
+  for (i = sectionStart + 1; i < sectionEnd; i++)
+    for (j = sectionStart + 1; j < sectionEnd; j++) 
     {
       float xx = x[j - 1];
       float yy = y[i - 1];
