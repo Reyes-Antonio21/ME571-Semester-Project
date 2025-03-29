@@ -167,12 +167,12 @@ void generateDrops( int nx, int ny, float x[], float y[], float h[])
 {
   int i, j, id;
 
-  int xx_perturbation, yy_perturbation;
+  float xx_perturbation, yy_perturbation;
 
   // Generate random perturbation coordinates
   // Offset added to restrict drop formation on boundary
-  xx_perturbation = 2 + rand() % (nx - 3);
-  yy_perturbation = 2 + rand() % (ny - 3);
+  xx_perturbation = ((float) rand() / RAND_MAX) * x_length - x_length / 2;
+  yy_perturbation = ((float) rand() / RAND_MAX) * x_length - x_length / 2;
 
   for ( i = 1; i < ny+1; i++ )
     for( j = 1; j < nx+1; j++)
@@ -182,7 +182,7 @@ void generateDrops( int nx, int ny, float x[], float y[], float h[])
       float xx = x[j-1];
       float yy = y[i-1];
 
-      h[id] += ( 0.4 * expf( -10 * (((xx - (float) xx_perturbation) * (xx - (float) xx_perturbation)) + ((yy - (float) yy_perturbation) * (yy - (float) yy_perturbation)))));
+      h[id] += ( 0.4 * expf( -10 * (((xx - xx_perturbation) * (xx - xx_perturbation)) + ((yy - yy_perturbation) * (yy - yy_perturbation)))));
     }
 }
 // ****************************************************************************** //
@@ -560,17 +560,13 @@ int main ( int argc, char *argv[] )
     {
       // Copy water height from device to host
       CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-      CHECK(cudaMemcpy(x, d_x, nx * sizeof ( float ), cudaMemcpyDeviceToHost));
-      CHECK(cudaMemcpy(y, d_y, ny * sizeof ( float ), cudaMemcpyDeviceToHost));
 
       generateDrops(nx, ny, x, y, h);
 
       // Copy updated water height back to device
       CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof (float), cudaMemcpyHostToDevice));
-      CHECK(cudaMemcpy(d_x, x, nx * sizeof ( float ), cudaMemcpyHostToDevice));
-      CHECK(cudaMemcpy(d_y, y, ny * sizeof ( float ), cudaMemcpyHostToDevice));
 
-      nextTrigger = nextTrigger + 25; 
+      nextTrigger = nextTrigger + 50; 
     }
   } // end time loop
 
@@ -660,8 +656,8 @@ void generateDrops( int nx, int ny, float x[], float y[], float h[])
   unsigned int sectionStart = randNumber * sectionSquareLength;
   unsigned int sectionEnd = (randNumber + 1) * sectionSquareLength;
 
-  for (i = max(1, sectionStart + 1); i < min(ny, sectionEnd); i++)
-    for (j = max(1, sectionStart + 1); j < min(nx, sectionEnd); j++)
+  for (i > sectionStart; i < sectionEnd + 1; i++)
+    for (j > sectionStart; j < sectionEnd + 1; j++)
     {
       id = ID_2D(i,j,nx);
       
