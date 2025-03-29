@@ -177,12 +177,10 @@ void generateDrops( int nx, int ny, float x[], float y[], float h[])
   for ( i = 1; i < ny+1; i++ )
     for( j = 1; j < nx+1; j++)
     {
-      float xx = x[j-1];
-      float yy = y[i-1];
 
       id = ID_2D(i, j, nx);
 
-      h[id] += ( 1.4 * exp ( -10 * (((xx - xx_perturbation) * (xx - xx_perturbation)) + ((yy - yy_perturbation) * (yy - yy_perturbation)))));
+      h[id] += ( 1.4 * expf( -10 * (((xx - xx_perturbation) * (xx - xx_perturbation)) + ((yy - yy_perturbation) * (yy - yy_perturbation)))));
     }
 }
 // ****************************************************************************** //
