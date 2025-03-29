@@ -567,7 +567,7 @@ int main ( int argc, char *argv[] )
       CHECK(cudaMemcpy(d_x, x, nx * sizeof ( float ), cudaMemcpyHostToDevice));
       CHECK(cudaMemcpy(d_y, y, ny * sizeof ( float ), cudaMemcpyHostToDevice));
 
-      nextTrigger + 25
+      nextTrigger = nextTrigger + 25;
     }
   } // end time loop
 
