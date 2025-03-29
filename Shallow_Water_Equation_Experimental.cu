@@ -99,7 +99,7 @@ void initialConditions(int nx, int ny, float dx, float dy,  float x_length, floa
       float xx = x[j-1];
       float yy = y[i-1];
       id=ID_2D(i,j,nx);
-      h[id] = 1.0 + 0.4 * exp ( -18 * ( xx*xx + yy*yy) );
+      h[id] = 1.0 + 0.4 * exp ( -10 * ( xx*xx + yy*yy) );
     }
   
   for ( i = 1; i < ny+1; i++ )
@@ -180,9 +180,9 @@ void generateDrops( int nx, int ny, float x[], float y[], float h[])
       float xx = x[j-1];
       float yy = y[i-1];
 
-      id=ID_2D(i,j,nx);
+      id = ID_2D(i, j, nx);
 
-      h[id] += 0.4 * exp ( -18 * ((xx - xx_perturbation) * (xx - xx_perturbation) + (yy - yy_perturbation) * (yy - yy_perturbation)));
+      h[id] += 0.4 * exp ( -10 * (((xx - xx_perturbation) * (xx - xx_perturbation)) + ((yy - yy_perturbation) * (yy - yy_perturbation))));
     }
 }
 // ****************************************************************************** //
