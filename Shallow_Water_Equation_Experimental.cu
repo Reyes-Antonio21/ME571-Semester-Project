@@ -4,6 +4,7 @@
 # include <math.h>
 # include <string.h>
 # include <time.h>
+#include <chrono>
 # include <cuda_runtime.h>
 
 #define ID_2D(i,j,nx) ((i)*(nx+2)+(j))
@@ -15,7 +16,7 @@ void getArgs(int *nx, double *dt, float *x_length, double *t_final, int argc, ch
   // Get the quadrature file root name:
 
   if ( argc <= 1 ){
-    *nx = 401;
+    *nx = 400;
   }else{
     *nx = atoi ( argv[1] );
   }
@@ -98,7 +99,7 @@ void initialConditions(int nx, int ny, float dx, float dy,  float x_length, floa
       float xx = x[j-1];
       float yy = y[i-1];
       id=ID_2D(i,j,nx);
-      h[id] = 1.0 + 0.4*exp ( -15 * ( xx*xx + yy*yy) );
+      h[id] = 1.0 + 0.4 * exp ( -15 * ( xx*xx + yy*yy) );
     }
   
   for ( i = 1; i < ny+1; i++ )
@@ -183,15 +184,15 @@ void generateDrops( int nx, int ny, float x[], float y[], float h[])
   unsigned int sectionStart = randNumber * sectionSquareLength;
   unsigned int sectionEnd = (randNumber + 1) * sectionSquareLength;
 
-  for (i = sectionStart + 1; i < sectionEnd; i++)
-    for (j = sectionStart + 1; j < sectionEnd; j++) 
+  for (i = max(1, sectionStart + 1); i < min(ny, sectionEnd); i++)
+    for (j = max(1, sectionStart + 1); j < min(nx, sectionEnd); j++)
     {
       id = ID_2D(i,j,nx);
       
       float xx = x[j - 1];
       float yy = y[i - 1];
 
-      h[id] = 1.0f + 0.4f * expf(-15 * ( xx*xx + yy*yy));
+      h[id] += 0.4f * expf(-15 * ( xx*xx + yy*yy));
     }
 }
 // ****************************************************************************** //
@@ -545,9 +546,9 @@ int main ( int argc, char *argv[] )
   // start timer
   clock_t time_start = clock();
 
-  // Drop generator timer and interval
-  clock_t last_trigger = clock();
-  clock_t interval = CLOCKS_PER_SEC / 1000;
+  // Initialize timing variables
+  auto last_trigger = std::chrono::steady_clock::now();
+  std::chrono::milliseconds interval_time_ms(400); // 400ms interval
 
   while (programRuntime < finalRuntime) // time loop begins
   {
@@ -560,49 +561,44 @@ int main ( int argc, char *argv[] )
     
     // **** COMPUTE VARIABLES ****
     computeVariablesGPU<<<gridSize, blockSize>>>(d_hm, d_uhm, d_vhm, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, d_h, d_uh, d_vh, lambda_x, lambda_y, nx, ny);
-  
+
     // **** UPDATE VARIABLES ****
     updateVariablesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_hm, d_uhm, d_vhm, nx, ny);
 
     // **** APPLY BOUNDARY CONDITIONS ****
     applyBoundaryConditionsGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, nx, ny, 3);
 
-    CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+    // Copy h[] from GPU to CPU
+    CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof(float), cudaMemcpyDeviceToHost));
 
-    // Interval Check
-    clock_t now = clock();
-
-    if ((now - last_trigger >= interval))
+    // ✅ Timing check using chrono
+    auto now = std::chrono::steady_clock::now();
+    
+    if (now - last_trigger >= interval_time_ms)
     {
-      randOutcome = true;
+      // Update timing checkpoint
       last_trigger = now;
-    }
-    else 
-    {
-      randOutcome = false;
-    }
 
-    if (randOutcome == true)
-    {
-      randNumber = rand();
-      randNumber = randNumber % 10;
+      // Randomly decide whether to generate a drop
+      randNumber = rand() % 10;
 
-      if (randNumber == 0 || 2 || 4 || 6 || 8)
+      if (randNumber % 2 == 0) // Even numbers (0, 2, 4, 6, 8)
       {
         generateDrops(nx, ny, x, y, h);
       }
-    }
 
-    CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
+      // Copy updated h[] back to GPU
+      CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof(float), cudaMemcpyHostToDevice));
+    }
 
   } // end time loop
 
-    // stop timer
-    clock_t time_end = clock();
-    double time_elapsed = (double)(time_end - time_start) / CLOCKS_PER_SEC;
+  // stop timer
+  clock_t time_end = clock();
+  double time_elapsed = (double)(time_end - time_start) / CLOCKS_PER_SEC;
 
-    // Print out the results
-    printf("Problem size: %d, time steps taken: %d,  elapsed time: %f s\n", nx, k, time_elapsed);
+  // Print out the results
+  printf("Problem size: %d, time steps taken: %d,  elapsed time: %f s\n", nx, k, time_elapsed);
 
   // ******************************************************************** POSTPROCESSING ******************************************************************** //
 
