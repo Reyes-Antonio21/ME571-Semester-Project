@@ -417,7 +417,7 @@ int main ( int argc, char *argv[] )
   float dy;
   float x_length;
 
-  float programTrigger;
+  float nextTrigger;
 
   double dt;
   double programRuntime; 
@@ -572,7 +572,7 @@ int main ( int argc, char *argv[] )
       // Copy updated water height, x-momentum, and y-momentum back to device
       CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof (float), cudaMemcpyHostToDevice));
 
-      nextTrigger += 0.1f
+      nextTrigger += 0.1f;
     }
   } // end time loop
 
