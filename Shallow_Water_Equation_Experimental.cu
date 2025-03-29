@@ -163,7 +163,7 @@ void initialConditions(int nx, int ny, float dx, float dy,  float x_length, floa
 }
 // ****************************************************************************** //
 
-void generateDrops( int nx, int ny, float x[], float y[], float h[], float uh[], float vh[])
+void generateDrops( int nx, int ny, float x[], float y[], float h[])
 {
   int i, j, id;
 
@@ -174,7 +174,6 @@ void generateDrops( int nx, int ny, float x[], float y[], float h[], float uh[],
   xx_perturbation = rand() % (nx - 5);
   yy_perturbation = rand() % (ny - 5);
 
-
   for ( i = 1; i < ny+1; i++ )
     for( j = 1; j < nx+1; j++)
     {
@@ -183,7 +182,7 @@ void generateDrops( int nx, int ny, float x[], float y[], float h[], float uh[],
 
       id=ID_2D(i,j,nx);
 
-      h[id] += 0.35 * exp ( -18 * ( (xx - xx_perturbation) * (xx - xx_perturbation) + (yy - yy_perturbation) * (yy - yy_perturbation)));
+      h[id] += exp ( -18 * ((xx - xx_perturbation) * (xx - xx_perturbation) + (yy - yy_perturbation) * (yy - yy_perturbation)));
     }
 }
 // ****************************************************************************** //
@@ -566,7 +565,7 @@ int main ( int argc, char *argv[] )
       // Copy height, x-momentum, and y-momentum from device to host
       CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
 
-      generateDrops(nx, ny, x, y, h, uh, vh);
+      generateDrops(nx, ny, x, y, h);
 
       // Copy updated water height, x-momentum, and y-momentum back to device
       CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof (float), cudaMemcpyHostToDevice));
