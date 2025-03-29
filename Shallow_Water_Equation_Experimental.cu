@@ -163,7 +163,7 @@ void initialConditions(int nx, int ny, float dx, float dy,  float x_length, floa
 }
 // ****************************************************************************** //
 
-void generateDrops( int nx, int ny, float x[], float y[], float h[])
+void generateDrops( int nx, int ny, float x[], float y[], float h[], float uh[], float vh[])
 {
   int i, j, id;
 
@@ -193,6 +193,15 @@ void generateDrops( int nx, int ny, float x[], float y[], float h[])
       float yy = y[i - 1];
 
       h[id] += 0.4f * expf(-15 * ( xx*xx + yy*yy));
+
+       // Sample momentum from neighboring points 
+       int id_left  = ID_2D(i, j - 1, nx);
+       int id_right = ID_2D(i, j + 1, nx);
+       int id_up    = ID_2D(i - 1, j, nx);
+       int id_down  = ID_2D(i + 1, j, nx);
+
+       uh[id] = (uh[id_left] + uh[id_right] + uh[id_up] + uh[id_down]) / 4.0f;
+       vh[id] = (vh[id_left] + vh[id_right] + vh[id_up] + vh[id_down]) / 4.0f;
     }
 }
 // ****************************************************************************** //
@@ -566,16 +575,18 @@ int main ( int argc, char *argv[] )
     // **** APPLY BOUNDARY CONDITIONS ****
     applyBoundaryConditionsGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, nx, ny, 3);
 
-    // Copy h[] from GPU to CPU
-    CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof(float), cudaMemcpyDeviceToHost));
-
-    // ✅ Timing check using chrono
+    // Timing check using chrono
     auto now = std::chrono::steady_clock::now();
     
     if (now - last_trigger >= interval_time_ms)
     {
       // Update timing checkpoint
       last_trigger = now;
+
+      // Copy height, x-momentum, and y-momentum from device to host
+      CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+      CHECK(cudaMemcpy(uh, d_uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+      CHECK(cudaMemcpy(vh, d_vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
 
       // Randomly decide whether to generate a drop
       randNumber = rand() % 10;
@@ -585,8 +596,10 @@ int main ( int argc, char *argv[] )
         generateDrops(nx, ny, x, y, h);
       }
 
-      // Copy updated h[] back to GPU
-      CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof(float), cudaMemcpyHostToDevice));
+      // Copy updated water height, x-momentum, and y-momentum back to device
+      CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof (float), cudaMemcpyHostToDevice));
+      CHECK(cudaMemcpy(d_uh, uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
+      CHECK(cudaMemcpy(d_vh, vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
     }
 
   } // end time loop
