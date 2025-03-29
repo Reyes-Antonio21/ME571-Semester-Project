@@ -562,6 +562,8 @@ int main ( int argc, char *argv[] )
 
       // Copy updated water height back to device
       CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof (float), cudaMemcpyHostToDevice));
+
+      nextTrigger = nextTrigger + 25; 
     }
   } // end time loop
 
