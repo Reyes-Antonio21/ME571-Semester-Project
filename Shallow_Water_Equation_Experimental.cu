@@ -177,10 +177,10 @@ void generateDrops( int nx, int ny, float x[], float y[], float h[])
   for ( i = 1; i < ny+1; i++ )
     for( j = 1; j < nx+1; j++)
     {
+      id = ID_2D(i, j, nx);
+
       float xx = x[j-1];
       float yy = y[i-1];
-
-      id = ID_2D(i, j, nx);
 
       h[id] += ( 1.4 * expf( -10 * (((xx - xx_perturbation) * (xx - xx_perturbation)) + ((yy - yy_perturbation) * (yy - yy_perturbation)))));
     }
@@ -556,12 +556,12 @@ int main ( int argc, char *argv[] )
     if (k >= nextTrigger)
     {
       // Copy water height from device to host
-      CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+      CHECK(cudaMemcpy(h, d_h, (nx+2) * (ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
 
       generateDrops(nx, ny, x, y, h);
 
       // Copy updated water height back to device
-      CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof (float), cudaMemcpyHostToDevice));
+      CHECK(cudaMemcpy(d_h, h, (nx+2) * (ny+2) * sizeof (float), cudaMemcpyHostToDevice));
 
       nextTrigger = nextTrigger + 25; 
     }
@@ -577,9 +577,9 @@ int main ( int argc, char *argv[] )
   // ******************************************************************** POSTPROCESSING ******************************************************************** //
 
   // Move data back to the host
-  CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-  CHECK(cudaMemcpy(uh, d_uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-  CHECK(cudaMemcpy(vh, d_vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+  CHECK(cudaMemcpy(h, d_h, (nx+2 )* (ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+  CHECK(cudaMemcpy(uh, d_uh, (nx+2) * (ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+  CHECK(cudaMemcpy(vh, d_vh, (nx+2) * (ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
 
   writeResults(h, uh, vh, x, y, programRuntime, nx, ny);
 
