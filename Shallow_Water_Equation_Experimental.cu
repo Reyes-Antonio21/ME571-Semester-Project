@@ -182,7 +182,7 @@ void generateDrops( int nx, int ny, float x[], float y[], float h[])
       float xx = x[j-1];
       float yy = y[i-1];
 
-      h[id] += ( 0.4 * exp( -10 * (((xx - xx_perturbation) * (xx - xx_perturbation)) + ((yy - yy_perturbation) * (yy - yy_perturbation)))));
+      h[id] += ( 0.4 * expf( -10 * (((xx - (float) xx_perturbation) * (xx - (float) xx_perturbation)) + ((yy - (float) yy_perturbation) * (yy - (float) yy_perturbation)))));
     }
 }
 // ****************************************************************************** //
@@ -643,7 +643,7 @@ int main ( int argc, char *argv[] )
 
 
 /*
-void generateDrops( int nx, int ny, float x[], float y[], float h[], float uh[], float vh[])
+void generateDrops( int nx, int ny, float x[], float y[], float h[])
 {
   int i, j, id;
 
