@@ -180,8 +180,8 @@ void generateDrops( int nx, int ny, float x[], float y[], float h[], float uh[],
   unsigned int sectionStart = randNumber * sectionSquareLength;
   unsigned int sectionEnd = (randNumber + 1) * sectionSquareLength;
 
-  for (i = sectionStart + 1; i < sectionEnd + 1; i++)
-    for (j = sectionStart + 1; j < sectionEnd + 1; j++)
+  for (i = max(1, sectionStart + 1); i < min(ny, sectionEnd); i++)
+    for (j = max(1, sectionStart + 1); j < min(nx, sectionEnd); j++)
     {
       id = ID_2D(i,j,nx);
       
