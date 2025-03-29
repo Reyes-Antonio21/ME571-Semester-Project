@@ -560,20 +560,16 @@ int main ( int argc, char *argv[] )
     // Timing check using chrono
     auto now = std::chrono::steady_clock::now();
     
-    if (programRuntime == 0.250)
+    if (programRuntime == finalRuntime)
     {
 
       // Copy height, x-momentum, and y-momentum from device to host
       CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-      CHECK(cudaMemcpy(uh, d_uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-      CHECK(cudaMemcpy(vh, d_vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
 
       generateDrops(nx, ny, x, y, h, uh, vh);
 
       // Copy updated water height, x-momentum, and y-momentum back to device
       CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof (float), cudaMemcpyHostToDevice));
-      CHECK(cudaMemcpy(d_uh, uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
-      CHECK(cudaMemcpy(d_vh, vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
     }
 
   } // end time loop
