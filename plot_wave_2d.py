@@ -23,7 +23,7 @@ xi, yi = np.linspace(min(x), max(x), nx), np.linspace(min(y), max(y), nx)
 xi, yi = np.meshgrid(xi, yi)
 
 # Interpolate; there's also method='cubic' for 2-D data such as here
-hi = scipy.interpolate.griddata((x, y), h, (xi, yi), method='linear')
+hi = scipy.interpolate.griddata((x, y), h, (xi, yi), method='cubic')
 
 
 fig = plt.figure()
