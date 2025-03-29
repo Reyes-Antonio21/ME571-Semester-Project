@@ -449,8 +449,6 @@ int main ( int argc, char *argv[] )
   float *uhm, *d_uhm;
   float *vhm, *d_vhm;
 
-  bool randOutcome;
-
   // get command line arguments
   getArgs(&nx, &dt, &x_length, &finalRuntime, argc, argv);
   ny = nx; // we assume this, does not have to be this way
@@ -548,7 +546,7 @@ int main ( int argc, char *argv[] )
 
   // Initialize timing variables
   auto last_trigger = std::chrono::steady_clock::now();
-  std::chrono::milliseconds interval_time_ms(400); // 400ms interval
+  std::chrono::milliseconds interval_time_ms(100); // 100ms interval
 
   while (programRuntime < finalRuntime) // time loop begins
   {
