@@ -177,6 +177,8 @@ void generateDrops( int nx, int ny, float x[], float y[], float h[])
   for ( i = 1; i < ny+1; i++ )
     for( j = 1; j < nx+1; j++)
     {
+      float xx = x[j-1];
+      float yy = y[i-1];
 
       id = ID_2D(i, j, nx);
 
@@ -556,8 +558,6 @@ int main ( int argc, char *argv[] )
     // Timing check using chrono
     auto now = std::chrono::steady_clock::now();
 
-    if (programRuntime >= nextTrigger)
-    {
       // Copy water height from device to host
       CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
 
@@ -565,11 +565,7 @@ int main ( int argc, char *argv[] )
 
       // Copy updated water height back to device
       CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof (float), cudaMemcpyHostToDevice));
-      CHECK(cudaMemcpy(d_x, x, nx * sizeof ( float ), cudaMemcpyHostToDevice));
-      CHECK(cudaMemcpy(d_y, y, ny * sizeof ( float ), cudaMemcpyHostToDevice));
-
-      nextTrigger += 0.1f;
-    }
+      
   } // end time loop
 
   // stop timer
