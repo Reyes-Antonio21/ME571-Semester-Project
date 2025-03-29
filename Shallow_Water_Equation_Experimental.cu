@@ -542,11 +542,11 @@ int main ( int argc, char *argv[] )
   // ******************************************************************** COMPUTATION SECTION ******************************************************************** //
 
   // start timer
-  clock_t time_start = clock();
+  auto start_time = std::chrono::steady_clock::now();
 
   // Initialize timing variables
   auto last_trigger = std::chrono::steady_clock::now();
-  std::chrono::milliseconds interval_time_ms(100); // 100ms interval
+  std::chrono::milliseconds interval_time_ms(50); // 50ms interval
 
   while (programRuntime < finalRuntime) // time loop begins
   {
@@ -592,8 +592,8 @@ int main ( int argc, char *argv[] )
   } // end time loop
 
   // stop timer
-  clock_t time_end = clock();
-  double time_elapsed = (double)(time_end - time_start) / CLOCKS_PER_SEC;
+  auto end_time = std::chrono::steady_clock::now();
+  std::chrono::duration<double> time_elapsed = end_time - start_time;
 
   // Print out the results
   printf("Problem size: %d, time steps taken: %d,  elapsed time: %f s\n", nx, k, time_elapsed);
