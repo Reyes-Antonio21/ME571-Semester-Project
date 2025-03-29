@@ -568,13 +568,7 @@ int main ( int argc, char *argv[] )
       CHECK(cudaMemcpy(uh, d_uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
       CHECK(cudaMemcpy(vh, d_vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
 
-      // Randomly decide whether to generate a drop
-      randNumber = rand() % 10;
-
-      if (randNumber % 2 == 0) // Even numbers (0, 2, 4, 6, 8)
-      {
       generateDrops(nx, ny, x, y, h, uh, vh);
-      }
 
       // Copy updated water height, x-momentum, and y-momentum back to device
       CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof (float), cudaMemcpyHostToDevice));
