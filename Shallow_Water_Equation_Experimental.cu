@@ -182,7 +182,7 @@ void generateDrops( int nx, int ny, float x[], float y[], float h[])
 
       id=ID_2D(i,j,nx);
 
-      h[id] += (0.4 + exp ( -18 * ((xx - xx_perturbation) * (xx - xx_perturbation) + (yy - yy_perturbation) * (yy - yy_perturbation))));
+      h[id] += exp ( -18 * ((xx - xx_perturbation) * (xx - xx_perturbation) + (yy - yy_perturbation) * (yy - yy_perturbation)));
     }
 }
 // ****************************************************************************** //
@@ -404,7 +404,6 @@ int main ( int argc, char *argv[] )
 { 
 // ************************************************** INSTANTIATION ************************************************* //
   
-  unsigned int randNumber;
   unsigned int timeSeed;
 
   int k;
@@ -417,6 +416,8 @@ int main ( int argc, char *argv[] )
   float dx;
   float dy;
   float x_length;
+
+  float programTrigger;
 
   double dt;
   double programRuntime; 
@@ -518,6 +519,8 @@ int main ( int argc, char *argv[] )
   programRuntime = 0.0f;
   k = 0;
 
+  programTrigger = 0.1f;
+
   // Apply the initial conditions.
   initialConditions(nx, ny, dx, dy, x_length, x, y, h, uh, vh);
 
@@ -559,14 +562,18 @@ int main ( int argc, char *argv[] )
     // Timing check using chrono
     auto now = std::chrono::steady_clock::now();
 
-    // Copy height, x-momentum, and y-momentum from device to host
-    CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+    if (programRuntime >= nextTrigger)
+    {
+      // Copy height, x-momentum, and y-momentum from device to host
+      CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
 
-    generateDrops(nx, ny, x, y, h);
+      generateDrops(nx, ny, x, y, h);
 
-    // Copy updated water height, x-momentum, and y-momentum back to device
-    CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof (float), cudaMemcpyHostToDevice));
+      // Copy updated water height, x-momentum, and y-momentum back to device
+      CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof (float), cudaMemcpyHostToDevice));
 
+      nextTrigger += 0.1f
+    }
   } // end time loop
 
   // stop timer
