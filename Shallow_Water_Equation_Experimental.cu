@@ -167,12 +167,12 @@ void generateDrops( int nx, int ny, float x[], float y[], float h[])
 {
   int i, j, id;
 
-  unsigned int xx_perturbation, yy_perturbation;
+  int xx_perturbation, yy_perturbation;
 
   // Generate random perturbation coordinates
   // Offset added to restrict drop formation on boundary
-  xx_perturbation = rand() % (ny - 5);
-  yy_perturbation = rand() % (ny - 5);
+  xx_perturbation = rand() % ((nx - 2) / 2);
+  yy_perturbation = rand() % ((ny - 2) / 2);
 
   for ( i = 1; i < ny+1; i++ )
     for( j = 1; j < nx+1; j++)
@@ -182,7 +182,7 @@ void generateDrops( int nx, int ny, float x[], float y[], float h[])
       float xx = x[j-1];
       float yy = y[i-1];
 
-      h[id] += ( 1.4 * expf( -10 * (((xx - xx_perturbation) * (xx - xx_perturbation)) + ((yy - yy_perturbation) * (yy - yy_perturbation)))));
+      h[id] += ( 0.4 * exp( -10 * (((xx - xx_perturbation) * (xx - xx_perturbation)) + ((yy - yy_perturbation) * (yy - yy_perturbation)))));
     }
 }
 // ****************************************************************************** //
