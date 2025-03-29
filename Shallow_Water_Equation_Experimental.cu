@@ -182,7 +182,7 @@ void generateDrops( int nx, int ny, float x[], float y[], float h[])
 
       id = ID_2D(i, j, nx);
 
-      h[id] + 0.4 * exp ( -10 * (((xx - xx_perturbation) * (xx - xx_perturbation)) + ((yy - yy_perturbation) * (yy - yy_perturbation))));
+      h[id] += (1 + 0.4 * exp ( -10 * (((xx - xx_perturbation) * (xx - xx_perturbation)) + ((yy - yy_perturbation) * (yy - yy_perturbation)))));
     }
 }
 // ****************************************************************************** //
@@ -567,6 +567,8 @@ int main ( int argc, char *argv[] )
 
       // Copy updated water height back to device
       CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof (float), cudaMemcpyHostToDevice));
+      CHECK(cudaMemcpy(d_x, x, nx * sizeof ( float ), cudaMemcpyHostToDevice));
+      CHECK(cudaMemcpy(d_y, y, ny * sizeof ( float ), cudaMemcpyHostToDevice));
 
       nextTrigger += 0.1f;
     }
