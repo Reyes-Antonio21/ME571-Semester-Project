@@ -519,7 +519,7 @@ int main ( int argc, char *argv[] )
   programRuntime = 0.0f;
   k = 0;
 
-  programTrigger = 0.1f;
+  nextTrigger = 0.1f;
 
   // Apply the initial conditions.
   initialConditions(nx, ny, dx, dy, x_length, x, y, h, uh, vh);
