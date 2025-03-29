@@ -560,10 +560,8 @@ int main ( int argc, char *argv[] )
     // Timing check using chrono
     auto now = std::chrono::steady_clock::now();
     
-    if (now - last_trigger >= interval_time_ms)
+    if (programRuntime == 0.250)
     {
-      // Update timing checkpoint
-      last_trigger = now;
 
       // Copy height, x-momentum, and y-momentum from device to host
       CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
