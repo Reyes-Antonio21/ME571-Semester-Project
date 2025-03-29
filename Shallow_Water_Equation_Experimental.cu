@@ -593,7 +593,7 @@ int main ( int argc, char *argv[] )
 
       if (randNumber % 2 == 0) // Even numbers (0, 2, 4, 6, 8)
       {
-        generateDrops(nx, ny, x, y, h);
+        generateDrops(nx, ny, x, y, h, uh, vh);
       }
 
       // Copy updated water height, x-momentum, and y-momentum back to device
