@@ -171,8 +171,8 @@ void generateDrops( int nx, int ny, float x[], float y[], float h[])
 
   // Generate random perturbation coordinates
   // Offset added to restrict drop formation on boundary
-  xx_perturbation = rand() % ((nx - 2) / 2);
-  yy_perturbation = rand() % ((ny - 2) / 2);
+  xx_perturbation = 2 + rand() % (nx - 3);
+  yy_perturbation = 2 + rand() % (ny - 3);
 
   for ( i = 1; i < ny+1; i++ )
     for( j = 1; j < nx+1; j++)
@@ -553,15 +553,15 @@ int main ( int argc, char *argv[] )
     // **** APPLY BOUNDARY CONDITIONS ****
     applyBoundaryConditionsGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, nx, ny, 3);
 
-    if (k >= nextTrigger)
+    if (k == nextTrigger)
     {
       // Copy water height from device to host
-      CHECK(cudaMemcpy(h, d_h, (nx+2) * (ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+      CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
 
       generateDrops(nx, ny, x, y, h);
 
       // Copy updated water height back to device
-      CHECK(cudaMemcpy(d_h, h, (nx+2) * (ny+2) * sizeof (float), cudaMemcpyHostToDevice));
+      CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof (float), cudaMemcpyHostToDevice));
 
       nextTrigger = nextTrigger + 25; 
     }
