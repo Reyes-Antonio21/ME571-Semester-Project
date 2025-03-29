@@ -403,7 +403,7 @@ __global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int n
 int main ( int argc, char *argv[] )
 { 
 // ************************************************** INSTANTIATION ************************************************* //
-  
+  unsigned int nextTrigger;
   unsigned int timeSeed;
 
   int k;
@@ -416,8 +416,6 @@ int main ( int argc, char *argv[] )
   float dx;
   float dy;
   float x_length;
-
-  float nextTrigger;
 
   double dt;
   double programRuntime; 
@@ -519,7 +517,7 @@ int main ( int argc, char *argv[] )
   programRuntime = 0.0f;
   k = 0;
 
-  nextTrigger = 0.1f;
+  nextTrigger = 25;
 
   // Apply the initial conditions.
   initialConditions(nx, ny, dx, dy, x_length, x, y, h, uh, vh);
@@ -555,9 +553,8 @@ int main ( int argc, char *argv[] )
     // **** APPLY BOUNDARY CONDITIONS ****
     applyBoundaryConditionsGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, nx, ny, 3);
 
-    // Timing check using chrono
-    auto now = std::chrono::steady_clock::now();
-
+    if (k >= nextTrigger)
+    {
       // Copy water height from device to host
       CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
 
@@ -565,7 +562,7 @@ int main ( int argc, char *argv[] )
 
       // Copy updated water height back to device
       CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof (float), cudaMemcpyHostToDevice));
-      
+    }
   } // end time loop
 
   // stop timer
