@@ -551,7 +551,7 @@ int main ( int argc, char *argv[] )
 
   // Initialize timing variables
   auto last_trigger = std::chrono::steady_clock::now();
-  std::chrono::milliseconds interval_time_ms(5); // 10ms interval
+  std::chrono::milliseconds interval_time_ms(3); // 10ms interval
 
   while (programRuntime < finalRuntime) // time loop begins
   {
