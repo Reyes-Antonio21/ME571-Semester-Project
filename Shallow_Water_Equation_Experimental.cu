@@ -99,7 +99,7 @@ void initialConditions(int nx, int ny, float dx, float dy,  float x_length, floa
       float xx = x[j-1];
       float yy = y[i-1];
       id=ID_2D(i,j,nx);
-      h[id] = 1.0 + 0.4 * exp ( -15 * ( xx*xx + yy*yy) );
+      h[id] = 1.0 + 0.35 * exp ( -18 * ( xx*xx + yy*yy) );
     }
   
   for ( i = 1; i < ny+1; i++ )
@@ -167,37 +167,23 @@ void generateDrops( int nx, int ny, float x[], float y[], float h[], float uh[],
 {
   int i, j, id;
 
-  unsigned int randNumber;
+  unsigned int xx_perturbation, yy_perturbation;
 
-  // Determine a section's grid size
-  // This value will be used to section off the nx x nx grid into 16 sections
-  unsigned int sectionSquareLength = (nx * ny) / 16;
+  // Generate random perturbation coordinates
+  // Offset added to restrict drop formation on boundary
+  xx_perturbation = rand() % (nx - 5);
+  yy_perturbation = rand() % (ny - 5);
 
-  // Generate a random number between 0 & 15
-  randNumber = rand() % 16;
 
-  // Determine section bounds based on random number
-  unsigned int sectionStart = randNumber * sectionSquareLength;
-  unsigned int sectionEnd = (randNumber + 1) * sectionSquareLength;
-
-  for (i = max(1, sectionStart + 1); i < min(ny, sectionEnd); i++)
-    for (j = max(1, sectionStart + 1); j < min(nx, sectionEnd); j++)
+  for ( i = 1; i < ny+1; i++ )
+    for( j = 1; j < nx+1; j++)
     {
-      id = ID_2D(i,j,nx);
-      
-      float xx = x[j - 1];
-      float yy = y[i - 1];
+      float xx = x[j-1];
+      float yy = y[i-1];
 
-      h[id] += 0.4f * expf(-15 * ( xx*xx + yy*yy));
+      id=ID_2D(i,j,nx);
 
-      // Sample momentum from neighboring points 
-      int id_left  = ID_2D(i, j - 1, nx);
-      int id_right = ID_2D(i, j + 1, nx);
-      int id_up    = ID_2D(i - 1, j, nx);
-      int id_down  = ID_2D(i + 1, j, nx);
-
-      uh[id] = (uh[id_left] + uh[id_right] + uh[id_up] + uh[id_down]) / 4.0f;
-      vh[id] = (vh[id_left] + vh[id_right] + vh[id_up] + vh[id_down]) / 4.0f;
+      h[id] += 0.35 * exp ( -18 * ( (xx - xx_perturbation) * (xx - xx_perturbation) + (yy - yy_perturbation) * (yy - yy_perturbation)));
     }
 }
 // ****************************************************************************** //
@@ -551,7 +537,7 @@ int main ( int argc, char *argv[] )
 
   // Initialize timing variables
   auto last_trigger = std::chrono::steady_clock::now();
-  std::chrono::milliseconds interval_time_ms(3); // 10ms interval
+  std::chrono::milliseconds interval_time_ms(50); // 200ms interval
 
   while (programRuntime < finalRuntime) // time loop begins
   {
@@ -663,3 +649,37 @@ int main ( int argc, char *argv[] )
   return 0;
 }
 // ******************************************************************************************************************************************** //
+
+
+/*
+void generateDrops( int nx, int ny, float x[], float y[], float h[], float uh[], float vh[])
+{
+  int i, j, id;
+
+  unsigned int randNumber;
+
+  // Determine a section's grid size
+  // This value will be used to section off the nx x nx grid into 16 sections
+  unsigned int sectionSquareLength = (nx * ny) / 25;
+
+  // Generate a random number between 0 & 24
+  randNumber = rand() % 25;
+
+  // Determine section bounds based on random number
+  unsigned int sectionStart = randNumber * sectionSquareLength;
+  unsigned int sectionEnd = (randNumber + 1) * sectionSquareLength;
+
+  for (i = max(1, sectionStart + 1); i < min(ny, sectionEnd); i++)
+    for (j = max(1, sectionStart + 1); j < min(nx, sectionEnd); j++)
+    {
+      id = ID_2D(i,j,nx);
+      
+      float xx = x[j - 1];
+      float yy = y[i - 1];
+
+      h[id] += 0.4f * expf(-15 * ( xx*xx + yy*yy));
+
+    }
+}
+// ****************************************************************************** //
+*/
