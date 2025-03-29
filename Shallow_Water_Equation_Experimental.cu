@@ -99,7 +99,7 @@ void initialConditions(int nx, int ny, float dx, float dy,  float x_length, floa
       float xx = x[j-1];
       float yy = y[i-1];
       id=ID_2D(i,j,nx);
-      h[id] = 1.0 + 0.35 * exp ( -18 * ( xx*xx + yy*yy) );
+      h[id] = 1.0 + 0.4 * exp ( -18 * ( xx*xx + yy*yy) );
     }
   
   for ( i = 1; i < ny+1; i++ )
@@ -182,7 +182,7 @@ void generateDrops( int nx, int ny, float x[], float y[], float h[])
 
       id=ID_2D(i,j,nx);
 
-      h[id] += exp ( -18 * ((xx - xx_perturbation) * (xx - xx_perturbation) + (yy - yy_perturbation) * (yy - yy_perturbation)));
+      h[id] += 0.4 * exp ( -18 * ((xx - xx_perturbation) * (xx - xx_perturbation) + (yy - yy_perturbation) * (yy - yy_perturbation)));
     }
 }
 // ****************************************************************************** //
@@ -537,10 +537,6 @@ int main ( int argc, char *argv[] )
   // start timer
   auto start_time = std::chrono::steady_clock::now();
 
-  // Initialize timing variables
-  auto last_trigger = std::chrono::steady_clock::now();
-  std::chrono::milliseconds interval_time_ms(5); // 200ms interval
-
   while (programRuntime < finalRuntime) // time loop begins
   {
     // Take a time step and increase step counter
@@ -564,12 +560,12 @@ int main ( int argc, char *argv[] )
 
     if (programRuntime >= nextTrigger)
     {
-      // Copy height, x-momentum, and y-momentum from device to host
+      // Copy water height from device to host
       CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
 
       generateDrops(nx, ny, x, y, h);
 
-      // Copy updated water height, x-momentum, and y-momentum back to device
+      // Copy updated water height back to device
       CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof (float), cudaMemcpyHostToDevice));
 
       nextTrigger += 0.1f;
