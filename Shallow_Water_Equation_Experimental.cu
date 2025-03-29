@@ -163,47 +163,43 @@ void initialConditions(int nx, int ny, float dx, float dy,  float x_length, floa
 }
 // ****************************************************************************** //
 
-void generateDrops( int nx, int ny, float x[], float y[], float h[], float uh[], float vh[])
+void generateDrops(int nx, int ny, float x[], float y[], float h[], float uh[], float vh[]) 
 {
   int i, j, id;
-
   unsigned int randNumber;
-  unsigned int timeSeed;
-
-  // Determine a section's grid size
-  // This value will be used to section off the nx x nx grid into 16 sections
-  unsigned int sectionSquareLength = (nx * ny) / 16;
   
-  timeSeed = time(NULL);
-  srand(timeSeed);
-
-  // Generate a random number between 0 & 15
+  // Define sectioning, considering ghost cells
+  unsigned int sectionSquareLength = ((nx+2) * (nx+2)) / 16;
   randNumber = rand() % 16;
-
-  // Determine section bounds based on random number
+  
+  // Determine section bounds
   unsigned int sectionStart = randNumber * sectionSquareLength;
   unsigned int sectionEnd = (randNumber + 1) * sectionSquareLength;
 
-  for (i = max(1, sectionStart + 1); i < min(ny, sectionEnd); i++)
-    for (j = max(1, sectionStart + 1); j < min(nx, sectionEnd); j++)
+  // Iterate over the section
+  for (i = max(1, sectionStart / (nx+2)); i < min(nx+1, sectionEnd / (nx+2)); i++)
+    for (j = max(1, sectionStart % (nx+2)); j < min(nx+1, sectionEnd % (nx+2)); j++) 
     {
-      id = ID_2D(i,j,nx);
-      
-      float xx = x[j - 1];
-      float yy = y[i - 1];
+      id = ID_2D(i, j, nx+2);
+      float xx = x[j];  
+      float yy = y[i];
 
-      h[id] += 0.4f * expf(-15 * ( xx*xx + yy*yy));
+      h[id] += 0.4f * expf(-15 * (xx * xx + yy * yy));
 
-       // Sample momentum from neighboring points 
-       int id_left  = ID_2D(i, j - 1, nx);
-       int id_right = ID_2D(i, j + 1, nx);
-       int id_up    = ID_2D(i - 1, j, nx);
-       int id_down  = ID_2D(i + 1, j, nx);
+      // Momentum update, skipping ghost cells
+      if (i > 1 && i < nx && j > 1 && j < nx) 
+      {
+        int id_left  = ID_2D(i, j - 1, nx+2);
+        int id_right = ID_2D(i, j + 1, nx+2);
+        int id_up    = ID_2D(i - 1, j, nx+2);
+        int id_down  = ID_2D(i + 1, j, nx+2);
 
-       uh[id] = (uh[id_left] + uh[id_right] + uh[id_up] + uh[id_down]) / 4.0f;
-       vh[id] = (vh[id_left] + vh[id_right] + vh[id_up] + vh[id_down]) / 4.0f;
+        uh[id] = (uh[id_left] + uh[id_right] + uh[id_up] + uh[id_down]) / 4.0f;
+        vh[id] = (vh[id_left] + vh[id_right] + vh[id_up] + vh[id_down]) / 4.0f;
+      }
     }
 }
+
 // ****************************************************************************** //
 
 __global__ void computeFluxesGPU(float *h, float *uh, float *vh, float *fh, float *fuh, float *fvh, float *gh, float *guh, float *gvh, int nx, int ny) 
@@ -667,3 +663,46 @@ int main ( int argc, char *argv[] )
   return 0;
 }
 // ******************************************************************************************************************************************** //
+
+
+
+
+/*void generateDrops( int nx, int ny, float x[], float y[], float h[], float uh[], float vh[])
+{
+  int i, j, id;
+
+  unsigned int randNumber;
+
+  // Determine a section's grid size
+  // This value will be used to section off the nx x nx grid into 16 sections
+  unsigned int sectionSquareLength = (nx * ny) / 16;
+
+  // Generate a random number between 0 & 15
+  randNumber = rand() % 16;
+
+  // Determine section bounds based on random number
+  unsigned int sectionStart = randNumber * sectionSquareLength;
+  unsigned int sectionEnd = (randNumber + 1) * sectionSquareLength;
+
+  for (i = max(1, sectionStart + 1); i < min(ny, sectionEnd); i++)
+    for (j = max(1, sectionStart + 1); j < min(nx, sectionEnd); j++)
+    {
+      id = ID_2D(i,j,nx);
+      
+      float xx = x[j - 1];
+      float yy = y[i - 1];
+
+      h[id] += 0.4f * expf(-15 * ( xx*xx + yy*yy));
+
+      // Sample momentum from neighboring points 
+      int id_left  = ID_2D(i, j - 1, nx);
+      int id_right = ID_2D(i, j + 1, nx);
+      int id_up    = ID_2D(i - 1, j, nx);
+      int id_down  = ID_2D(i + 1, j, nx);
+
+      uh[id] = (uh[id_left] + uh[id_right] + uh[id_up] + uh[id_down]) / 4.0f;
+      vh[id] = (vh[id_left] + vh[id_right] + vh[id_up] + vh[id_down]) / 4.0f;
+    }
+}
+// ****************************************************************************** //
+*/
