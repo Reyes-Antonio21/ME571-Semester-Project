@@ -172,7 +172,7 @@ void generateDrops( int nx, int ny, float x[], float y[], float h[])
   // Generate random perturbation coordinates
   // Offset added to restrict drop formation on boundary
   xx_perturbation = 8 * nx / 10;
-  yy_perturbation = 8 * ny / 5;
+  yy_perturbation = 8 * ny / 10;
 
   for ( i = 1; i < ny+1; i++ )
     for( j = 1; j < nx+1; j++)
