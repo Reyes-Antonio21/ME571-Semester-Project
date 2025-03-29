@@ -582,7 +582,7 @@ int main ( int argc, char *argv[] )
       randOutcome = false;
     }
 
-    if (randOutcome == true);
+    if (randOutcome == true)
     {
       randNumber = rand();
       randNumber = randNumber % 10;
