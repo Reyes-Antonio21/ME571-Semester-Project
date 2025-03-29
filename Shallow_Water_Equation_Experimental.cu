@@ -530,6 +530,9 @@ int main ( int argc, char *argv[] )
   CHECK(cudaMemcpy(d_uh, uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
   CHECK(cudaMemcpy(d_vh, vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
 
+  CHECK(cudaMemcpy(d_x, x, nx * sizeof ( float ), cudaMemcpyHostToDevice));
+  CHECK(cudaMemcpy(d_y, y, ny * sizeof ( float ), cudaMemcpyHostToDevice));
+
   // ******************************************************************** COMPUTATION SECTION ******************************************************************** //
 
   // start timer
@@ -556,12 +559,16 @@ int main ( int argc, char *argv[] )
     if (k == nextTrigger)
     {
       // Copy water height from device to host
-      //CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+      CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+      CHECK(cudaMemcpy(x, d_x, nx * sizeof ( float ), cudaMemcpyDeviceToHost));
+      CHECK(cudaMemcpy(y, d_y, ny * sizeof ( float ), cudaMemcpyDeviceToHost));
 
       generateDrops(nx, ny, x, y, h);
 
       // Copy updated water height back to device
       CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof (float), cudaMemcpyHostToDevice));
+      CHECK(cudaMemcpy(d_x, x, nx * sizeof ( float ), cudaMemcpyHostToDevice));
+      CHECK(cudaMemcpy(d_y, y, ny * sizeof ( float ), cudaMemcpyHostToDevice));
 
       nextTrigger = nextTrigger + 25; 
     }
@@ -580,6 +587,9 @@ int main ( int argc, char *argv[] )
   CHECK(cudaMemcpy(h, d_h, (nx+2 )* (ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
   CHECK(cudaMemcpy(uh, d_uh, (nx+2) * (ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
   CHECK(cudaMemcpy(vh, d_vh, (nx+2) * (ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+
+  CHECK(cudaMemcpy(x, d_x, nx * sizeof ( float ), cudaMemcpyDeviceToHost));
+  CHECK(cudaMemcpy(y, d_y, ny * sizeof ( float ), cudaMemcpyDeviceToHost));
 
   writeResults(h, uh, vh, x, y, programRuntime, nx, ny);
 
