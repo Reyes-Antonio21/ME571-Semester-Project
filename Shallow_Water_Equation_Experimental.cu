@@ -163,7 +163,7 @@ void initialConditions(int nx, int ny, float dx, float dy,  float x_length, floa
 }
 // ****************************************************************************** //
 
-void generateDrops( int nx, int ny, float x[], float y[], float h[])
+void generateDrops( int nx, int ny, float x_length, float x[], float y[], float h[])
 {
   int i, j, id;
 
@@ -561,7 +561,7 @@ int main ( int argc, char *argv[] )
       // Copy water height from device to host
       CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
 
-      generateDrops(nx, ny, x, y, h);
+      generateDrops(nx, ny, x_length, x, y, h);
 
       // Copy updated water height back to device
       CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof (float), cudaMemcpyHostToDevice));
