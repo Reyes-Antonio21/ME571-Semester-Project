@@ -407,8 +407,9 @@ __global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int n
 int main ( int argc, char *argv[] )
 { 
 // ************************************************** INSTANTIATION ************************************************* //
-  unsigned int nextTrigger;
   unsigned int timeSeed;
+  unsigned int dropTrigger;
+  unsigned int dropDelay;
 
   int k;
   int nx; 
@@ -521,7 +522,8 @@ int main ( int argc, char *argv[] )
   programRuntime = 0.0f;
   k = 0;
 
-  nextTrigger = 25;
+  dropTrigger = 25;
+  dropDelay = 25;
 
   // Apply the initial conditions.
   initialConditions(nx, ny, dx, dy, x_length, x, y, h, uh, vh);
@@ -560,17 +562,24 @@ int main ( int argc, char *argv[] )
     // **** APPLY BOUNDARY CONDITIONS ****
     applyBoundaryConditionsGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, nx, ny, 3);
 
-    if (k == nextTrigger)
+    if (k == dropTrigger)
     {
-      // Copy water height from device to host
-      CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
 
-      generateDrops(nx, ny, x_length, x, y, h);
+      // Randomly decide whether to generate a drop
+      randNumber = rand() % 10;
 
-      // Copy updated water height back to device
-      CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof (float), cudaMemcpyHostToDevice));
+      if (randNumber % 2 == 0) // Even numbers (0, 2, 4, 6, 8)
+      {
+        // Copy water height from device to host
+        CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
 
-      nextTrigger = nextTrigger + 50; 
+        generateDrops(nx, ny, x_length, x, y, h);
+
+        // Copy updated water height back to device
+        CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof (float), cudaMemcpyHostToDevice));
+      }
+
+      dropTrigger = dropTrigger + dropDelay; 
     }
   } // end time loop
 
