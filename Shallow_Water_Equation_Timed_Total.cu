@@ -4,6 +4,7 @@
 # include <math.h>
 # include <string.h>
 # include <time.h>
+#include <chrono>
 # include <cuda_runtime.h>
 
 # define ID_2D(i,j,nx) ((i)*(nx+2)+(j))
@@ -496,7 +497,7 @@ int main ( int argc, char *argv[] )
 
     // stop timer
     auto end_time_dthd = std::chrono::steady_clock::now();
-    std::chrono::duration<double> time_elapsed_dthd += end_time_dthd - start_time_dthd;
+    time_elapsed_dthd += end_time_dthd - start_time_dthd;
 
     // ******************************************************************** COMPUTATION SECTION ******************************************************************** //
 
