@@ -410,6 +410,7 @@ int main ( int argc, char *argv[] )
   unsigned int timeSeed;
   unsigned int dropTrigger;
   unsigned int dropDelay;
+  unsigned int randNumber;
 
   int k;
   int nx; 
