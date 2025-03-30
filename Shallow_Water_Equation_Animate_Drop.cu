@@ -524,7 +524,7 @@ int main ( int argc, char *argv[] )
   k = 0;
 
   dropTrigger = 25;
-  dropDelay = 40;
+  dropDelay = 25;
 
   // Apply the initial conditions.
   initialConditions(nx, ny, dx, dy, x_length, x, y, h, uh, vh);
@@ -563,25 +563,29 @@ int main ( int argc, char *argv[] )
     // **** APPLY BOUNDARY CONDITIONS ****
     applyBoundaryConditionsGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, nx, ny, 3);
 
+    CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+    CHECK(cudaMemcpy(uh, d_uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+    CHECK(cudaMemcpy(vh, d_vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
+
     if (k == dropTrigger)
     {
-
       // Randomly decide whether to generate a drop
       randNumber = rand() % 10;
 
       if (randNumber % 2 == 0) // Even numbers (0, 2, 4, 6, 8)
       {
-        // Copy water height from device to host
-        CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-
         generateDrops(nx, ny, x_length, x, y, h);
-
-        // Copy updated water height back to device
-        CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof (float), cudaMemcpyHostToDevice));
       }
 
       dropTrigger = dropTrigger + dropDelay; 
     }
+
+    writeResults(h, uh, vh, x, y, programRuntime, nx, ny);
+
+    CHECK(cudaMemcpy(d_h, h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
+    CHECK(cudaMemcpy(d_uh, uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
+    CHECK(cudaMemcpy(d_vh, vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
+
   } // end time loop
 
   // stop timer
@@ -590,18 +594,6 @@ int main ( int argc, char *argv[] )
 
   // Print out the results
   printf("Problem size: %d, time steps taken: %d,  elapsed time: %f s\n", nx, k, time_elapsed);
-
-  // ******************************************************************** POSTPROCESSING ******************************************************************** //
-
-  // Move data back to the host
-  CHECK(cudaMemcpy(h, d_h, (nx+2 )* (ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-  CHECK(cudaMemcpy(uh, d_uh, (nx+2) * (ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-  CHECK(cudaMemcpy(vh, d_vh, (nx+2) * (ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
-
-  CHECK(cudaMemcpy(x, d_x, nx * sizeof ( float ), cudaMemcpyDeviceToHost));
-  CHECK(cudaMemcpy(y, d_y, ny * sizeof ( float ), cudaMemcpyDeviceToHost));
-
-  writeResults(h, uh, vh, x, y, programRuntime, nx, ny);
 
   // ******************************************************************** DEALLOCATE MEMORY ******************************************************************** //
 

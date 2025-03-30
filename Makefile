@@ -15,6 +15,9 @@ swep_2d_tt: Shallow_Water_Equation_Timed_Total.cu
 swep_2d_an: Shallow_Water_Equation_Animate.cu
 	$(CUDACC) -o swep_2d_an Shallow_Water_Equation_Animate.cu
 
+swep_2d_ad: Shallow_Water_Equation_Animate_Drop.cu
+	$(CUDACC) -o swep_2d_ad Shallow_Water_Equation_Animate_Drop.cu
+
 swep_2d_ex: Shallow_Water_Equation_Experimental.cu
 	$(CUDACC) -o swep_2d_ex Shallow_Water_Equation_Experimental.cu	
 
