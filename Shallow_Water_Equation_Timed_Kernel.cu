@@ -4,6 +4,7 @@
 # include <math.h>
 # include <string.h>
 # include <time.h>
+#include <chrono>
 # include <cuda_runtime.h>
 
 # define ID_2D(i,j,nx) ((i)*(nx+2)+(j))
@@ -15,7 +16,7 @@ void getArgs(int *nx, double *dt, float *x_length, double *t_final, int argc, ch
   // Get the quadrature file root name:
 
   if ( argc <= 1 ){
-    *nx = 401;
+    *nx = 400;
   }else{
     *nx = atoi ( argv[1] );
   }
@@ -499,7 +500,7 @@ int main ( int argc, char *argv[] )
     // ******************************************************************** COMPUTATION SECTION ******************************************************************** //
 
     // start timer
-    clock_t time_start = clock();
+    auto start_time = std::chrono::steady_clock::now();
 
     while (time < t_final) // time loop begins
     {
@@ -510,65 +511,64 @@ int main ( int argc, char *argv[] )
       // *********************************************************************************************************************************************************** //
 
       // Start timing compute fluxes calculations
-      clock_t time_start_cf = clock();
-
+      auto start_time_cf = std::chrono::steady_clock::now();
       // **** COMPUTE FLUXES ****
       computeFluxesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, nx, ny);
 
       // Stop timing compute fluxes calculations
-      clock_t time_end_cf = clock();
+      auto end_time_cf = std::chrono::steady_clock::now();
 
       // calculate time elapsed for compute fluxes
-      time_elapsed_cf += (double)(time_end_cf - time_start_cf) / CLOCKS_PER_SEC;
+      std::chrono::duration<double> time_elapsed_cf += end_time_cf - start_time_cf;
 
       // *********************************************************************************************************************************************************** //
 
       // Start timing compute variable calculations
-      clock_t time_start_cv = clock();
+      auto start_time_cv = std::chrono::steady_clock::now();
       
       // **** COMPUTE VARIABLES ****
       computeVariablesGPU<<<gridSize, blockSize>>>(d_hm, d_uhm, d_vhm, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, d_h, d_uh, d_vh, lambda_x, lambda_y, nx, ny);
     
       // Stop timing compute variable calculations
-      clock_t time_end_cv = clock();
+      auto end_time_cv = std::chrono::steady_clock::now();
 
       // calculate time elapsed for compute variables
-      time_elapsed_cv += (double)(time_end_cv - time_start_cv) / CLOCKS_PER_SEC;
+      std::chrono::duration<double> time_elapsed_cv += end_time_cv - start_time_cv;
       // *********************************************************************************************************************************************************** //
 
       // Start timing update variables calculations
-      clock_t time_start_uv = clock();
+      auto start_time_uv = std::chrono::steady_clock::now();
 
       // **** UPDATE VARIABLES ****
       updateVariablesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_hm, d_uhm, d_vhm, nx, ny);
 
       // Stop timing update variables calculations
-      clock_t time_end_uv = clock();
+      auto end_time_uv = std::chrono::steady_clock::now();
 
       // calculate time elapsed for update variables
-      time_elapsed_uv += (double)(time_end_uv - time_start_uv) / CLOCKS_PER_SEC;
+      std::chrono::duration<double> time_elapsed_uv += end_time_uv - start_time_uv;
 
       // *********************************************************************************************************************************************************** //
 
       // Start timing apply boundary condition calculations
-      clock_t time_start_bc = clock();
+      auto start_time_bc = std::chrono::steady_clock::now();
 
       // **** APPLY BOUNDARY CONDITIONS ****
       applyBoundaryConditionsGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, nx, ny, 3);  
 
       // Stop timing apply boundary condition calculations
-      clock_t time_end_bc = clock();
+      auto end_time_bc = std::chrono::steady_clock::now();
 
       // calculate time elapsed for apply boundary conditions
-      time_elapsed_bc += (double)(time_end_bc - time_start_bc) / CLOCKS_PER_SEC;
+      std::chrono::duration<double> time_elapsed_bc += end_time_bc - start_time_bc;
 
       // *********************************************************************************************************************************************************** //
 
     } // end time loop
 
     // stop timer
-    clock_t time_end = clock();
-    double time_elapsed = (double)(time_end - time_start) / CLOCKS_PER_SEC;
+    auto end_time = std::chrono::steady_clock::now();
+    std::chrono::duration<double> time_elapsed = end_time - start_time;
     double avg_time_elapsed_cf = time_elapsed_cf / (double) k;
     double avg_time_elapsed_cv = time_elapsed_cv / (double) k;
     double avg_time_elapsed_uv = time_elapsed_uv / (double) k;
