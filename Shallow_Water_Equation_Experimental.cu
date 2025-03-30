@@ -169,11 +169,15 @@ void generateDrops( int nx, int ny, float x_length, float x[], float y[], float 
 
   float xx_perturbation, yy_perturbation;
 
+  // Boundary offset
+  float margin = 0.08 * x_length; // 10% buffer on each side
+  float min = -x_length / 2 + margin;
+  float max =  x_length / 2 - margin;
+
   // Generate random perturbation coordinates
   // Offset added to restrict drop formation on boundary
-  xx_perturbation = ((float) rand() / RAND_MAX) * x_length - x_length / 2;
-  yy_perturbation = ((float) rand() / RAND_MAX) * x_length - x_length / 2;
-
+  xx_perturbation = ((float) rand() / RAND_MAX) * (max - min) + min;
+  yy_perturbation = ((float) rand() / RAND_MAX) * (max - min) + min;
   for ( i = 1; i < ny+1; i++ )
     for( j = 1; j < nx+1; j++)
     {
