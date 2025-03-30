@@ -519,7 +519,7 @@ int main ( int argc, char *argv[] )
       auto end_time_cf = std::chrono::steady_clock::now();
 
       // calculate time elapsed for compute fluxes
-      time_elapsed_cf = time_elapsed_cf + (end_time_cf - start_time_cf);
+      time_elapsed_cf = time_elapsed_cf + std::chrono::duration<double>(end_time_cf - start_time_cf).count();
 
       // *********************************************************************************************************************************************************** //
 
@@ -533,7 +533,7 @@ int main ( int argc, char *argv[] )
       auto end_time_cv = std::chrono::steady_clock::now();
 
       // calculate time elapsed for compute variables
-      time_elapsed_cv = time_elapsed_cv + (end_time_cv - start_time_cv);
+      time_elapsed_cv = time_elapsed_cv + std::chrono::duration<double>(end_time_cv - start_time_cv).count();
       // *********************************************************************************************************************************************************** //
 
       // Start timing update variables calculations
@@ -546,7 +546,7 @@ int main ( int argc, char *argv[] )
       auto end_time_uv = std::chrono::steady_clock::now();
 
       // calculate time elapsed for update variables
-      time_elapsed_uv = time_elapsed_uv + (end_time_uv - start_time_uv);
+      time_elapsed_uv = time_elapsed_uv + std::chrono::duration<double>(end_time_uv - start_time_uv).count();
 
       // *********************************************************************************************************************************************************** //
 
@@ -560,7 +560,7 @@ int main ( int argc, char *argv[] )
       auto end_time_bc = std::chrono::steady_clock::now();
 
       // calculate time elapsed for apply boundary conditions
-      time_elapsed_bc += (end_time_bc - start_time_bc);
+      time_elapsed_bc = time_elapsed_bc + std::chrono::duration<double>(end_time_bc - start_time_bc).count();
 
       // *********************************************************************************************************************************************************** //
 

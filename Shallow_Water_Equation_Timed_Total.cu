@@ -497,7 +497,7 @@ int main ( int argc, char *argv[] )
 
     // stop timer
     auto end_time_dthd = std::chrono::steady_clock::now();
-    time_elapsed_dthd += end_time_dthd - start_time_dthd;
+    time_elapsed_dthd = time_elapsed_dthd + std::chrono::duration<double>(end_time_dthd - start_time_dthd).count();
 
     // ******************************************************************** COMPUTATION SECTION ******************************************************************** //
 
