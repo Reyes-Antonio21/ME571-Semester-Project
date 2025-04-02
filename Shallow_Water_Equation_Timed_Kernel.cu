@@ -386,11 +386,7 @@ int main ( int argc, char *argv[] )
   double dt;
   double time; 
   double t_final;
-  double time_elapsed_cf = 0.0;
-  double time_elapsed_cv = 0.0;
-  double time_elapsed_uv = 0.0;
-  double time_elapsed_bc = 0.0;
-
+  
   // pointers to host, device memory 
   float *h, *d_h;
   float *uh, *d_uh;
@@ -483,6 +479,12 @@ int main ( int argc, char *argv[] )
     // set time to zero and step counter to zero
     time = 0.0f;
     k = 0;
+
+    // instantiate section timing variables
+    double time_elapsed_cf = 0.0;
+    double time_elapsed_cv = 0.0;
+    double time_elapsed_uv = 0.0;
+    double time_elapsed_bc = 0.0;
 
     initial_conditions(nx, ny, dx, dy, x_length, x, y, h, uh, vh);
 

@@ -16,7 +16,7 @@ void getArgs(int *nx, double *dt, float *x_length, double *t_final, int argc, ch
   // Get the quadrature file root name:
 
   if ( argc <= 1 ){
-    *nx = 401;
+    *nx = 400;
   }else{
     *nx = atoi ( argv[1] );
   }
@@ -194,17 +194,16 @@ __global__ void computeVariablesGPU(float *hm, float *uhm, float *vhm, float *fh
 {
   unsigned int i = threadIdx.y + blockIdx.y * blockDim.y;
   unsigned int j = threadIdx.x + blockIdx.x * blockDim.x;
-  unsigned int id, id_left, id_right, id_bottom, id_top;
+  
+  unsigned int id = ((i) * (nx + 2) + (j));
+
+  unsigned int id_left   = ((i) * (nx + 2) + (j - 1));
+  unsigned int id_right  = ((i) * (nx + 2) + (j + 1));
+  unsigned int id_bottom = ((i - 1) * (nx + 2) + (j));
+  unsigned int id_top    = ((i + 1) * (nx + 2) + (j));
 
   if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)  // Ensure proper bounds
   {
-    id = ((i) * (nx + 2) + (j));
-
-    id_left   = ((i) * (nx + 2) + (j - 1));
-    id_right  = ((i) * (nx + 2) + (j + 1));
-    id_bottom = ((i - 1) * (nx + 2) + (j));
-    id_top    = ((i + 1) * (nx + 2) + (j));
-
     hm[id] = 0.25 * (h[id_left] + h[id_right] + h[id_bottom] + h[id_top])
           - lambda_x * (fh[id_right] - fh[id_left])
           - lambda_y * (gh[id_top] - gh[id_bottom]);
@@ -224,12 +223,10 @@ __global__ void updateVariablesGPU(float *h, float *uh, float *vh, float *hm, fl
 {
   unsigned int i = threadIdx.y + blockIdx.y * blockDim.y;
   unsigned int j = threadIdx.x + blockIdx.x * blockDim.x;
-  unsigned int id;
+  unsigned int id = ((i) * (nx + 2) + (j));
 
   if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)  // Ensure proper bounds
   {
-    id = ((i) * (nx + 2) + (j));
-
     h[id] = hm[id];
     uh[id] = uhm[id];
     vh[id] = vhm[id];
@@ -331,10 +328,10 @@ __global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int n
   }
   else if (bc_type == 3) // Reflective Boundary Conditions
   {  
+    id = ((i) * (nx + 2) + (j));
     // Left Boundary (j = 1) - Reflective
     if (j == 1 && i > 0 && i < ny + 1) 
     {
-      id = ((i) * (nx + 2) + (j));
       id_ghost = ((i) * (nx + 2) + (j - 1));
       h[id_ghost]  = h[id];
       uh[id_ghost] = -uh[id];  // Flip normal velocity
@@ -344,7 +341,6 @@ __global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int n
     // Right Boundary (j = nx) - Reflective
     if (j == nx && i > 0 && i < ny + 1) 
     {
-      id = ((i) * (nx + 2) + (j));
       id_ghost = ((i) * (nx + 2) + (j + 1));
       h[id_ghost]  = h[id];
       uh[id_ghost] = -uh[id];  // Flip normal velocity
@@ -354,7 +350,6 @@ __global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int n
     // Bottom Boundary (i = 1) - Reflective
     if (i == 1 && j > 0 && j < nx + 1) 
     {
-      id = ((i) * (nx + 2) + (j));
       id_ghost = ((i - 1) * (nx + 2) + (j));
       h[id_ghost]  = h[id];
       uh[id_ghost] = uh[id];   // Keep tangential velocity
@@ -364,7 +359,6 @@ __global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int n
     // Top Boundary (i = ny) - Reflective
     if (i == ny && j > 0 && j < nx + 1) 
     {
-      id = ((i) * (nx + 2) + (j));
       id_ghost = ((i + 1) * (nx + 2) + (j));
       h[id_ghost]  = h[id];
       uh[id_ghost] = uh[id];   // Keep tangential velocity
@@ -392,7 +386,6 @@ int main ( int argc, char *argv[] )
   double dt;
   double time; 
   double t_final;
-  double time_elapsed_dthd = 0.0;
 
   // pointers to host, device memory 
   float *h, *d_h;
@@ -485,6 +478,9 @@ int main ( int argc, char *argv[] )
     // set initial time & step counter
     // set time to zero and step counter to zero
     time = 0.0f;
+
+    // instantiate data transfer timing variable
+    double time_elapsed_dthd = 0.0;
 
     initial_conditions(nx, ny, dx, dy, x_length, x, y, h, uh, vh);
 
