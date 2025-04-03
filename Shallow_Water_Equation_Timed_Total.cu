@@ -239,7 +239,13 @@ __global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int n
   unsigned int i = threadIdx.y + blockIdx.y * blockDim.y;
   unsigned int j = threadIdx.x + blockIdx.x * blockDim.x;
 
-  unsigned int id, id_ghost;
+  unsigned int id_ghost;
+
+  unsigned int id = ((i) * (nx + 2) + (j));
+  unsigned int id_left   = ((i) * (nx + 2) + (j - 1));
+  unsigned int id_right  = ((i) * (nx + 2) + (j + 1));
+  unsigned int id_bottom = ((i - 1) * (nx + 2) + (j));
+  unsigned int id_top    = ((i + 1) * (nx + 2) + (j));
 
   if (bc_type == 1) // Dirichlet Boundary Conditions
   {  
@@ -328,41 +334,36 @@ __global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int n
   }
   else if (bc_type == 3) // Reflective Boundary Conditions
   {  
-    id = ((i) * (nx + 2) + (j));
     // Left Boundary (j = 1) - Reflective
     if (j == 1 && i > 0 && i < ny + 1) 
     {
-      id_ghost = ((i) * (nx + 2) + (j - 1));
-      h[id_ghost]  = h[id];
-      uh[id_ghost] = -uh[id];  // Flip normal velocity
-      vh[id_ghost] = vh[id];   // Keep tangential velocity
+      h[id_left]  = h[id];
+      uh[id_left] = -uh[id];  // Flip normal velocity
+      vh[id_left] = vh[id];   // Keep tangential velocity
     }
 
     // Right Boundary (j = nx) - Reflective
     if (j == nx && i > 0 && i < ny + 1) 
     {
-      id_ghost = ((i) * (nx + 2) + (j + 1));
-      h[id_ghost]  = h[id];
-      uh[id_ghost] = -uh[id];  // Flip normal velocity
-      vh[id_ghost] = vh[id];   // Keep tangential velocity
+      h[id_right]  = h[id];
+      uh[id_right] = -uh[id];  // Flip normal velocity
+      vh[id_right] = vh[id];   // Keep tangential velocity
     }
 
     // Bottom Boundary (i = 1) - Reflective
     if (i == 1 && j > 0 && j < nx + 1) 
     {
-      id_ghost = ((i - 1) * (nx + 2) + (j));
-      h[id_ghost]  = h[id];
-      uh[id_ghost] = uh[id];   // Keep tangential velocity
-      vh[id_ghost] = -vh[id];  // Flip normal velocity
+      h[id_bottom]  = h[id];
+      uh[id_bottom] = uh[id];   // Keep tangential velocity
+      vh[id_bottom] = -vh[id];  // Flip normal velocity
     }
 
     // Top Boundary (i = ny) - Reflective
     if (i == ny && j > 0 && j < nx + 1) 
     {
-      id_ghost = ((i + 1) * (nx + 2) + (j));
-      h[id_ghost]  = h[id];
-      uh[id_ghost] = uh[id];   // Keep tangential velocity
-      vh[id_ghost] = -vh[id];  // Flip normal velocity
+      h[id_top]  = h[id];
+      uh[id_top] = uh[id];   // Keep tangential velocity
+      vh[id_top] = -vh[id];  // Flip normal velocity
     }
   }
 }
