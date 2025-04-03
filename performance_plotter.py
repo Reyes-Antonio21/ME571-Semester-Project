@@ -11,7 +11,7 @@ def fitFunc2(x, a, b, c):
     return a * x ** 2 + b * x + c
 
 # .CSV Data 
-path ='C:/Users/Antonio Reyes/OneDrive/Documents/Cuda Projects/'
+path ='C:/Users/anton/OneDrive/Documents/Cuda Projects/'
 parallelKernelPerformance = 'Shallow_Water_Equations_Parallel_Kernel_Performance.csv'
 parallelTotalPerformance = 'Shallow_Water_Equations_Parallel_Total_Performance.csv'
 serialTotalPerformance = 'Shallow_Water_Equations_Serial_Total_Performance.csv'
