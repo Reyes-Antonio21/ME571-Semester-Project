@@ -6,25 +6,32 @@ from scipy.optimize import curve_fit
 from matplotlib.ticker import LogFormatter, LogLocator
 
 # -------------------------------------------------------------- Fitting functions --------------------------------------------------------------
+# Cubit Polynomial Fit
 def fitFunc1(x, a, b, c, d):
     return a * x ** 3 + b * x ** 2 + c * x + d
 
+# Quadratic Polynomial Fit
 def fitFunc2(x, a, b, c):
     return a * x ** 2 + b * x + c
 
+# Linear Fit
 def fitFunc3(x, a, b):
     return a * x + b
 
+# Cubit Polynomial Fit for FLOP performance
+# Note: The coefficients are determined from the total number of FLOPs within each respective section for a general problem size, N. 
+# The expression was simplied to the form shown below.
 def fitFunc4(x, d):
     return d *(67.0 * x ** 3 + 104.0 * x ** 2 + 77.0 * x)
 
+# Power Law Fit
 def fitFunc5(x, a, b):
-    return a * np.exp^(b * x)
+    return a * x ** b
 
 # -------------------------------------------------------------- CSV Data -------------------------------------------------------------- 
 # Path to the CSV files
 # Note: The path should be updated to the location of your CSV files
-path ='C:/Users/Antonio Reyes/OneDrive/Documents/Cuda Projects/Shallow_Water_Equations_Averaged_csv_Files/'
+path ='C:/Users/Antonio Reyes/OneDrive/Documents/ME 571 Parallel Scientific Computing/Shallow_Water_Equations_Averaged_csv_Files/'
 parallelKernelPerformance = 'Shallow_Water_Equations_Parallel_Kernel_Runtime_Performance.csv'
 parallelTotalPerformance = 'Shallow_Water_Equations_Parallel_Total_Runtime_Performance.csv'
 serialTotalPerformance = 'Shallow_Water_Equations_Serial_Total_Runtime_Performance.csv'
@@ -324,7 +331,7 @@ ax.scatter(problemSizepk, avgComputeFluxpk, color='black', marker='.', label='Ke
 ax.set_xscale('log')
 ax.set_yscale('log')
 ax.set_xlabel("Problem Size (N)")
-ax.set_ylabel("Avg Time to Solution (ms)")
+ax.set_ylabel("Average Time to Solution (ms)")
 ax.legend()
 
 # ---- Subplot 2 ----
@@ -334,7 +341,7 @@ ax.scatter(problemSizepk, avgComputeVariablespk, color='orange', marker='.', lab
 ax.set_xscale('log')
 ax.set_yscale('log')
 ax.set_xlabel("Problem Size (N)")
-ax.set_ylabel("Avg Time to Solution (ms)")
+ax.set_ylabel("Average Time to Solution (ms)")
 ax.legend()
 
 # ---- Subplot 3 ----
@@ -344,7 +351,7 @@ ax.scatter(problemSizepk, avgUpdateVariablespk, color='blue', marker='.', label=
 ax.set_xscale('log')
 ax.set_yscale('log')
 ax.set_xlabel("Problem Size (N)")
-ax.set_ylabel("Avg Time to Solution (ms)")
+ax.set_ylabel("Average Time to Solution (ms)")
 ax.legend()
 
 # ---- Subplot 4 ----
@@ -354,7 +361,7 @@ ax.scatter(problemSizepk, avgApplyBoundaryConditionspk, color='brown', marker='.
 ax.set_xscale('log')
 ax.set_yscale('log')
 ax.set_xlabel("Problem Size: (N)")
-ax.set_ylabel("Avg Time to Solution (ms)")
+ax.set_ylabel("Average Time to Solution (ms)")
 ax.legend()
 
 plt.tight_layout()
@@ -376,8 +383,8 @@ problemSizept = problemSizept.iloc[:minLen7]
 speedup = avgSerialElapsedTime / avgParallelElapsedTime
 plt.figure(figsize=(10,6))
 plt.scatter(problemSizest, speedup, color = 'blue', marker = '.')    
-plt.xlabel("Problem Size")
-plt.ylabel("Speedup") 
+plt.xlabel("Problem Size (N)")
+plt.ylabel("Average Speedup") 
 plt.show() 
 
 # Serial & Parallel Total Runtime Comparison
@@ -393,7 +400,7 @@ ax.scatter(problemSizest, avgSerialElapsedTime, color = 'brown', marker = '*', l
 ax.scatter(problemSizept, avgParallelElapsedTime, color = 'blue', marker = '.', label = 'Average Parallel Elapsed Time')
 ax.set_xscale('log')
 ax.set_yscale('log')
-ax.set_xlabel("Problem Size: (N)")
-ax.set_ylabel("Avg Time to Solution (s)")
+ax.set_xlabel("Problem Size (N)")
+ax.set_ylabel("Average Time to Solution (s)")
 ax.legend()
 plt.show()
