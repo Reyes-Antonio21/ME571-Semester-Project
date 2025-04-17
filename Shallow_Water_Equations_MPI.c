@@ -113,7 +113,7 @@ void initialConditions(int nx_local, int ny_local, int px, int py, int dims[2], 
       float x = x_coords[j];
       float y = y_coords[i];
       
-      h[id] = 1.0f + 0.4f * expf(-5.0f * (x * x + y * y));
+      h[id] = 1.0f + 0.4f * exp(-5.0f * (x * x + y * y));
 
       uh[id] = 0.0f;
 
@@ -524,7 +524,7 @@ int main (int argc, char *argv[])
     
     float dx = x_length / nx;
     float dy = y_length / ny;
-    
+
     for (i = 0; i < nx; i++) 
     {
       x[i] = -x_length / 2 + dx / 2 + i * dx;
