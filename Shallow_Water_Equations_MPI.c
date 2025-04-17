@@ -228,6 +228,9 @@ void write_results (char *output_filename, int nx, int ny, float x[], float y[],
 int main (int argc, char *argv[])
 {
   /****************************************************************************** Instantiation ******************************************************************************/
+  // Start the clock
+  clock_t time_start = clock();
+  
   // Initialize MPI environment
   MPI_Init(&argc, &argv);
 
@@ -244,8 +247,8 @@ int main (int argc, char *argv[])
   int east;
   int west;
 
-  int dims[2];
-  int periods[2];
+  int dims[2] = {0, 0};
+  int periods[2] = {0, 0};
   int coords[2];
 
   // Variables
@@ -308,11 +311,9 @@ int main (int argc, char *argv[])
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
   // Create a Cartesian topology
-  dims[2] = {0, 0};
   MPI_Dims_create(size, 2, dims);
 
   MPI_Comm cart_comm;
-  periods[2] = {0, 0};
   MPI_Cart_create(MPI_COMM_WORLD, 2, dims, periods, 0, &cart_comm);
   MPI_Cart_coords(cart_comm, rank, 2, coords);
 
@@ -376,12 +377,6 @@ int main (int argc, char *argv[])
   MPI_Request requests[8];
 
   programRuntime = 0.0f;
-  if (rank == 0)
-  {
-    printf("Starting time-stepping loop...\n");
-
-    clock_t time_start = clock();
-  }
 
   while (programRuntime < totalRuntime) 
   {
@@ -438,16 +433,6 @@ int main (int argc, char *argv[])
       programRuntime += dt;
   }
 
-  if (rank == 0)
-  {
-    printf("Time-stepping loop completed.\n");
-    
-    clock_t time_end = clock();
-    double time_elapsed = (double)(time_end - time_start) / CLOCKS_PER_SEC;
-
-    printf("Problem size: %d, Time Elapsed: %f s \n", nx, time_elapsed);
-  }
-
 // **** POSTPROCESSING ****
 
   //Free memory.
@@ -462,6 +447,13 @@ int main (int argc, char *argv[])
   free ( gvh ); 
 
   MPI_Finalize();
+
+  printf("Time-stepping loop completed.\n");
+    
+  clock_t time_end = clock();
+  double time_elapsed = (double)(time_end - time_start) / CLOCKS_PER_SEC;
+
+  printf("Problem size: %d, Time Elapsed: %f s \n", nx, time_elapsed);
 
   return 0;
   }
