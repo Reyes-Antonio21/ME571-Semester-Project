@@ -31,7 +31,9 @@ swep_2d_ex: Shallow_Water_Equation_Experimental.cu
 	$(CUDACC) -o swep_2d_ex Shallow_Water_Equation_Experimental.cu	
 
 clean:
-	rm -f swe_2d
+	rm -f swe_2d_ts
+	rm -f swe_2d_tt
+	rm -f swe_2d_mpi
 	rm -f swep_2d_tp
 	rm -f swep_2d_tk
 	rm -f swep_2d_an
