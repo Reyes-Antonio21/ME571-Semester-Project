@@ -82,28 +82,28 @@ void getArgs(int *nx, int *ny, double *dt, float *x_length, float *y_length, dou
 
 void initialConditions(int nx_local, int ny_local, int px, int py, int dims[2], int nx, int ny, float x_length, float y_length, float dx, float dy, float *h, float *uh, float *vh)
 {
-  float *x_coords = malloc((nx_local + 2) * sizeof(float));
-  float *y_coords = malloc((ny_local + 2) * sizeof(float));
+  float *x_coords = malloc((nx_local) * sizeof(float));
+  float *y_coords = malloc((ny_local) * sizeof(float));
 
   int global_x_start = computeGlobalStart(py, nx, dims[1]);
   int global_y_start = computeGlobalStart(px, ny, dims[0]);
 
-  for (int j = 0; j < nx_local + 2; j++) 
+  for (int j = 0; j < nx_local; j++) 
   {
     int global_j = global_x_start + j - 1;
 
     x_coords[j] = -x_length / 2 + dx / 2 + global_j * dx;
   }
 
-  for (int i = 0; i < ny_local + 2; i++) 
+  for (int i = 0; i < ny_local; i++) 
   {
     int global_i = global_y_start + i - 1;
     
     y_coords[i] = -y_length / 2 + dy / 2 + global_i * dy;
   }
 
-  for (int i = 0; i < ny_local + 2; i++) 
-    for (int j = 0; j < nx_local + 2; j++) 
+  for (int i = 0; i < ny_local; i++) 
+    for (int j = 0; j < nx_local; j++) 
     {
       int id = ID_2D(i, j, nx_local);
 
@@ -185,6 +185,8 @@ void initialConditions(int nx_local, int ny_local, int px, int py, int dims[2], 
       vh[id] = 0.0f;
     }
   }  
+
+  writeResults(h, uh, vh, x_coords, y_coords, 0.0f, nx_local, ny_local);
   
   free(x_coords);
   free(y_coords);
@@ -264,8 +266,6 @@ int main (int argc, char *argv[])
   double dt;
   double programRuntime;
   double totalRuntime;
-
-  int i, j, k;
 
   int nx; 
   int ny;
@@ -523,7 +523,7 @@ int main (int argc, char *argv[])
     float dx = x_length / nx;
     float dy = y_length / ny;
 
-    for (i = 0; i < nx; i++) 
+    for (int i = 0; i < nx; i++) 
     {
       x[i] = -x_length / 2 + dx / 2 + i * dx;
     }
