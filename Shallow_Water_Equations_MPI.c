@@ -337,17 +337,17 @@ int main (int argc, char *argv[])
 
 /****************************************************************************** ALLOCATE MEMORY ******************************************************************************/
   // Allocate space (nx+2)((nx+2) long, to account for ghosts
-  float *h = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
-  float *uh = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
-  float *vh = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
+  h = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
+  uh = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
+  vh = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
 
-  float *fh = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
-  float *fuh = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
-  float *fvh = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
+  fh = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
+  fuh = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
+  fvh = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
   
-  float *gh = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
-  float *guh = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
-  float *gvh = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
+  gh = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
+  guh = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
+  gvh = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
 
   /****************************************************************************** MAIN LOOP ******************************************************************************/
   if (rank == 0)
@@ -367,10 +367,9 @@ int main (int argc, char *argv[])
   }
 
   // **** INITIAL CONDITIONS ****
-  initial_conditions(nx_local, ny_local, px, py, dims, nx, ny, x_length, y_length, dx, dy, h, uh, vh);
+  initialConditions(nx_local, ny_local, px, py, dims, nx, ny, x_length, y_length, dx, dy, h, uh, vh);
 
   // Time-stepping loop and MPI halo exchange
-  int north, south, east, west;
   MPI_Cart_shift(cart_comm, 0, 1, &north, &south);
   MPI_Cart_shift(cart_comm, 1, 1, &west, &east);
 
@@ -386,18 +385,18 @@ int main (int argc, char *argv[])
 
   while (programRuntime < totalRuntime) 
   {
-    // Halo exchange for h_local (simplified for illustration)
-    MPI_Isend(&h_local[ID_2D(1,1,nx_local)], nx_local, MPI_FLOAT, north, 0, cart_comm, &requests[0]);
-    MPI_Irecv(&h_local[ID_2D(ny_local+1,1,nx_local)], nx_local, MPI_FLOAT, south, 0, cart_comm, &requests[1]);
-    MPI_Isend(&h_local[ID_2D(ny_local,1,nx_local)], nx_local, MPI_FLOAT, south, 1, cart_comm, &requests[2]);
-    MPI_Irecv(&h_local[ID_2D(0,1,nx_local)], nx_local, MPI_FLOAT, north, 1, cart_comm, &requests[3]);
+    // Halo exchange for h (simplified for illustration)
+    MPI_Isend(&h[ID_2D(1,1,nx_local)], nx_local, MPI_FLOAT, north, 0, cart_comm, &requests[0]);
+    MPI_Irecv(&h[ID_2D(ny_local+1,1,nx_local)], nx_local, MPI_FLOAT, south, 0, cart_comm, &requests[1]);
+    MPI_Isend(&h[ID_2D(ny_local,1,nx_local)], nx_local, MPI_FLOAT, south, 1, cart_comm, &requests[2]);
+    MPI_Irecv(&h[ID_2D(0,1,nx_local)], nx_local, MPI_FLOAT, north, 1, cart_comm, &requests[3]);
 
     for (int i = 1; i <= ny_local; i++) 
     {
-      MPI_Isend(&h_local[ID_2D(i,1,nx_local)], 1, MPI_FLOAT, west, 2, cart_comm, &requests[4]);
-      MPI_Irecv(&h_local[ID_2D(i,nx_local+1,nx_local)], 1, MPI_FLOAT, east, 2, cart_comm, &requests[5]);
-      MPI_Isend(&h_local[ID_2D(i,nx_local,nx_local)], 1, MPI_FLOAT, east, 3, cart_comm, &requests[6]);
-      MPI_Irecv(&h_local[ID_2D(i,0,nx_local)], 1, MPI_FLOAT, west, 3, cart_comm, &requests[7]);
+      MPI_Isend(&h[ID_2D(i,1,nx_local)], 1, MPI_FLOAT, west, 2, cart_comm, &requests[4]);
+      MPI_Irecv(&h[ID_2D(i,nx_local+1,nx_local)], 1, MPI_FLOAT, east, 2, cart_comm, &requests[5]);
+      MPI_Isend(&h[ID_2D(i,nx_local,nx_local)], 1, MPI_FLOAT, east, 3, cart_comm, &requests[6]);
+      MPI_Irecv(&h[ID_2D(i,0,nx_local)], 1, MPI_FLOAT, west, 3, cart_comm, &requests[7]);
     }
     
     MPI_Waitall(8, requests, MPI_STATUSES_IGNORE);
@@ -406,12 +405,12 @@ int main (int argc, char *argv[])
       for (int j = 1; j <= nx_local; j++) 
       {
         int id = ID_2D(i, j, nx_local);
-        fh[id] = uh_local[id];
-        fuh[id] = uh_local[id] * uh_local[id] / h_local[id] + 0.5f * g * h_local[id] * h_local[id];
-        fvh[id] = uh_local[id] * vh_local[id] / h_local[id];
-        gh[id] = vh_local[id];
-        guh[id] = uh_local[id] * vh_local[id] / h_local[id];
-        gvh[id] = vh_local[id] * vh_local[id] / h_local[id] + 0.5f * g * h_local[id] * h_local[id];
+        fh[id] = uh[id];
+        fuh[id] = uh[id] * uh[id] / h[id] + 0.5f * g * h[id] * h[id];
+        fvh[id] = uh[id] * vh[id] / h[id];
+        gh[id] = vh[id];
+        guh[id] = uh[id] * vh[id] / h[id];
+        gvh[id] = vh[id] * vh[id] / h[id] + 0.5f * g * h[id] * h[id];
       }
 
     for (int i = 1; i <= ny_local; i++)
@@ -423,15 +422,15 @@ int main (int argc, char *argv[])
         int id_bottom = ID_2D(i - 1, j, nx_local);
         int id_top = ID_2D(i + 1, j, nx_local);
 
-        h_local[id] = 0.25f * (h_local[id_left] + h_local[id_right] + h_local[id_bottom] + h_local[id_top])
+        h[id] = 0.25f * (h[id_left] + h[id_right] + h[id_bottom] + h[id_top])
               - lambda_x * (fh[id_right] - fh[id_left])
               - lambda_y * (gh[id_top] - gh[id_bottom]);
 
-        uh_local[id] = 0.25f * (uh_local[id_left] + uh_local[id_right] + uh_local[id_bottom] + uh_local[id_top])
+        uh[id] = 0.25f * (uh[id_left] + uh[id_right] + uh[id_bottom] + uh[id_top])
               - lambda_x * (fuh[id_right] - fuh[id_left])
               - lambda_y * (guh[id_top] - guh[id_bottom]);
 
-        vh_local[id] = 0.25f * (vh_local[id_left] + vh_local[id_right] + vh_local[id_bottom] + vh_local[id_top])
+        vh[id] = 0.25f * (vh[id_left] + vh[id_right] + vh[id_bottom] + vh[id_top])
               - lambda_x * (fvh[id_right] - fvh[id_left])
               - lambda_y * (gvh[id_top] - gvh[id_bottom]);
       }
