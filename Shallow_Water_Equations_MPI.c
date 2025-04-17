@@ -113,7 +113,7 @@ void initialConditions(int nx_local, int ny_local, int px, int py, int dims[2], 
       float x = x_coords[j];
       float y = y_coords[i];
       
-      h[id] = 1.0f + 0.4f * exp(-5.0f * (x * x + y * y));
+      h[id] = 1.0f + 0.4f * expf(-5.0f * (x * x + y * y));
 
       uh[id] = 0.0f;
 
@@ -468,6 +468,7 @@ int main (int argc, char *argv[])
     {
       int idx = (i - 1) * nx_local + (j - 1);
       int id = ID_2D(i, j, nx_local);
+
       h_sendbuf[idx] = h[id];
       uh_sendbuf[idx] = uh[id];
       vh_sendbuf[idx] = vh[id];
@@ -502,7 +503,9 @@ int main (int argc, char *argv[])
 
       recvcounts[r] = nx_local_r * ny_local_r;
     }
+
     displs[0] = 0;
+    
     for (int r = 1; r < size; r++) 
     {
       displs[r] = displs[r - 1] + recvcounts[r - 1];
