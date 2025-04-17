@@ -82,9 +82,6 @@ void getArgs(int *nx, int *ny, double *dt, float *x_length, float *y_length, dou
 
 void initialConditions(int nx_local, int ny_local, int px, int py, int dims[2], int nx, int ny, float x_length, float y_length, float dx, float dy, float *h, float *uh, float *vh)
 {
-  int i, j;
-  int id, id_ghost;
-
   float *x_coords = malloc((nx_local + 2) * sizeof(float));
   float *y_coords = malloc((ny_local + 2) * sizeof(float));
 
@@ -278,13 +275,6 @@ int main (int argc, char *argv[])
   int nx_extra;
   int ny_extra;
 
-  int id;
-
-  int id_left;
-  int id_right;
-  int id_top;
-  int id_bottom;
-
   float dx;
   float dy;
 
@@ -382,9 +372,14 @@ int main (int argc, char *argv[])
   // **** INITIAL CONDITIONS ****
   initialConditions(nx_local, ny_local, px, py, dims, nx, ny, x_length, y_length, dx, dy, h, uh, vh);
 
-  // Time-stepping loop and MPI halo exchange
-  MPI_Cart_shift(cart_comm, 0, 1, &north, &south);
-  MPI_Cart_shift(cart_comm, 1, 1, &west, &east);
+  // Define column data type for vertical halo exchange
+  MPI_Datatype column_type;
+  MPI_Type_vector(ny_local, 1, nx_local + 2, MPI_FLOAT, &column_type);
+  MPI_Type_commit(&column_type);
+
+  // Identify neighbors in Cartesian grid
+  MPI_Cart_shift(cart_comm, 0, 1, &north, &south); // shift in y-direction (rows)
+  MPI_Cart_shift(cart_comm, 1, 1, &west, &east);   // shift in x-direction (columns)
 
   MPI_Request requests[8];
 
@@ -392,20 +387,20 @@ int main (int argc, char *argv[])
 
   while (programRuntime < totalRuntime) 
   {
-    // Halo exchange for h (simplified for illustration)
-    MPI_Isend(&h[ID_2D(1,1,nx_local)], nx_local, MPI_FLOAT, north, 0, cart_comm, &requests[0]);
-    MPI_Irecv(&h[ID_2D(ny_local+1,1,nx_local)], nx_local, MPI_FLOAT, south, 0, cart_comm, &requests[1]);
-    MPI_Isend(&h[ID_2D(ny_local,1,nx_local)], nx_local, MPI_FLOAT, south, 1, cart_comm, &requests[2]);
-    MPI_Irecv(&h[ID_2D(0,1,nx_local)], nx_local, MPI_FLOAT, north, 1, cart_comm, &requests[3]);
+    // Exchange horizontal (row) data — contiguous in memory
+    MPI_Isend(&h[ID_2D(1, 1, nx_local)], nx_local, MPI_FLOAT, north, 0, cart_comm, &requests[0]);
+    MPI_Irecv(&h[ID_2D(ny_local + 1, 1, nx_local)], nx_local, MPI_FLOAT, south, 0, cart_comm, &requests[1]);
 
-    for (int i = 1; i <= ny_local; i++) 
-    {
-      MPI_Isend(&h[ID_2D(i,1,nx_local)], 1, MPI_FLOAT, west, 2, cart_comm, &requests[4]);
-      MPI_Irecv(&h[ID_2D(i,nx_local+1,nx_local)], 1, MPI_FLOAT, east, 2, cart_comm, &requests[5]);
-      MPI_Isend(&h[ID_2D(i,nx_local,nx_local)], 1, MPI_FLOAT, east, 3, cart_comm, &requests[6]);
-      MPI_Irecv(&h[ID_2D(i,0,nx_local)], 1, MPI_FLOAT, west, 3, cart_comm, &requests[7]);
-    }
-    
+    MPI_Isend(&h[ID_2D(ny_local, 1, nx_local)], nx_local, MPI_FLOAT, south, 1, cart_comm, &requests[2]);
+    MPI_Irecv(&h[ID_2D(0, 1, nx_local)], nx_local, MPI_FLOAT, north, 1, cart_comm, &requests[3]);
+
+    // Exchange vertical (column) data — using derived datatype
+    MPI_Isend(&h[ID_2D(1, 1, nx_local)], 1, column_type, west, 2, cart_comm, &requests[4]);
+    MPI_Irecv(&h[ID_2D(1, nx_local + 1, nx_local)], 1, column_type, east, 2, cart_comm, &requests[5]);
+
+    MPI_Isend(&h[ID_2D(1, nx_local, nx_local)], 1, column_type, east, 3, cart_comm, &requests[6]);
+    MPI_Irecv(&h[ID_2D(1, 0, nx_local)], 1, column_type, west, 3, cart_comm, &requests[7]);
+
     MPI_Waitall(8, requests, MPI_STATUSES_IGNORE);
 
     for (int i = 1; i <= ny_local; i++) 
@@ -442,7 +437,7 @@ int main (int argc, char *argv[])
               - lambda_y * (gvh[id_top] - gvh[id_bottom]);
       }
 
-      programRuntime += dt;
+    programRuntime += dt;
   }
 
 // **** POSTPROCESSING ****
@@ -488,7 +483,7 @@ int main (int argc, char *argv[])
     uh_global = malloc(nx * ny * sizeof(float));
     vh_global = malloc(nx * ny * sizeof(float));
 
-    int offset = 0;
+
     for (int r = 0; r < size; r++) 
     {
       int coords_r[2];
