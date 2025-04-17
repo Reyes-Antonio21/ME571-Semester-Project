@@ -527,7 +527,7 @@ int main (int argc, char *argv[])
     {
       x[i] = -x_length / 2 + dx / 2 + i * dx;
     }
-    for (i = 0; i < ny; i++) 
+    for (int i = 0; i < ny; i++) 
     {
       y[i] = -y_length / 2 + dy / 2 + i * dy;
     }
