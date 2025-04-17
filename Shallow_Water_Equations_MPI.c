@@ -196,31 +196,43 @@ void initialConditions(int nx_local, int ny_local, int px, int py, int dims[2], 
 }
 /******************************************************************************/
 
-void write_results (char *output_filename, int nx, int ny, float x[], float y[], float h[], float uh[], float vh[])
+void writeResults(float h[], float uh[], float vh[], float x[], float y[], float time, int nx, int ny)
 {
-  int i,j, id;
-  FILE *output;
-   
+  char filename[50];
+
+  int i, j, id;
+
+  //Create the filename based on the time step.
+  sprintf(filename, "tc2d_%08.6f.dat", time);
+
   //Open the file.
-  output = fopen ( output_filename, "wt" );
+  FILE *file = fopen (filename, "wt" );
     
-  if ( !output ){
-    fprintf ( stderr, "\n" );
-    fprintf ( stderr, "WRITE_RESULTS - Fatal error!\n" );
-    fprintf ( stderr, "  Could not open the output file.\n" );
-    exit ( 1 );
+  if (!file)
+  {
+    fprintf (stderr, "\n" );
+
+    fprintf (stderr, "WRITE_RESULTS - Fatal error!\n");
+
+    fprintf (stderr, "  Could not open the output file.\n");
+
+    exit (1);
   }
-    
-  //Write the data.
-  for ( i = 0; i < ny; i++ ) 
-    for ( j = 0; j < nx; j++ ){
-        id=ID_2D(i+1,j+1,nx);
-	fprintf ( output, "  %24.16g\t%24.16g\t%24.16g\t %24.16g\t %24.16g\n", x[j], y[i],h[id], uh[id], vh[id]);
+
+  else
+  {  
+    //Write the data.
+    for ( i = 0; i < ny; i++ ) 
+      for ( j = 0; j < nx; j++ )
+      {
+        id = ID_2D(i + 1, j + 1, nx);
+        fprintf ( file, "%24.16g\t%24.16g\t%24.16g\t %24.16g\t %24.16g\n", x[j], y[i], h[id], uh[id], vh[id]);
       }
     
-  //Close the file.
-  fclose ( output );
-  
+    //Close the file.
+    fclose (file);
+  }
+
   return;
 }
 /******************************************************************************/
@@ -512,6 +524,7 @@ int main (int argc, char *argv[])
     
     float dx = x_length / nx;
     float dy = y_length / ny;
+    
     for (i = 0; i < nx; i++) 
     {
       x[i] = -x_length / 2 + dx / 2 + i * dx;
