@@ -1,5 +1,12 @@
 {
     "files.associations": {
-        "cmath": "cpp"
+        "cmath": "cpp",
+        "locale": "c",
+        "thread": "c",
+        "xlocale": "c",
+        "xlocmes": "c",
+        "xlocmon": "c",
+        "xlocnum": "c",
+        "xloctime": "c"
     }
 }

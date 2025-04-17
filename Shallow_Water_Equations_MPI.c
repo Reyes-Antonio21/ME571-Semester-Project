@@ -3,91 +3,200 @@
 # include <math.h>
 # include <string.h>
 # include <time.h>
+# include <mpi.h>
 
 #define ID_2D(i,j,nx) ((i)*(nx+2)+(j))
 
-void initial_conditions ( int nx, int ny, float dx, float dy,  float x_length, float x[],float y[], float h[], float uh[] ,float vh[]){
-  int i,j, id, id1;
+/****************************************************************************** Helper Functions ******************************************************************************/
 
-  for ( i = 1; i < nx+1; i++ )
-    {
-      x[i-1] = -x_length/2+dx/2+(i-1)*dx;
-      y[i-1] = -x_length/2+dy/2+(i-1)*dy;
-    }
+int computeGlobalStart(int coord, int total_cells, int divisions) 
+{
+  int base = coord * (total_cells / divisions);
+  int remainder = total_cells % divisions;
 
-  for ( i = 1; i < nx+1; i++ )
-    for( j = 1; j < ny+1; j++)
-      {
-	float xx = x[j-1];
-	float yy = y[i-1];
-	id=ID_2D(i,j,nx);
-	h[id] = 1.0 + 0.4*exp ( -5 * ( xx*xx + yy*yy) );
-      }
+  if (coord < remainder) {
+      return base + coord;
+  } else {
+      return base + remainder;
+  }
+}
+/******************************************************************************/
+
+void getArgs(int *nx, int *ny, double *dt, float *x_length, float *y_length, double *totalRuntime, int argc, char *argv[])
+{
+  if (argc <= 1)
+  {
+    *nx = 800;
+  }
+  else
+  {
+    *nx = atoi (argv[1]);
+  }
+
+  if (argc <= 2)
+  {
+    *ny = 800;
+  }
+  else
+  {
+    *ny = atoi (argv[2]);
+  }
   
-  for ( i = 1; i < nx+1; i++ )
-    for( j = 1; j < ny+1; j++)
-      {
-	id=ID_2D(i,j,nx);
-	uh[id] = 0.0;
-	vh[id] = 0.0;
-      }
+  if (argc <= 3)
+  {
+    *dt = 0.001;
+  }
+  else
+  {
+    *dt = atof (argv[3]);
+  }
+  
+  if (argc <= 4)
+  {
+    *x_length = 10.0;
+  }
+  else
+  {
+    *x_length = atof (argv[4]);
+  }
+  
+  if (argc <= 5)
+  {
+    *y_length = 10.0;
+  }
+  else
+  {
+    *y_length = atof (argv[5]);
+  }
 
-  //set boundaries
-  //bottom
-  i=0;
-  for( j = 1; j < nx+1; j++)
+  if (argc <= 6)
+  {
+    *totalRuntime = 0.5;
+  }
+  else
+  {
+    *totalRuntime = atof (argv[6]);
+  }
+}
+/******************************************************************************/
+
+void initialConditions(int nx_local, int ny_local, int px, int py, int dims[2], int nx, int ny, float x_length, float y_length, float dx, float dy, float *h, float *uh, float *vh)
+{
+  int i, j;
+  int id, id_ghost;
+
+  float *x_coords = malloc((nx_local + 2) * sizeof(float));
+  float *y_coords = malloc((ny_local + 2) * sizeof(float));
+
+  int global_x_start = computeGlobalStart(py, nx, dims[1]);
+  int global_y_start = computeGlobalStart(px, ny, dims[0]);
+
+  for (int j = 0; j < nx_local + 2; j++) 
+  {
+    int global_j = global_x_start + j - 1;
+
+    x_coords[j] = -x_length / 2 + dx / 2 + global_j * dx;
+  }
+
+  for (int i = 0; i < ny_local + 2; i++) 
+  {
+    int global_i = global_y_start + i - 1;
+    
+    y_coords[i] = -y_length / 2 + dy / 2 + global_i * dy;
+  }
+
+  for (int i = 0; i < ny_local + 2; i++) 
+    for (int j = 0; j < nx_local + 2; j++) 
     {
-      id=ID_2D(i,j,nx);
-      id1=ID_2D(i+1,j,nx);
+      int id = ID_2D(i, j, nx_local);
 
-      h[id] = h[id1];
-      uh[id] = 0.0;
-      vh[id] = 0.0;
+      float x = x_coords[j];
+      float y = y_coords[i];
+      
+      h[id] = 1.0f + 0.4f * expf(-5.0f * (x * x + y * y));
+
+      uh[id] = 0.0f;
+
+      vh[id] = 0.0f;
     }
 
-  //top
-  i=nx+1;
-  for( j = 1; j < nx+1; j++)
+  // Apply physical domain boundary conditions
+  // Bottom boundary
+  if (px == 0) 
+  {  
+    for (int j = 1; j <= nx_local; j++) 
     {
-      id=ID_2D(i,j,nx);
-      id1=ID_2D(i-1,j,nx);
+      int id = ID_2D(0, j, nx_local);
 
-      h[id] = h[id1];
-      uh[id] = 0.0;
-      vh[id] = 0.0;
+      int id_ghost = ID_2D(1, j, nx_local);
+
+      h[id] = h[id_ghost];
+
+      uh[id] = 0.0f;
+
+      vh[id] = 0.0f;
     }
+  }
 
-  //left
-  j=0;
-  for( i = 1; i < ny+1; i++)
+  // Top boundary
+  if (px == dims[0] - 1) 
+  { 
+    for (int j = 1; j <= nx_local; j++) 
     {
-      id=ID_2D(i,j,nx);
-      id1=ID_2D(i,j+1,nx);
+      int id = ID_2D(ny_local + 1, j, nx_local);
 
-      h[id] = h[id1];
-      uh[id] = 0.0;
-      vh[id] = 0.0;
+      int id_ghost = ID_2D(ny_local, j, nx_local);
+
+      h[id] = h[id_ghost];
+
+      uh[id] = 0.0f;
+
+      vh[id] = 0.0f;
     }
+  }
 
-  //right
-  j=nx+1;
-  for( i = 1; i < ny+1; i++)
+  // Left boundary
+  if (py == 0) 
+  {  
+    for (int i = 1; i <= ny_local; i++) 
     {
-      id=ID_2D(i,j,nx);
-      id1=ID_2D(i,j-1,nx);
+      int id = ID_2D(i, 0, nx_local);
 
-      h[id] = h[id1];
-      uh[id] = 0.0;
-      vh[id] = 0.0;
+      int id_ghost = ID_2D(i, 1, nx_local);
+
+      h[id] = h[id_ghost];
+
+      uh[id] = 0.0f;
+
+      vh[id] = 0.0f;
     }
+  }
+
+  // Right boundary
+  if (py == dims[1] - 1) 
+  {  
+    for (int i = 1; i <= ny_local; i++) 
+    {
+      int id = ID_2D(i, nx_local + 1, nx_local);
+
+      int id_ghost = ID_2D(i, nx_local, nx_local);
+
+      h[id] = h[id_ghost];
+      
+      uh[id] = 0.0f;
+
+      vh[id] = 0.0f;
+    }
+  }  
+  
+  free(x_coords);
+  free(y_coords);
 
   return;
 }
 /******************************************************************************/
 
-void write_results ( char *output_filename, int nx, int ny, float x[], float y[], float h[], float uh[], float vh[])
-/******************************************************************************/
-
+void write_results (char *output_filename, int nx, int ny, float x[], float y[], float h[], float uh[], float vh[])
 {
   int i,j, id;
   FILE *output;
@@ -116,269 +225,232 @@ void write_results ( char *output_filename, int nx, int ny, float x[], float y[]
 }
 /******************************************************************************/
 
-void getArgs(int *nx, float *dt, float *x_length, float *t_final, int argc, char *argv[])
+int main (int argc, char *argv[])
 {
+  /****************************************************************************** Instantiation ******************************************************************************/
+  // Initialize MPI environment
+  MPI_Init(&argc, &argv);
 
-  /*
-    Get the quadrature file root name:
-  */
-  if ( argc <= 1 ){
-    *nx = 401;
-  }else{
-    *nx = atoi ( argv[1] );
-  }
-  
-  if ( argc <= 2 ){
-    *dt = 0.002;
-  }else{
-    *dt = atof ( argv[2] );
-  }
-  
-  if ( argc <= 3 ){
-    *x_length = 10.0;
-  }else{
-    *x_length = atof ( argv[3] );
-    }
-  
-  if ( argc <= 4 ){
-    *t_final = 0.5;
-  }else{
-    *t_final = atof ( argv[4] );
-  }
-    
-  
-}
-/******************************************************************************/
+  // Initialize variables
+  // MPI variables
+  int px; 
+  int py;
 
-int main ( int argc, char *argv[] )
-{
+  int rank;
+  int size;
+
+  int north;
+  int south;
+  int east;
+  int west;
+
+  int dims[2];
+  int periods[2];
+  int coords[2];
+
+  // Variables
+  double dt;
+  double programRuntime;
+  double totalRuntime;
+
+  int i, j, k;
+
+  int nx; 
+  int ny;
+
+  int nx_local;
+  int ny_local;
+  int nx_extra;
+  int ny_extra;
+
+  int id;
+
+  int id_left;
+  int id_right;
+  int id_top;
+  int id_bottom;
+
   float dx;
   float dy;
-  float dt;
-  float g = 9.81; //[m^2/s] gravitational constant
+
+  float x_length;
+  float y_length;
+
+  float g = 9.81f; 
+
   float *h;
-  float *fh;
-  float *gh;
-  float *hm;
-  int i, j, k, id, id_left, id_right, id_bottom, id_top;
-  int nx, ny;
-  float t_final;
   float *uh;
-  float *fuh;
-  float *guh;
-  float *uhm;
   float *vh;
+
+  float *fh;
+  float *fuh;
   float *fvh;
+
+  float *gh;
+  float *guh;
   float *gvh;
-  float *vhm;
-  float *x;
-  float *y;
-  float x_length, time;
 
-  printf ( "\n" );
-  printf ( "SHALLOW_WATER_2D\n" );
-  printf ( "\n" );
+  // Get command line arguments
+  getArgs(&nx, &ny, &dt, &x_length, &y_length, &totalRuntime, argc, argv);
+  
+  // Define the locations of the nodes, time steps, and spacing
+  dx = x_length / ( float ) ( nx );
+  dy = y_length / ( float ) ( ny );
 
-  //get command line arguments
-  getArgs(&nx, &dt, &x_length, &t_final, argc, argv);
-   
-  printf ( "  NX = %d\n", nx );
-  printf ( "  DT = %g\n", dt );
-  printf ( "  X_LENGTH = %g\n", x_length );
-  printf ( "  T_FINAL = %g\n", t_final );
-  
-  ny = nx; // we assume this, does not have to be this way
+  // Define the time step and the grid spacing
+  float lambda_x = 0.5f * (float) dt/dx;
+  float lambda_y = 0.5f * (float) dt/dy;
 
-  // **** ALLOCATE MEMORY ****
-  
-  //Allocate space (nx+2)((nx+2) long, to accound for ghosts
-  //height array
-  h  = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
-  hm = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
-  fh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
-  gh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
-  
-  //x momentum array
-  uh  = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
-  uhm = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
-  fuh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
-  guh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
-  
-  //y momentum array
-  vh  = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
-  vhm = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
-  fvh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
-  gvh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
-  
-  // location arrays
-  x = ( float * ) malloc ( nx * sizeof ( float ) );
-  y = ( float * ) malloc ( ny * sizeof ( float ) );
+  // Get the rank of the process
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-  for (k = 1; k < 4; k++)
+  // Get the number of processes
+  MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+  // Create a Cartesian topology
+  dims[2] = {0, 0};
+  MPI_Dims_create(size, 2, dims);
+
+  MPI_Comm cart_comm;
+  periods[2] = {0, 0};
+  MPI_Cart_create(MPI_COMM_WORLD, 2, dims, periods, 0, &cart_comm);
+  MPI_Cart_coords(cart_comm, rank, 2, coords);
+
+  px = coords[1];
+  py = coords[0];
+
+  nx_local = nx / dims[1];
+  ny_local = ny / dims[0];
+
+  nx_extra = nx % dims[1];
+  ny_extra = ny % dims[0];
+
+  if (px < nx_extra)
   {
+    nx_local++;
+  }
+
+  if (py < ny_extra)
+  {
+    ny_local++;
+  }
+
+/****************************************************************************** ALLOCATE MEMORY ******************************************************************************/
+  // Allocate space (nx+2)((nx+2) long, to account for ghosts
+  float *h = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
+  float *uh = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
+  float *vh = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
+
+  float *fh = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
+  float *fuh = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
+  float *fvh = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
   
-    //Define the locations of the nodes and time steps and the spacing.
-    dx = x_length / ( float ) ( nx );
-    dy = x_length / ( float ) ( nx );
+  float *gh = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
+  float *guh = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
+  float *gvh = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
 
-    // **** INITIAL CONDITIONS ****
-    //Apply the initial conditions.
-    printf("Before initial conditions\n");
-    initial_conditions ( nx, ny, dx, dy, x_length,  x, y, h, uh, vh);
+  /****************************************************************************** MAIN LOOP ******************************************************************************/
+  if (rank == 0)
+  {
+    printf ("SHALLOW_WATER_2D:\n");
+    printf ("  A program to solve the shallow water equations.\n");
+    printf ("\n");
+    printf ("  The problem is solved on a rectangular grid.\n");
+    printf ("\n");
+    printf ("  The grid has %d x %d nodes.\n", nx, ny);
+    printf (" The total program runtime is %g.\n", totalRuntime);
+    printf ("  The time step is %g.\n", dt);
+    printf ("  The grid spacing is %g x %g.\n", dx, dy);
+    printf ("  The grid length is %g x %g.\n", x_length, y_length);
+    printf (" The number of processes is %d.\n", size);
+    printf (" The processor grid dimensions are %d x %d.\n", dims[0], dims[1]);
+  }
 
-    // **** TIME LOOP ****
-    float lambda_x = 0.5*dt/dx;
-    float lambda_y = 0.5*dt/dy;
+  // **** INITIAL CONDITIONS ****
+  initial_conditions(nx_local, ny_local, px, py, dims, nx, ny, x_length, y_length, dx, dy, h, uh, vh);
 
-    time = 0;
+  // Time-stepping loop and MPI halo exchange
+  int north, south, east, west;
+  MPI_Cart_shift(cart_comm, 0, 1, &north, &south);
+  MPI_Cart_shift(cart_comm, 1, 1, &west, &east);
+
+  MPI_Request requests[8];
+
+  programRuntime = 0.0f;
+  if (rank == 0)
+  {
+    printf("Starting time-stepping loop...\n");
+
     clock_t time_start = clock();
+  }
 
-    while (time < t_final) //time loop begins
+  while (programRuntime < totalRuntime) 
+  {
+    // Halo exchange for h_local (simplified for illustration)
+    MPI_Isend(&h_local[ID_2D(1,1,nx_local)], nx_local, MPI_FLOAT, north, 0, cart_comm, &requests[0]);
+    MPI_Irecv(&h_local[ID_2D(ny_local+1,1,nx_local)], nx_local, MPI_FLOAT, south, 0, cart_comm, &requests[1]);
+    MPI_Isend(&h_local[ID_2D(ny_local,1,nx_local)], nx_local, MPI_FLOAT, south, 1, cart_comm, &requests[2]);
+    MPI_Irecv(&h_local[ID_2D(0,1,nx_local)], nx_local, MPI_FLOAT, north, 1, cart_comm, &requests[3]);
+
+    for (int i = 1; i <= ny_local; i++) 
     {
+      MPI_Isend(&h_local[ID_2D(i,1,nx_local)], 1, MPI_FLOAT, west, 2, cart_comm, &requests[4]);
+      MPI_Irecv(&h_local[ID_2D(i,nx_local+1,nx_local)], 1, MPI_FLOAT, east, 2, cart_comm, &requests[5]);
+      MPI_Isend(&h_local[ID_2D(i,nx_local,nx_local)], 1, MPI_FLOAT, east, 3, cart_comm, &requests[6]);
+      MPI_Irecv(&h_local[ID_2D(i,0,nx_local)], 1, MPI_FLOAT, west, 3, cart_comm, &requests[7]);
+    }
+    
+    MPI_Waitall(8, requests, MPI_STATUSES_IGNORE);
 
-    //  Take a time step
-    time = time + dt;
-      
-    // **** COMPUTE FLUXES ****
-    //Compute fluxes (including ghosts)
-
-    // Start timing compute fluxes section
-    clock_t flux_start = clock();
-      
-    for ( i = 0; i < ny + 2; i++ )
-      for ( j = 0; j < nx + 2; j++)
+    for (int i = 1; i <= ny_local; i++) 
+      for (int j = 1; j <= nx_local; j++) 
       {
-      id = ID_2D(i, j, nx);
-
-      fh[id] = uh[id]; //flux for the height equation: u*h
-
-      fuh[id] = uh[id] * uh[id] / h[id] + 0.5 * g * h[id] * h[id]; //flux for the momentum equation: u^2*h + 0.5*g*h^2
-
-      fvh[id] = uh[id] * vh[id] / h[id]; //flux for the momentum equation: u*v**h 
-
-      gh[id] = vh[id]; //flux for the height equation: v*h
-
-      guh[id] = uh[id] * vh[id] / h[id]; //flux for the momentum equation: u*v**h 
-
-      gvh[id] = vh[id] * vh[id] / h[id] + 0.5 * g * h[id] * h[id]; //flux for the momentum equation: v^2*h + 0.5*g*h^2
-      }
-      
-    // **** COMPUTE VARIABLES ****
-
-    //Compute updated variables
-    for ( i = 1; i < ny + 1; i++ )
-      for ( j = 1; j < nx + 1; j++ )
-      {
-
-      id = ID_2D(i, j, nx);
-        
-      id_left = ID_2D(i, j - 1, nx);
-
-      id_right = ID_2D(i, j + 1, nx);
-
-      id_bottom = ID_2D(i - 1, j, nx);
-
-      id_top = ID_2D(i + 1, j, nx);
-
-      hm[id] = 0.25 * (h[id_left] + h[id_right] + h[id_bottom] + h[id_top]) 
-        - lambda_x * ( fh[id_right] - fh[id_left] ) 
-        - lambda_y * ( gh[id_top] - gh[id_bottom] );
-
-      uhm[id] = 0.25 * (uh[id_left] + uh[id_right] + uh[id_bottom] + uh[id_top]) 
-        - lambda_x * ( fuh[id_right] - fuh[id_left] ) 
-        - lambda_y * ( guh[id_top] - guh[id_bottom] );
-
-      vhm[id] = 0.25 * (vh[id_left] + vh[id_right] + vh[id_bottom] + vh[id_top]) 
-        - lambda_x * ( fvh[id_right] - fvh[id_left] ) 
-        - lambda_y * ( gvh[id_top] - gvh[id_bottom] );
+        int id = ID_2D(i, j, nx_local);
+        fh[id] = uh_local[id];
+        fuh[id] = uh_local[id] * uh_local[id] / h_local[id] + 0.5f * g * h_local[id] * h_local[id];
+        fvh[id] = uh_local[id] * vh_local[id] / h_local[id];
+        gh[id] = vh_local[id];
+        guh[id] = uh_local[id] * vh_local[id] / h_local[id];
+        gvh[id] = vh_local[id] * vh_local[id] / h_local[id] + 0.5f * g * h_local[id] * h_local[id];
       }
 
-    // **** UPDATE VARIABLES ****
-
-    //update interior state variables  
-    for (i = 1; i < ny + 1; i++)
-      for (j = 1; j < nx + 1; j++)
+    for (int i = 1; i <= ny_local; i++)
+      for (int j = 1; j <= nx_local; j++) 
       {
-        id = ID_2D(i, j, nx);
+        int id = ID_2D(i, j, nx_local);
+        int id_left = ID_2D(i, j - 1, nx_local);
+        int id_right = ID_2D(i, j + 1, nx_local);
+        int id_bottom = ID_2D(i - 1, j, nx_local);
+        int id_top = ID_2D(i + 1, j, nx_local);
 
-        h[id] = hm[id];
+        h_local[id] = 0.25f * (h_local[id_left] + h_local[id_right] + h_local[id_bottom] + h_local[id_top])
+              - lambda_x * (fh[id_right] - fh[id_left])
+              - lambda_y * (gh[id_top] - gh[id_bottom]);
 
-        uh[id] = uhm[id];
+        uh_local[id] = 0.25f * (uh_local[id_left] + uh_local[id_right] + uh_local[id_bottom] + uh_local[id_top])
+              - lambda_x * (fuh[id_right] - fuh[id_left])
+              - lambda_y * (guh[id_top] - guh[id_bottom]);
 
-        vh[id] = vhm[id];
+        vh_local[id] = 0.25f * (vh_local[id_left] + vh_local[id_right] + vh_local[id_bottom] + vh_local[id_top])
+              - lambda_x * (fvh[id_right] - fvh[id_left])
+              - lambda_y * (gvh[id_top] - gvh[id_bottom]);
       }
-    // **** APPLY BOUNDARY CONDITIONS ****
-      
-    //left
-    j = 1;
-    for(i = 1; i < ny + 1; i++)
-    {
-      id = ID_2D(i, j, nx);
 
-      id_left = ID_2D(i, j - 1, nx);
+      programRuntime += dt;
+  }
 
-      h[id_left]  = h[id];
-
-      uh[id_left] = - uh[id];
-
-      vh[id_left] = vh[id];
-    }
-
-    //right
-    j = nx;
-    for(i = 1; i < ny + 1; i++)
-    {
-      id = ID_2D(i, j, nx);
-
-      id_right = ID_2D(i, j + 1, nx);
-
-      h[id_right]  = h[id];
-
-      uh[id_right] = - uh[id];
-
-      vh[id_right] = vh[id];
-    }
-
-    //bottom
-    i = 1;
-    for(j = 1; j < nx + 1; j++)
-    {
-      id = ID_2D(i, j, nx);
-
-      id_bottom = ID_2D(i - 1, j, nx);
-
-      h[id_bottom]  = h[id];
-
-      uh[id_bottom] = uh[id];
-
-      vh[id_bottom] = - vh[id];
-    }
-
-    //top
-    i = ny;
-    for(j = 1; j < nx + 1; j++)
-    {
-      id = ID_2D(i, j, nx);
-
-      id_top = ID_2D(i + 1, j, nx);
-
-      h[id_top]  = h[id];
-
-      uh[id_top] = uh[id];
-
-      vh[id_top] = - vh[id];
-    }
-
-    } //end time loop
-
+  if (rank == 0)
+  {
+    printf("Time-stepping loop completed.\n");
+    
     clock_t time_end = clock();
     double time_elapsed = (double)(time_end - time_start) / CLOCKS_PER_SEC;
 
     printf("Problem size: %d, Time Elapsed: %f s \n", nx, time_elapsed);
-  } // End for loop for 5 iterations of calculation
-  
-  // **** POSTPROCESSING ****
-  
+  }
+
+// **** POSTPROCESSING ****
+
   //Free memory.
   free ( h );
   free ( uh );
@@ -389,15 +461,9 @@ int main ( int argc, char *argv[] )
   free ( gh );
   free ( guh );
   free ( gvh ); 
-  free ( x );
-  free ( y );
 
- //Terminate.
-  printf ( "\n" );
-  printf ( "SHALLOW_WATER_2D:\n" );
-  printf ( "  Normal end of execution.\n" );
-  printf ( "\n" );
+  MPI_Finalize();
 
   return 0;
-}
-/******************************************************************************/
+  }
+  /***************************************************************************** END OF MAIN FUNCTION ****************************************************************************/

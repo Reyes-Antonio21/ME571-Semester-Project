@@ -452,8 +452,8 @@ int main ( int argc, char *argv[] )
   dx = x_length / ( float ) ( nx );
   dy = x_length / ( float ) ( nx );
 
-  float lambda_x = 0.5  * (float) dt / dx;
-  float lambda_y = 0.5 * (float) dt / dy;
+  float lambda_x = 0.5  * (float) dt/dx;
+  float lambda_y = 0.5 * (float) dt/dy;
 
   // Define the block and grid sizes
   int dimx = 32;
@@ -565,7 +565,6 @@ int main ( int argc, char *argv[] )
 
     if (k == dropTrigger)
     {
-
       // Randomly decide whether to generate a drop
       randNumber = rand() % 10;
 
