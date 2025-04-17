@@ -453,7 +453,7 @@ int main (int argc, char *argv[])
   clock_t time_end = clock();
   double time_elapsed = (double)(time_end - time_start) / CLOCKS_PER_SEC;
 
-  printf("Problem size: %d, Time Elapsed: %f s \n", nx, time_elapsed);
+  printf("Problem size: %d, Time Elapsed: %f s, Time Steps Taken: %f \n", nx, time_elapsed, programRuntime/dt);
 
   return 0;
   }

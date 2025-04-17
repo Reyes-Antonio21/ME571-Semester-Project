@@ -10,7 +10,7 @@ swe_2d_tt: Shallow_Water_Equations_Timed_Total.c
 	$(CC) -o swe_2d_tt Shallow_Water_Equations_Timed_Total.c
 
 swe_2d_mpi: Shallow_Water_Equations_MPI.c
-	$(MPICC) -o swe_2d_mp Shallow_Water_Equations_MPI.c
+	$(MPICC) -o swe_2d_mpi Shallow_Water_Equations_MPI.c
 
 swep_2d_tp: Shallow_Water_Equation_Parallelized.cu
 	$(CUDACC) -o swep_2d_tp Shallow_Water_Equation_Parallelized.cu
