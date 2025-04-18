@@ -290,9 +290,10 @@ int main (int argc, char *argv[])
   double programRuntime;
   double totalRuntime;
 
-  int i, j, k;
+  int i, j;
 
-  int id; 
+  int id;
+  int idx; 
   int id_left;
   int id_right;
   int id_bottom;
