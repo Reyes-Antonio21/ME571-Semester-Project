@@ -20,7 +20,7 @@ do
     echo "Running with $p processes..."
     start_time=$(date +%s.%N)
 
-    mpirun -np $p ./swep_2d_tt 3600 3600 0.000225 10 10 0.5
+    mpirun -np $p ./swe_2d_mpi 3600 3600 0.000225 10 10 0.5
 
     end_time=$(date +%s.%N)
     elapsed=$(echo "$end_time - $start_time" | bc)
