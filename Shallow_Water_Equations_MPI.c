@@ -355,6 +355,12 @@ int main (int argc, char *argv[])
   MPI_Cart_create(MPI_COMM_WORLD, 2, dims, periods, 0, &cart_comm);
   MPI_Cart_coords(cart_comm, rank, 2, coords);
 
+  if (cart_comm == MPI_COMM_NULL) {
+    fprintf(stderr, "Rank %d: cart_comm is MPI_COMM_NULL. Exiting.\n", rank);
+    MPI_Finalize();
+    exit(EXIT_FAILURE);
+  }
+
   px = coords[1];
   py = coords[0];
 
@@ -430,7 +436,7 @@ int main (int argc, char *argv[])
     programRuntime += dt; 
 
     // === h field ===
-    haloExchange(h,  nx_local, ny_local, cart_comm, column_type, north, south, west, east, 0);
+    haloExchange(h, nx_local, ny_local, cart_comm, column_type, north, south, west, east, 0);
 
     // === uh field ===
     haloExchange(uh, nx_local, ny_local, cart_comm, column_type, north, south, west, east, 4);
