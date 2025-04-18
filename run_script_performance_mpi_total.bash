@@ -12,10 +12,7 @@ module load openmpi
 module load slurm
 #source ~/.bashrc
 
-# Create or clear the timing log
-echo "Process_Count,Time(s)" > timing_results.log
-
 for p in 1 2 4 8 12 16 24 32 48
 do 
-    mpirun -np $p ./swe_2d_mpi 3600 3600 0.000225 10 10 0.5
+    mpirun -np $p ./swe_2d_mpi 800 800 0.001 10 10 0.5
 done

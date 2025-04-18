@@ -306,6 +306,8 @@ int main (int argc, char *argv[])
   // Get the number of processes
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
+  printf("Hello from rank %d of %d\n", rank, size);
+
   // Create a Cartesian topology
   MPI_Dims_create(size, 2, dims);
 
