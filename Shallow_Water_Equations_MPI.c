@@ -608,7 +608,7 @@ int main (int argc, char *argv[])
   float *uh_global = NULL;
   float *vh_global = NULL;
 
-  if (rank == 0) 
+  if (rank == 0 && cart_comm != MPI_COMM_NULL) 
   {
     recvcounts = malloc(size * sizeof(int));
     displs = malloc(size * sizeof(int));
