@@ -415,8 +415,6 @@ int main (int argc, char *argv[])
 
   initialConditions(nx_local, ny_local, px, py, dims, nx, ny, x_length, y_length, dx, dy, h, uh, vh);
 
-  writeResults(h, uh, vh, x_coords, y_coords, programRuntime, nx_local, ny_local);
-
   // Define column data type for vertical halo exchange
   MPI_Datatype column_type;
   MPI_Type_vector(ny_local, 1, nx_local + 2, MPI_FLOAT, &column_type);
