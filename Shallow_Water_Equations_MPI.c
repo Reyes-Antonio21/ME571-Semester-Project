@@ -82,6 +82,8 @@ void getArgs(int *nx, int *ny, double *dt, float *x_length, float *y_length, dou
 
 void initialConditions(int nx_local, int ny_local, int px, int py, int dims[2], int nx, int ny, float x_length, float y_length, float dx, float dy, float *h, float *uh, float *vh)
 {
+  int i, j, id, id_ghost;
+
   float *x_coords = malloc((nx_local + 2) * sizeof(float));
   float *y_coords = malloc((ny_local + 2) * sizeof(float));
 
@@ -220,7 +222,7 @@ void writeResults(float h[], float uh[], float vh[], float x[], float y[], float
 {
   char filename[50];
 
-  i, j, id;
+  int i, j, id;
 
   //Create the filename based on the time step.
   sprintf(filename, "tc2d_%08.6f.dat", time);
