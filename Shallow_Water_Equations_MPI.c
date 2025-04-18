@@ -87,8 +87,8 @@ void initialConditions(int nx_local, int ny_local, int px, int py, int dims[2], 
   float *x_coords = malloc((nx_local + 2) * sizeof(float));
   float *y_coords = malloc((ny_local + 2) * sizeof(float));
 
-  int global_x_start = computeGlobalStart(py, nx, dims[1]);
-  int global_y_start = computeGlobalStart(px, ny, dims[0]);
+  int global_x_start = computeGlobalStart(px, nx, dims[1]);
+  int global_y_start = computeGlobalStart(py, ny, dims[0]);
 
   for (j = 0; j < nx_local + 2; j++) 
   {
@@ -187,8 +187,6 @@ void initialConditions(int nx_local, int ny_local, int px, int py, int dims[2], 
       vh[id] = 0.0f;
     }
   }  
-
-  writeResults(h, uh, vh, x_coords, y_coords, 0.0f, nx_local, ny_local);
   
   free(x_coords);
   free(y_coords);
@@ -217,8 +215,9 @@ void haloExchange(float *data, int nx_local, int ny_local, MPI_Comm cart_comm, M
 
   MPI_Waitall(8, requests, MPI_STATUSES_IGNORE);
 }
+/******************************************************************************/
 
-void writeResults(float h[], float uh[], float vh[], float x[], float y[], float time, int nx, int ny)
+void writeResults(float h[], float uh[], float vh[], float x[], float y[], double time, int nx, int ny)
 {
   char filename[50];
 
@@ -292,8 +291,7 @@ int main (int argc, char *argv[])
 
   int i, j;
 
-  int id;
-  int idx; 
+  int id;   
   int id_left;
   int id_right;
   int id_bottom;
@@ -353,16 +351,8 @@ int main (int argc, char *argv[])
 
   MPI_Comm cart_comm;
   MPI_Cart_create(MPI_COMM_WORLD, 2, dims, periods, 0, &cart_comm);
-
-  if (cart_comm == MPI_COMM_NULL) {
-      fprintf(stderr, "Rank %d: cart_comm is MPI_COMM_NULL. Exiting.\n", rank);
-      MPI_Finalize();
-      exit(EXIT_FAILURE);
-  }
-  
   MPI_Cart_coords(cart_comm, rank, 2, coords);
   
-
   px = coords[1];
   py = coords[0];
 
@@ -383,24 +373,24 @@ int main (int argc, char *argv[])
   }
 
   /****************************************************************************** ALLOCATE MEMORY ******************************************************************************/
-  //Allocate space (nx+2)((nx+2) long, to accound for ghosts
+  //Allocate space (nx+2)((nx+2) long, to account for ghosts
   //height array
-  h  = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
-  hm = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
-  fh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
-  gh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
+  h  = ( float * ) malloc ( (nx_local + 2) * (ny_local + 2) * sizeof ( float ) );
+  hm = ( float * ) malloc ( (nx_local + 2) * (ny_local + 2) * sizeof ( float ) );
+  fh = ( float * ) malloc ( (nx_local + 2) * (ny_local + 2) * sizeof ( float ) );
+  gh = ( float * ) malloc ( (nx_local + 2) * (ny_local + 2) * sizeof ( float ) );
   
   //x momentum array
-  uh  = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
-  uhm = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
-  fuh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
-  guh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
+  uh  = ( float * ) malloc ( (nx_local + 2) * (ny_local + 2) * sizeof ( float ) );
+  uhm = ( float * ) malloc ( (nx_local + 2) * (ny_local + 2) * sizeof ( float ) );
+  fuh = ( float * ) malloc ( (nx_local + 2) * (ny_local + 2) * sizeof ( float ) );
+  guh = ( float * ) malloc ( (nx_local + 2) * (ny_local + 2) * sizeof ( float ) );
   
   //y momentum array
-  vh  = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
-  vhm = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
-  fvh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
-  gvh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
+  vh  = ( float * ) malloc ( (nx_local + 2) * (ny_local + 2) * sizeof ( float ) );
+  vhm = ( float * ) malloc ( (nx_local + 2) * (ny_local + 2) * sizeof ( float ) );
+  fvh = ( float * ) malloc ( (nx_local + 2) * (ny_local + 2) * sizeof ( float ) );
+  gvh = ( float * ) malloc ( (nx_local + 2) * (ny_local + 2) * sizeof ( float ) );
   
   /****************************************************************************** MAIN LOOP ******************************************************************************/
   if (rank == 0)
@@ -420,7 +410,12 @@ int main (int argc, char *argv[])
   }
 
   // **** INITIAL CONDITIONS ****
+
+  programRuntime = 0.0f;
+
   initialConditions(nx_local, ny_local, px, py, dims, nx, ny, x_length, y_length, dx, dy, h, uh, vh);
+
+  writeResults(h, uh, vh, x_coords, y_coords, programRuntime, nx_local, ny_local);
 
   // Define column data type for vertical halo exchange
   MPI_Datatype column_type;
@@ -430,8 +425,6 @@ int main (int argc, char *argv[])
   // Identify neighbors in Cartesian grid
   MPI_Cart_shift(cart_comm, 0, 1, &north, &south); // shift in y-direction (rows)
   MPI_Cart_shift(cart_comm, 1, 1, &west, &east);   // shift in x-direction (columns)
-
-  programRuntime = 0.0f;
 
   while (programRuntime < totalRuntime) 
   {
@@ -567,7 +560,107 @@ int main (int argc, char *argv[])
     }
   }
 
-// **** POSTPROCESSING ****
+  // **** POSTPROCESSING ****
+
+  // === GATHER AND WRITE FINAL RESULTS TO FILE ===
+  float *h_sendbuf = malloc(nx_local * ny_local * sizeof(float));
+  float *uh_sendbuf = malloc(nx_local * ny_local * sizeof(float));
+  float *vh_sendbuf = malloc(nx_local * ny_local * sizeof(float));
+
+  int index = 0;
+  for (i = 1; i <= ny_local; i++) 
+  {
+    for (j = 1; j <= nx_local; j++) 
+    {
+      id = ID_2D(i, j, nx_local);
+      h_sendbuf[index] = h[id];
+      uh_sendbuf[index] = uh[id];
+      vh_sendbuf[index] = vh[id];
+      index++;
+    }
+  }
+
+  int *recvcounts = NULL;
+  int *displs = NULL;
+  float *h_global = NULL;
+  float *uh_global = NULL;
+  float *vh_global = NULL;
+
+  if (rank == 0) {
+    recvcounts = malloc(size * sizeof(int));
+    displs = malloc(size * sizeof(int));
+    h_global = malloc(nx * ny * sizeof(float));
+    uh_global = malloc(nx * ny * sizeof(float));
+    vh_global = malloc(nx * ny * sizeof(float));
+
+    for (int r = 0; r < size; r++) 
+    {
+      int coords_r[2];
+      MPI_Cart_coords(cart_comm, r, 2, coords_r);
+      int px_r = coords_r[1];
+      int py_r = coords_r[0];
+
+      int nx_r = nx / dims[1] + (px_r < nx % dims[1]);
+      int ny_r = ny / dims[0] + (py_r < ny % dims[0]);
+
+      recvcounts[r] = nx_r * ny_r;
+
+      int x_start = computeGlobalStart(px_r, nx, dims[1]);
+      int y_start = computeGlobalStart(py_r, ny, dims[0]);
+
+      displs[r] = y_start * nx + x_start;
+    }
+  }
+
+  MPI_Datatype local_block;
+  MPI_Type_contiguous(nx_local * ny_local, MPI_FLOAT, &local_block);
+  MPI_Type_commit(&local_block);
+
+  // Gather h
+  MPI_Gatherv(h_sendbuf, nx_local * ny_local, MPI_FLOAT,
+              h_global, recvcounts, displs, MPI_FLOAT,
+              0, cart_comm);
+
+  // Gather uh
+  MPI_Gatherv(uh_sendbuf, nx_local * ny_local, MPI_FLOAT,
+              uh_global, recvcounts, displs, MPI_FLOAT,
+              0, cart_comm);
+
+  // Gather vh
+  MPI_Gatherv(vh_sendbuf, nx_local * ny_local, MPI_FLOAT,
+              vh_global, recvcounts, displs, MPI_FLOAT,
+              0, cart_comm);
+
+  MPI_Type_free(&local_block);
+
+  // === RANK 0: reconstruct x, y arrays and write final results ===
+  if (rank == 0) 
+  {
+    float *x_coords = malloc(nx * sizeof(float));
+    float *y_coords = malloc(ny * sizeof(float));
+
+    for (j = 0; j < nx; j++) {
+        x_coords[j] = -x_length / 2 + dx / 2 + j * dx;
+    }
+    for (i = 0; i < ny; i++) {
+        y_coords[i] = -y_length / 2 + dy / 2 + i * dy;
+    }
+
+    writeResults(h_global, uh_global, vh_global, x_coords, y_coords, programRuntime, nx, ny);
+
+    free(x_coords);
+    free(y_coords);
+    free(h_global);
+    free(uh_global);
+    free(vh_global);
+    free(recvcounts);
+    free(displs);
+  }
+
+  free(h_sendbuf);
+  free(uh_sendbuf);
+  free(vh_sendbuf);
+
 
   //Free memory.
   free ( h );
