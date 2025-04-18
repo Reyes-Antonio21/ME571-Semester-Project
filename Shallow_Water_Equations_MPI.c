@@ -378,7 +378,7 @@ int main (int argc, char *argv[])
 
   initialConditions(nx_local, ny_local, rank_x, rank_y, dims, nx_global, ny_global, x_length, y_length, dx, dy, h, uh, vh);
 
-  printf("Rank %d: global_x_start = %d, global_y_start = %d\n", rank, computeGlobalStart(px, nx_global, dims[0]), computeGlobalStart(py, ny_global, dims[1]));
+  printf("Rank %d: global_x_start = %d, global_y_start = %d\n", rank, computeGlobalStart(rank_x, nx_global, dims[0]), computeGlobalStart(rank_y, ny_global, dims[1]));
 
   // Define column data type for vertical halo exchange
   MPI_Datatype column_type;
