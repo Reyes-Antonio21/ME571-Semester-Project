@@ -3,9 +3,12 @@
 # include <math.h>
 # include <string.h>
 # include <time.h>
+#include "hdf5.h"
+#include "hdf5_hl.h"
 # include <mpi.h>
 
 #define ID_2D(i,j,nx) ((i)*(nx+2)+(j))
+# define FILE_NAME "swe_2d.h5"
 
 /****************************************************************************** Helper Functions ******************************************************************************/
 
@@ -217,44 +220,63 @@ void haloExchange(float *data, int nx_local, int ny_local, MPI_Comm cart_comm, M
 }
 /******************************************************************************/
 
-void writeResults(float h[], float uh[], float vh[], float x[], float y[], double time, int nx, int ny)
+void writeHDF5Snapshot(const char *file_name, float *h, float *uh, float *vh, int nx_local, int ny_local, int nx, int ny, int px, int py, int dims[2], double time, MPI_Comm comm)
 {
-  char filename[50];
+  hid_t plist_id, file_id, group_id, filespace, memspace, dset_id;
+  herr_t status;
 
-  int i, j, id;
+  int x_start = computeGlobalStart(px, nx, dims[1]);
+  int y_start = computeGlobalStart(py, ny, dims[0]);
 
-  //Create the filename based on the time step.
-  sprintf(filename, "tc2d_%08.6f.dat", time);
+  // Create parallel file access property list
+  plist_id = H5Pcreate(H5P_FILE_ACCESS);
+  H5Pset_fapl_mpio(plist_id, comm, MPI_INFO_NULL);
 
-  //Open the file.
-  FILE *file = fopen (filename, "wt" );
-    
-  if (!file)
+  // Create or open file
+  file_id = H5Fopen(file_name, H5F_ACC_RDWR, plist_id);
+  if (file_id < 0) file_id = H5Fcreate(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id);
+  H5Pclose(plist_id);
+
+  // Create time-step group
+  char group_name[64];
+  sprintf(group_name, "/step_%06d", (int)(time * 1000.0)); // e.g., step_000500
+  group_id = H5Gcreate2(file_id, group_name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+  hsize_t global_dims[2] = {ny, nx};
+  hsize_t local_dims[2] = {ny_local, nx_local};
+  hsize_t offset[2] = {y_start, x_start};
+
+  memspace = H5Screate_simple(2, local_dims, NULL);
+  filespace = H5Screate_simple(2, global_dims, NULL);
+
+  // Dataset names
+  const char *vars[3] = {"h", "uh", "vh"};
+  float *data[3] = {h, uh, vh};
+
+  for (int v = 0; v < 3; v++) 
   {
-    fprintf (stderr, "\n" );
+    // Create dataset
+    dset_id = H5Dcreate(group_id, vars[v], H5T_NATIVE_FLOAT, filespace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
-    fprintf (stderr, "WRITE_RESULTS - Fatal error!\n");
+    // Select hyperslab
+    H5Sselect_hyperslab(filespace, H5S_SELECT_SET, offset, NULL, local_dims, NULL);
 
-    fprintf (stderr, "  Could not open the output file.\n");
+    // Create property list for collective I/O
+    plist_id = H5Pcreate(H5P_DATASET_XFER);
+    H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
 
-    exit (1);
+    // Write local data chunk
+    H5Dwrite(dset_id, H5T_NATIVE_FLOAT, memspace, filespace, plist_id, data[v]);
+
+    // Cleanup
+    H5Pclose(plist_id);
+    H5Dclose(dset_id);
   }
 
-  else
-  {  
-    //Write the data.
-    for ( i = 0; i < ny; i++ ) 
-      for ( j = 0; j < nx; j++ )
-      {
-        id = ID_2D(i + 1, j + 1, nx);
-        fprintf ( file, "%24.16g\t%24.16g\t%24.16g\t %24.16g\t %24.16g\n", x[j], y[i], h[id], uh[id], vh[id]);
-      }
-    
-    //Close the file.
-    fclose (file);
-  }
-
-  return;
+  H5Sclose(memspace);
+  H5Sclose(filespace);
+  H5Gclose(group_id);
+  H5Fclose(file_id);
 }
 /******************************************************************************/
 
@@ -415,6 +437,8 @@ int main (int argc, char *argv[])
 
   initialConditions(nx_local, ny_local, px, py, dims, nx, ny, x_length, y_length, dx, dy, h, uh, vh);
 
+  writeHDF5Snapshot(FILE_NAME, h, uh, vh, nx_local, ny_local, nx, ny, px, py, dims, programRuntime, cart_comm);
+
   // Define column data type for vertical halo exchange
   MPI_Datatype column_type;
   MPI_Type_vector(ny_local, 1, nx_local + 2, MPI_FLOAT, &column_type);
@@ -559,6 +583,8 @@ int main (int argc, char *argv[])
   }
 
   // **** POSTPROCESSING ****
+
+  writeHDF5Snapshot(FILE_NAME, h, uh, vh, nx_local, ny_local, nx, ny, px, py, dims, programRuntime, cart_comm);
 
   //Free memory.
   free ( h );
