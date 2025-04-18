@@ -440,7 +440,7 @@ int main (int argc, char *argv[])
     for (i = 1; i < ny_local + 1; i++)
       for (j = 1; j < nx_local + 1; j++)
       {
-        id = ID_2D(i, j, nx);
+        id = ID_2D(i, j, nx_local);
 
         h[id] = hm[id];
 
