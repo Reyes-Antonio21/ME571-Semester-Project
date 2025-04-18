@@ -3,8 +3,8 @@
 # include <math.h>
 # include <string.h>
 # include <time.h>
-# include "hdf5.h"
-# include "hdf5_hl.h"
+# include <hdf5.h>
+# include <hdf5_hl.h>
 # include <mpi.h>
 
 # define ID_2D(i,j,nx) ((i)*(nx+2)+(j))
