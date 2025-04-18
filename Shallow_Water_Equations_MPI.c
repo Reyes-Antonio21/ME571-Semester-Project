@@ -3,11 +3,11 @@
 # include <math.h>
 # include <string.h>
 # include <time.h>
-#include "hdf5.h"
-#include "hdf5_hl.h"
+# include "hdf5.h"
+# include "hdf5_hl.h"
 # include <mpi.h>
 
-#define ID_2D(i,j,nx) ((i)*(nx+2)+(j))
+# define ID_2D(i,j,nx) ((i)*(nx+2)+(j))
 # define FILE_NAME "swe_2d.h5"
 
 /****************************************************************************** Helper Functions ******************************************************************************/
@@ -217,6 +217,67 @@ void haloExchange(float *data, int nx_local, int ny_local, MPI_Comm cart_comm, M
   MPI_Irecv(&data[ID_2D(1, 0, nx_local)], 1, column_type, west, base_tag + 3, cart_comm, &requests[7]);
 
   MPI_Waitall(8, requests, MPI_STATUSES_IGNORE);
+}
+/******************************************************************************/
+
+void writeCoordinatesHDF5(const char *file_name, int nx, int ny, float dx, float dy, float x_length, float y_length, MPI_Comm comm)
+{
+    hid_t plist_id, file_id, dspace_id, dset_id;
+    herr_t status;
+
+    // Only rank 0 writes coords
+    int rank;
+    MPI_Comm_rank(comm, &rank);
+
+    if (rank == 0)
+    {
+      // Allocate and fill x and y arrays
+      float *x_coords = malloc(nx * sizeof(float));
+      float *y_coords = malloc(ny * sizeof(float));
+
+      for (int j = 0; j < nx; j++)
+        {
+          x_coords[j] = -x_length / 2 + dx / 2 + j * dx;
+        }
+
+      for (int i = 0; i < ny; i++)
+      {
+        y_coords[i] = -y_length / 2 + dy / 2 + i * dy;
+      }
+
+      // Create file access property list
+      plist_id = H5Pcreate(H5P_FILE_ACCESS);
+      H5Pset_fapl_mpio(plist_id, comm, MPI_INFO_NULL);
+
+      // Create or open the file
+      file_id = H5Fopen(file_name, H5F_ACC_RDWR, plist_id);
+      if (file_id < 0)
+          file_id = H5Fcreate(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id);
+
+      H5Pclose(plist_id);
+
+      // Write x dataset
+      hsize_t x_dims[1] = {nx};
+      dspace_id = H5Screate_simple(1, x_dims, NULL);
+      dset_id = H5Dcreate(file_id, "x", H5T_NATIVE_FLOAT, dspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+      H5Dwrite(dset_id, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, x_coords);
+      H5Dclose(dset_id);
+      H5Sclose(dspace_id);
+
+      // Write y dataset
+      hsize_t y_dims[1] = {ny};
+      dspace_id = H5Screate_simple(1, y_dims, NULL);
+      dset_id = H5Dcreate(file_id, "y", H5T_NATIVE_FLOAT, dspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+      H5Dwrite(dset_id, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, y_coords);
+      H5Dclose(dset_id);
+      H5Sclose(dspace_id);
+
+      H5Fclose(file_id);
+      free(x_coords);
+      free(y_coords);
+    }
+
+    MPI_Barrier(comm); // Ensure all ranks wait until x/y are written
 }
 /******************************************************************************/
 
@@ -436,6 +497,8 @@ int main (int argc, char *argv[])
   programRuntime = 0.0f;
 
   initialConditions(nx_local, ny_local, px, py, dims, nx, ny, x_length, y_length, dx, dy, h, uh, vh);
+
+  writeCoordinatesHDF5(FILE_NAME, nx, ny, dx, dy, x_length, y_length, cart_comm);
 
   writeHDF5Snapshot(FILE_NAME, h, uh, vh, nx_local, ny_local, nx, ny, px, py, dims, programRuntime, cart_comm);
 
