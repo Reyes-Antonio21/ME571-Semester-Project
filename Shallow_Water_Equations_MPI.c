@@ -3,8 +3,6 @@
 # include <math.h>
 # include <string.h>
 # include <time.h>
-# include <hdf5.h>
-# include <hdf5_hl.h>
 # include <mpi.h>
 
 # define ID_2D(i,j,nx) ((i)*(nx+2)+(j))
@@ -498,10 +496,6 @@ int main (int argc, char *argv[])
 
   initialConditions(nx_local, ny_local, px, py, dims, nx, ny, x_length, y_length, dx, dy, h, uh, vh);
 
-  writeCoordinatesHDF5(FILE_NAME, nx, ny, dx, dy, x_length, y_length, cart_comm);
-
-  writeHDF5Snapshot(FILE_NAME, h, uh, vh, nx_local, ny_local, nx, ny, px, py, dims, programRuntime, cart_comm);
-
   // Define column data type for vertical halo exchange
   MPI_Datatype column_type;
   MPI_Type_vector(ny_local, 1, nx_local + 2, MPI_FLOAT, &column_type);
@@ -646,8 +640,6 @@ int main (int argc, char *argv[])
   }
 
   // **** POSTPROCESSING ****
-
-  writeHDF5Snapshot(FILE_NAME, h, uh, vh, nx_local, ny_local, nx, ny, px, py, dims, programRuntime, cart_comm);
 
   //Free memory.
   free ( h );
