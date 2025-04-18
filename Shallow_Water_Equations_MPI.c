@@ -318,7 +318,6 @@ int main (int argc, char *argv[])
   rank_x = coords[0];  // corresponds to dimension 0 (rows)
   rank_y = coords[1];  // corresponds to dimension 1 (columns)
 
-
   nx_local = nx_global / dims[1];
   ny_local = ny_global / dims[0];
 

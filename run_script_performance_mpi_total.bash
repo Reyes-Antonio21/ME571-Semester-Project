@@ -14,5 +14,5 @@ module load slurm
 
 for p in 1 2 4 8 12 16 24 32 48
 do 
-    mpirun -np $p ./swe_2d_mpi 800 800 0.001 10 10 0.5
+    srun -np $p ./swe_2d_mpi 800 800 0.001 10 10 0.5
 done
