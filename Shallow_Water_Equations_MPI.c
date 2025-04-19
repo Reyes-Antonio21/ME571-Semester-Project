@@ -221,8 +221,6 @@ void haloExchange(float *data, int nx_local, int ny_local, MPI_Comm cart_comm, M
 int main (int argc, char *argv[])
 {
   /****************************************************************************** Instantiation ******************************************************************************/
-  // Start the clock
-  clock_t time_start = clock();
   
   // Initialize MPI environment
   MPI_Init(&argc, &argv);
@@ -547,10 +545,7 @@ int main (int argc, char *argv[])
 
   printf("Time-stepping loop completed.\n");
     
-  clock_t time_end = clock();
-  double time_elapsed = (double)(time_end - time_start) / CLOCKS_PER_SEC;
-
-  printf("Problem size: %d, Time Elapsed: %f s, Time Steps Taken: %f \n", nx_global, time_elapsed, programRuntime/dt);
+  printf("Problem size: %d, Time Steps Taken: %f \n", nx_global, programRuntime/dt);
 
   return 0;
   }
