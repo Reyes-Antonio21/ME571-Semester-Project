@@ -81,15 +81,15 @@ void getArgs(int *nx_global, int *ny_global, double *dt, float *x_length, float 
 }
 /******************************************************************************/
 
-void initialConditions(int nx_local, int ny_local, int rank_x, int rank_y, int dims[2], int nx_global, int ny_global, float x_length, float y_length, float dx, float dy, float *h, float *uh, float *vh)
+void initialConditions(int nx_local, int ny_local, int px, int py, int dims[2], int nx_global, int ny_global, float x_length, float y_length, float dx, float dy, float *h, float *uh, float *vh)
 {
   int i, j, id, id_ghost;
 
   float *x_coords = malloc((nx_local + 2) * sizeof(float));
   float *y_coords = malloc((ny_local + 2) * sizeof(float));
 
-  int global_x_start = computeGlobalStart(rank_x, nx_global, dims[1]);
-  int global_y_start = computeGlobalStart(rank_y, ny_global, dims[0]);
+  int global_x_start = computeGlobalStart(px, nx_global, dims[1]);
+  int global_y_start = computeGlobalStart(py, ny_global, dims[0]);
 
   for (j = 0; j < nx_local + 2; j++) 
   {
@@ -122,7 +122,7 @@ void initialConditions(int nx_local, int ny_local, int rank_x, int rank_y, int d
 
   // Apply physical domain boundary conditions
   // Bottom boundary
-  if (rank_x == 0) 
+  if (px == 0) 
   {  
     for (j = 1; j <= nx_local; j++) 
     {
@@ -139,7 +139,7 @@ void initialConditions(int nx_local, int ny_local, int rank_x, int rank_y, int d
   }
 
   // Top boundary
-  if (rank_x == dims[0] - 1) 
+  if (px == dims[0] - 1) 
   { 
     for (j = 1; j <= nx_local; j++) 
     {
@@ -156,7 +156,7 @@ void initialConditions(int nx_local, int ny_local, int rank_x, int rank_y, int d
   }
 
   // Left boundary
-  if (rank_y == 0) 
+  if (py == 0) 
   {  
     for (i = 1; i <= ny_local; i++) 
     {
@@ -173,7 +173,7 @@ void initialConditions(int nx_local, int ny_local, int rank_x, int rank_y, int d
   }
 
   // Right boundary
-  if (rank_y == dims[1] - 1) 
+  if (py == dims[1] - 1) 
   {  
     for (i = 1; i <= ny_local; i++) 
     {
@@ -227,11 +227,11 @@ int main (int argc, char *argv[])
 
   // Initialize variables
   // MPI variables
-  int rank_x; 
-  int rank_y;
+  int px; 
+  int py;
 
   int rank;
-  int size;
+  int numProcessors;
 
   int north;
   int south;
@@ -247,7 +247,7 @@ int main (int argc, char *argv[])
   double programRuntime;
   double totalRuntime;
 
-  int i, j;
+  int i, j, k;
 
   int id;   
   int id_left;
@@ -262,6 +262,9 @@ int main (int argc, char *argv[])
   int ny_local;
   int nx_extra;
   int ny_extra;
+
+  int x_start;
+  int y_start;
 
   float dx;
   float dy;
@@ -287,9 +290,15 @@ int main (int argc, char *argv[])
   float *uhm;
   float *vhm;
 
+  // Get the rank of the process
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+  // Get the number of processes
+  MPI_Comm_size(MPI_COMM_WORLD, &numProcessors);
+
   // Get command line arguments
   getArgs(&nx_global, &ny_global, &dt, &x_length, &y_length, &totalRuntime, argc, argv);
-  
+
   // Define the locations of the nodes, time steps, and spacing
   dx = x_length / ( float ) ( nx_global );
   dy = y_length / ( float ) ( ny_global );
@@ -298,23 +307,15 @@ int main (int argc, char *argv[])
   float lambda_x = 0.5f * (float) dt/dx;
   float lambda_y = 0.5f * (float) dt/dy;
 
-  // Get the rank of the process
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
-  // Get the number of processes
-  MPI_Comm_size(MPI_COMM_WORLD, &size);
-
-  printf("Hello from rank %d of %d\n", rank, size);
-
   // Create a Cartesian topology
-  MPI_Dims_create(size, 2, dims);
+  MPI_Dims_create(numProcessors, 2, dims);
 
   MPI_Comm cart_comm;
   MPI_Cart_create(MPI_COMM_WORLD, 2, dims, periods, 0, &cart_comm);
   MPI_Cart_coords(cart_comm, rank, 2, coords);
   
-  rank_x = coords[0];  // corresponds to dimension 0 (rows)
-  rank_y = coords[1];  // corresponds to dimension 1 (columns)
+  px = coords[1];  // corresponds to dimension 0 (rows)
+  py = coords[0];  // corresponds to dimension 1 (columns)
 
   nx_local = nx_global / dims[1];
   ny_local = ny_global / dims[0];
@@ -322,17 +323,21 @@ int main (int argc, char *argv[])
   nx_extra = nx_global % dims[1];
   ny_extra = ny_global % dims[0];
 
-  if (rank_x < nx_extra)
+  if (px < nx_extra)
   {
     nx_local++;
   }
 
-  if (rank_y < ny_extra)
+  if (py < ny_extra)
   {
     ny_local++;
   }
 
+  x_start = (nx_local * px + (px < nx_extra ? px : nx_extra);
+  y_start = (ny_local * py + (py < ny_extra ? py : ny_extra);
+
   printf("Rank %d: nx_local = %d, ny_local = %d\n", rank, nx_local, ny_local);
+  printf("Rank %d: Global x-start position for rank %d: %d, Global y-start position for rank %d: %d\n", rank, rank, x_start, rank, y_start);
 
   /****************************************************************************** ALLOCATE MEMORY ******************************************************************************/
   //Allocate space (nx_global+2)((nx_global+2) long, to account for ghosts
@@ -367,7 +372,7 @@ int main (int argc, char *argv[])
     printf ("  The time step is %g.\n", dt);
     printf ("  The grid spacing is %g x %g.\n", dx, dy);
     printf ("  The grid length is %g x %g.\n", x_length, y_length);
-    printf (" The number of processes is %d.\n", size);
+    printf (" The number of processes is %d.\n", numProcessors);
     printf (" The processor grid dimensions are %d x %d.\n", dims[0], dims[1]);
   }
 
@@ -375,9 +380,9 @@ int main (int argc, char *argv[])
 
   programRuntime = 0.0f;
 
-  initialConditions(nx_local, ny_local, rank_x, rank_y, dims, nx_global, ny_global, x_length, y_length, dx, dy, h, uh, vh);
+  initialConditions(nx_local, ny_local, px, py, dims, nx_global, ny_global, x_length, y_length, dx, dy, h, uh, vh);
 
-  printf("Rank %d: global_x_start = %d, global_y_start = %d\n", rank, computeGlobalStart(rank_x, nx_global, dims[0]), computeGlobalStart(rank_y, ny_global, dims[1]));
+  printf("Rank %d: global_x_start = %d, global_y_start = %d\n", rank, computeGlobalStart(px, nx_global, dims[0]), computeGlobalStart(py, ny_global, dims[1]));
 
   // Define column data type for vertical halo exchange
   MPI_Datatype column_type;
@@ -454,7 +459,7 @@ int main (int argc, char *argv[])
       }
 
     // === LEFT boundary (global domain) ===
-    if (rank_y == 0) 
+    if (py == 0) 
     {
       j = 1;
       for (i = 1; i <= ny_local; i++) 
@@ -471,7 +476,7 @@ int main (int argc, char *argv[])
     }
 
     // === RIGHT boundary (global domain) ===
-    if (rank_y == dims[1] - 1) 
+    if (py == dims[1] - 1) 
     {
       j = nx_local;
       for (i = 1; i <= ny_local; i++) 
@@ -488,7 +493,7 @@ int main (int argc, char *argv[])
     }
 
     // === BOTTOM boundary (global domain) ===
-    if (rank_x == 0) 
+    if (px == 0) 
     {
       i = 1;
       for (j = 1; j <= nx_local; j++) 
@@ -505,7 +510,7 @@ int main (int argc, char *argv[])
     }
 
     // === TOP boundary (global domain) ===
-    if (rank_x == dims[0] - 1) 
+    if (px == dims[0] - 1) 
     {
       i = ny_local;
       for (j = 1; j <= nx_local; j++) 
@@ -545,7 +550,7 @@ int main (int argc, char *argv[])
 
   printf("Time-stepping loop completed.\n");
     
-  printf("Problem size: %d, Time Steps Taken: %f \n", nx_global, programRuntime/dt);
+  printf("Problem numProcessors: %d, Time Steps Taken: %f \n", nx_global, programRuntime/dt);
 
   return 0;
   }
