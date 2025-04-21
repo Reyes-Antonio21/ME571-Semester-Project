@@ -333,8 +333,8 @@ int main (int argc, char *argv[])
     ny_local++;
   }
 
-  x_start = (nx_local * px + (px < nx_extra ? px : nx_extra);
-  y_start = (ny_local * py + (py < ny_extra ? py : ny_extra);
+  x_start = (nx_local * px + (px < nx_extra ? px : nx_extra));
+  y_start = (ny_local * py + (py < ny_extra ? py : ny_extra));
 
   printf("Rank %d: nx_local = %d, ny_local = %d\n", rank, nx_local, ny_local);
   printf("Rank %d: Global x-start position for rank %d: %d, Global y-start position for rank %d: %d\n", rank, rank, x_start, rank, y_start);
