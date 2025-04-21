@@ -219,7 +219,6 @@ void haloExchange(float *data, int nx_local, int ny_local, MPI_Comm cart_comm, M
 
 void write_results_mpi ( char *output_filename, int nx_global, int ny_global, int nx_local, int ny_local, float dx, float u[], int rank, int numProcessors)
 /******************************************************************************/
-
 {
   int i,j, id;
   FILE *output;
@@ -470,168 +469,171 @@ int main (int argc, char *argv[])
 
   // **** INITIAL CONDITIONS ****
 
-  programRuntime = 0.0f;
-
-  initialConditions(nx_local, ny_local, px, py, dims, nx_global, ny_global, x_length, y_length, dx, dy, h, uh, vh);
-
-  // Define column data type for vertical halo exchange
-  MPI_Datatype column_type;
-  MPI_Type_vector(ny_local, 1, nx_local + 2, MPI_FLOAT, &column_type);
-  MPI_Type_commit(&column_type);
-
-  // Identify neighbors in Cartesian grid
-  MPI_Cart_shift(cart_comm, 0, 1, &north, &south); // shift in y-direction (rows)
-  MPI_Cart_shift(cart_comm, 1, 1, &west, &east);   // shift in x-direction (columns)
-
-  MPI_Barrier(cart_comm);
-  // Start timing the program
-  time_start = MPI_Wtime();
-
-  // **** TIME LOOP ****
-  while (programRuntime < totalRuntime) 
+  for (k = 0; k < 5; k++)
   {
-    programRuntime += dt; 
 
-    // === h field ===
-    haloExchange(h, nx_local, ny_local, cart_comm, column_type, north, south, west, east, 0);
+    programRuntime = 0.0f;
 
-    // === uh field ===
-    haloExchange(uh, nx_local, ny_local, cart_comm, column_type, north, south, west, east, 4);
+    initialConditions(nx_local, ny_local, px, py, dims, nx_global, ny_global, x_length, y_length, dx, dy, h, uh, vh);
 
-    // === vh field ===
-    haloExchange(vh, nx_local, ny_local, cart_comm, column_type, north, south, west, east, 8);
+    // Define column data type for vertical halo exchange
+    MPI_Datatype column_type;
+    MPI_Type_vector(ny_local, 1, nx_local + 2, MPI_FLOAT, &column_type);
+    MPI_Type_commit(&column_type);
 
-    for (i = 1; i <= ny_local; i++)   
-      for (j = 1; j <= nx_local; j++) 
-      {
-        id = ID_2D(i, j, nx_local);
+    // Identify neighbors in Cartesian grid
+    MPI_Cart_shift(cart_comm, 0, 1, &north, &south); // shift in y-direction (rows)
+    MPI_Cart_shift(cart_comm, 1, 1, &west, &east);   // shift in x-direction (columns)
 
-        fh[id] = uh[id];
+    MPI_Barrier(cart_comm);
+    // Start timing the program
+    time_start = MPI_Wtime();
 
-        fuh[id] = uh[id] * uh[id] / h[id] + 0.5f * g * h[id] * h[id];
-
-        fvh[id] = uh[id] * vh[id] / h[id];
-
-        gh[id] = vh[id];
-
-        guh[id] = uh[id] * vh[id] / h[id];
-
-        gvh[id] = vh[id] * vh[id] / h[id] + 0.5f * g * h[id] * h[id];
-      }
-
-    for (i = 1; i <= ny_local; i++)
-      for (j = 1; j <= nx_local; j++) 
-      {
-        id = ID_2D(i, j, nx_local);
-        id_left = ID_2D(i, j - 1, nx_local);
-        id_right = ID_2D(i, j + 1, nx_local);
-        id_bottom = ID_2D(i - 1, j, nx_local);
-        id_top = ID_2D(i + 1, j, nx_local);
-
-        hm[id] = 0.25f * (h[id_left] + h[id_right] + h[id_bottom] + h[id_top])
-              - lambda_x * (fh[id_right] - fh[id_left])
-              - lambda_y * (gh[id_top] - gh[id_bottom]);
-
-        uhm[id] = 0.25f * (uh[id_left] + uh[id_right] + uh[id_bottom] + uh[id_top])
-              - lambda_x * (fuh[id_right] - fuh[id_left])
-              - lambda_y * (guh[id_top] - guh[id_bottom]);
-
-        vhm[id] = 0.25f * (vh[id_left] + vh[id_right] + vh[id_bottom] + vh[id_top])
-              - lambda_x * (fvh[id_right] - fvh[id_left])
-              - lambda_y * (gvh[id_top] - gvh[id_bottom]);
-      }
-    
-    for (i = 1; i < ny_local + 1; i++)
-      for (j = 1; j < nx_local + 1; j++)
-      {
-        id = ID_2D(i, j, nx_local);
-
-        h[id] = hm[id];
-
-        uh[id] = uhm[id];
-
-        vh[id] = vhm[id];
-      }
-
-    // === LEFT boundary (global domain) ===
-    if (py == 0) 
+    // **** TIME LOOP ****
+    while (programRuntime < totalRuntime) 
     {
-      j = 1;
-      for (i = 1; i <= ny_local; i++) 
+      programRuntime += dt; 
+
+      // === h field ===
+      haloExchange(h, nx_local, ny_local, cart_comm, column_type, north, south, west, east, 0);
+
+      // === uh field ===
+      haloExchange(uh, nx_local, ny_local, cart_comm, column_type, north, south, west, east, 4);
+
+      // === vh field ===
+      haloExchange(vh, nx_local, ny_local, cart_comm, column_type, north, south, west, east, 8);
+
+      for (i = 1; i <= ny_local; i++)   
+        for (j = 1; j <= nx_local; j++) 
+        {
+          id = ID_2D(i, j, nx_local);
+
+          fh[id] = uh[id];
+
+          fuh[id] = uh[id] * uh[id] / h[id] + 0.5f * g * h[id] * h[id];
+
+          fvh[id] = uh[id] * vh[id] / h[id];
+
+          gh[id] = vh[id];
+
+          guh[id] = uh[id] * vh[id] / h[id];
+
+          gvh[id] = vh[id] * vh[id] / h[id] + 0.5f * g * h[id] * h[id];
+        }
+
+      for (i = 1; i <= ny_local; i++)
+        for (j = 1; j <= nx_local; j++) 
+        {
+          id = ID_2D(i, j, nx_local);
+          id_left = ID_2D(i, j - 1, nx_local);
+          id_right = ID_2D(i, j + 1, nx_local);
+          id_bottom = ID_2D(i - 1, j, nx_local);
+          id_top = ID_2D(i + 1, j, nx_local);
+
+          hm[id] = 0.25f * (h[id_left] + h[id_right] + h[id_bottom] + h[id_top])
+                - lambda_x * (fh[id_right] - fh[id_left])
+                - lambda_y * (gh[id_top] - gh[id_bottom]);
+
+          uhm[id] = 0.25f * (uh[id_left] + uh[id_right] + uh[id_bottom] + uh[id_top])
+                - lambda_x * (fuh[id_right] - fuh[id_left])
+                - lambda_y * (guh[id_top] - guh[id_bottom]);
+
+          vhm[id] = 0.25f * (vh[id_left] + vh[id_right] + vh[id_bottom] + vh[id_top])
+                - lambda_x * (fvh[id_right] - fvh[id_left])
+                - lambda_y * (gvh[id_top] - gvh[id_bottom]);
+        }
+      
+      for (i = 1; i < ny_local + 1; i++)
+        for (j = 1; j < nx_local + 1; j++)
+        {
+          id = ID_2D(i, j, nx_local);
+
+          h[id] = hm[id];
+
+          uh[id] = uhm[id];
+
+          vh[id] = vhm[id];
+        }
+
+      // === LEFT boundary (global domain) ===
+      if (py == 0) 
       {
-        id = ID_2D(i, j, nx_local);
-        id_left = ID_2D(i, j - 1, nx_local);
+        j = 1;
+        for (i = 1; i <= ny_local; i++) 
+        {
+          id = ID_2D(i, j, nx_local);
+          id_left = ID_2D(i, j - 1, nx_local);
 
-        h[id_left] = h[id];
+          h[id_left] = h[id];
 
-        uh[id_left] = -uh[id];   // reverse x-momentum
+          uh[id_left] = -uh[id];   // reverse x-momentum
 
-        vh[id_left] = vh[id];
+          vh[id_left] = vh[id];
+        }
+      }
+
+      // === RIGHT boundary (global domain) ===
+      if (py == dims[1] - 1) 
+      {
+        j = nx_local;
+        for (i = 1; i <= ny_local; i++) 
+        {
+          id = ID_2D(i, j, nx_local);
+          id_right = ID_2D(i, j + 1, nx_local);
+
+          h[id_right] = h[id];
+
+          uh[id_right] = -uh[id];
+
+          vh[id_right] = h[id];
+        }
+      }
+
+      // === BOTTOM boundary (global domain) ===
+      if (px == 0) 
+      {
+        i = 1;
+        for (j = 1; j <= nx_local; j++) 
+        {
+          id = ID_2D(i, j, nx_local);
+          id_bottom = ID_2D(i - 1, j, nx_local);
+
+          h[id_bottom] = h[id];
+
+          uh[id_bottom] = uh[id];
+
+          vh[id_bottom] = -vh[id];  // reverse y-momentum
+        }
+      }
+
+      // === TOP boundary (global domain) ===
+      if (px == dims[0] - 1) 
+      {
+        i = ny_local;
+        for (j = 1; j <= nx_local; j++) 
+        {
+          id = ID_2D(i, j, nx_local);
+          id_top = ID_2D(i + 1, j, nx_local);
+
+          h[id_top] = h[id];
+
+          uh[id_top] = uh[id];
+
+          vh[id_top] = -vh[id];
+        }
       }
     }
 
-    // === RIGHT boundary (global domain) ===
-    if (py == dims[1] - 1) 
+    // Stop timing the program
+    time_end = MPI_Wtime();
+    time_elapsed = time_end - time_start;
+    MPI_Reduce(&time_elapsed, &time_max, 1, MPI_DOUBLE, MPI_MAX, 0, cart_comm);
+
+    if (rank == 0) 
     {
-      j = nx_local;
-      for (i = 1; i <= ny_local; i++) 
-      {
-        id = ID_2D(i, j, nx_local);
-        id_right = ID_2D(i, j + 1, nx_local);
-
-        h[id_right] = h[id];
-
-        uh[id_right] = -uh[id];
-
-        vh[id_right] = h[id];
-      }
-    }
-
-    // === BOTTOM boundary (global domain) ===
-    if (px == 0) 
-    {
-      i = 1;
-      for (j = 1; j <= nx_local; j++) 
-      {
-        id = ID_2D(i, j, nx_local);
-        id_bottom = ID_2D(i - 1, j, nx_local);
-
-        h[id_bottom] = h[id];
-
-        uh[id_bottom] = uh[id];
-
-        vh[id_bottom] = -vh[id];  // reverse y-momentum
-      }
-    }
-
-    // === TOP boundary (global domain) ===
-    if (px == dims[0] - 1) 
-    {
-      i = ny_local;
-      for (j = 1; j <= nx_local; j++) 
-      {
-        id = ID_2D(i, j, nx_local);
-        id_top = ID_2D(i + 1, j, nx_local);
-
-        h[id_top] = h[id];
-
-        uh[id_top] = uh[id];
-
-        vh[id_top] = -vh[id];
-      }
+      printf("Total time taken: %f seconds\n", time_max);
     }
   }
-
-  // Stop timing the program
-  time_end = MPI_Wtime();
-  time_elapsed = time_end - time_start;
-  MPI_Reduce(&time_elapsed, &time_max, 1, MPI_DOUBLE, MPI_MAX, 0, cart_comm);
-
-  if (rank == 0) 
-  {
-    printf("Total time taken: %f seconds\n", time_max);
-  }
-
   /****************************************************************************** Post-Processing ******************************************************************************/
 
   //Free memory.
