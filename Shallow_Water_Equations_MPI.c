@@ -5,19 +5,28 @@
 # include <time.h>
 # include <mpi.h>
 
-# define ID_2D(i,j,nx_global) ((i)*(nx_global+2)+(j))
+# define ID_2D(i,j,nx_global) ((i) * (nx_global + 2) + (j))
 
 /****************************************************************************** Helper Functions ******************************************************************************/
-
-int computeGlobalStart(int coord, int total_cells, int divisions) 
+int computeLocalSize(int global_size, int coord, int divisions) 
 {
-  int base = coord * (total_cells / divisions);
-  int remainder = total_cells % divisions;
+  int base = global_size / divisions;
+  int rem  = global_size % divisions;
+  return base + (coord < rem ? 1 : 0);
+}
 
-  if (coord < remainder) {
-      return base + coord;
-  } else {
-      return base + remainder;
+int computeGlobalStart(int coord, int global_size, int divisions) 
+{
+  int base = global_size / divisions;
+  int rem  = global_size % divisions;
+
+  if (coord < rem)
+  {
+    return coord * (base + 1);
+  }
+  else
+  {
+    return rem * (base + 1) + (coord - rem) * base;
   }
 }
 /******************************************************************************/
@@ -80,17 +89,17 @@ void getArgs(int *nx_global, int *ny_global, double *dt, float *x_length, float 
 }
 /******************************************************************************/
 
-void initialConditions(int nx_local, int ny_local, int nx_global, int ny_global, int px, int py, float dx, float dy, float x_length, float y_length, int dims[2], float *h, float *uh, float *vh)
+void initialConditions(int nx_local, int ny_local, int nx_global, int ny_global, int px, int py, int px_size, int py_size, float dx, float dy, float x_length, float y_length, float *h, float *uh, float *vh)
 {
   int i, j, id, id_ghost;
 
   int global_i, global_j;
 
-  float *x_coords = malloc((nx_local + 2) * sizeof(float));
-  float *y_coords = malloc((ny_local + 2) * sizeof(float));
+  float *x_coords = malloc((nx_local) * sizeof(float));
+  float *y_coords = malloc((ny_local) * sizeof(float));
 
-  int global_x_start = computeGlobalStart(px, nx_global, dims[1]);
-  int global_y_start = computeGlobalStart(py, ny_global, dims[0]);
+  int global_x_start = computeGlobalStart(px, nx_global, px_size);
+  int global_y_start = computeGlobalStart(py, ny_global, py_size);
 
   for (j = 1; j < nx_local + 1; j++) 
   {
@@ -219,98 +228,102 @@ void haloExchange(float *data, int nx_local, int ny_local, MPI_Comm cart_comm, M
 }
 /******************************************************************************/
 
-void write_results_mpi(char *output_filename, int nx_global, int ny_global, int nx_local, int ny_local, float x[], float y[], float h[], float uh[], float vh[], int rank, int numProcessors)
+void write_results_mpi(int nx_global, int ny_global, int nx_local, int ny_local, float dx, float dy, double time, MPI_Comm cart_comm, int rank, int numProcessors, int px, int py, int px_size, int py_size, float x[], float y[], float h[], float uh[], float vh[])
 {
-  int i, j;
+  int i, j, p;
 
-  int idx, idy,;
+  int id, id_local;
 
   char filename[50];
-
-  //Create the filename based on the time step.
-  sprintf(filename, "tc2d_%08.6f.dat", time);
-
-  //Open the file.
-  FILE *file = fopen (filename, "wt" );
-
-  if (!file)
-  {
-    fprintf (stderr, "\n" );
-
-    fprintf (stderr, "WRITE_RESULTS - Fatal error!\n");
-
-    fprintf (stderr, "  Could not open the output file.\n");
-
-    exit (1);
-  }
    
-  float *h_local  = malloc((nx_local) * (ny_local) * sizeof(float));
-  float *h_global = malloc((nx_global) * (ny_global) * sizeof(float));
-  float *h_write  = malloc((nx_global) * (ny_global) * sizeof(float));
+  float *h_local  = malloc((nx_local)  * (ny_local)  * sizeof(float));
 
-  float *uh_local  = malloc((nx_local) * (ny_local) * sizeof(float));
-  float *uh_global = malloc((nx_global) * (ny_global) * sizeof(float));
-  float *uh_write  = malloc((nx_global) * (ny_global) * sizeof(float));
+  float *uh_local  = malloc((nx_local)  * (ny_local)  * sizeof(float));
 
-  float *vh_local  = malloc((nx_local) * (ny_local) * sizeof(float));
-  float *vh_global = malloc((nx_global) * (ny_global) * sizeof(float));
-  float *vh_write  = malloc((nx_global) * (ny_global) * sizeof(float));
+  float *vh_local  = malloc((nx_local)  * (ny_local)  * sizeof(float));
 
   float *x_global = malloc((nx_global) * sizeof(float));
-  float *x_local  = malloc((nx_local) * sizeof(float));
+  float *x_local  = malloc((nx_local)  * sizeof(float));
   float *x_write  = malloc((nx_global) * sizeof(float));
 
   float *y_global = malloc((ny_global) * sizeof(float));
-  float *y_local  = malloc((ny_local) * sizeof(float));
+  float *y_local  = malloc((ny_local)  * sizeof(float));
   float *y_write  = malloc((ny_global) * sizeof(float));
   
-
-  //pack the data for gather (to avoid sending ghosts)
-  int id_local = 0;
-  for(j = 1; j < nx_local + 1; j++)
-  {
-    for(i = 1; i < ny_local + 1; i++)
+  // Pack the data for gather (to avoid sending ghosts)
+  id_local = 0;
+  for(i = 1; i < ny_local + 1; i++)
+    for(j = 1; j < nx_local + 1; j++)
     {
-      idx = ID_2D(i,j, nx_local);
-      idy = ID_2D(j,i, ny_local);
+      id = ID_2D(i, j, nx_local);
 
-      h_local[id_local] = u[idx];
+      h_local[id_local++] = h[id];
 
-      id_local++;
+      uh_local[id_local++] = uh[id];
+
+      vh_local[id_local++] = vh[id];
     }
-  }
 
-  // Gather data to rank 0
-  MPI_Gather(h_local, id_local, MPI_FLOAT, h_global, id_local, MPI_FLOAT, 0, MPI_COMM_WORLD);
+  int totalLocalCells = nx_local * ny_local;
 
-  // Unpack data into the global array
-  int id_write, id_global;
-  int rank_x, rank_y;
+  float *h_global = NULL; 
+  float *uh_global = NULL;
+  float *vh_global = NULL;
 
   if(rank == 0)
   {
-    for(int p = 0; p < numProcessors;p++)
-    {
-      rank_x = p % q;
-      rank_y = p/q;
-      for(j = 0; j < N_loc; j++)
-      {
-	      for(i = 0; i < N_loc; i++)
-        {
-          id_global = p * N_loc * N_loc + j * N_loc + i;
-          id_write  = rank_x*N_loc*N_loc*q + j*N_loc*q + rank_y*N_loc + i;
-	        h_write[id_write] = h_global[id_global];
-	      }
-      }
-    }
+    float *h_global  = malloc((nx_global) * (ny_global) * sizeof(float));
+    float *uh_global = malloc((nx_global) * (ny_global) * sizeof(float));
+    float *vh_global = malloc((nx_global) * (ny_global) * sizeof(float));
 
-    //Write the data.
+    MPI_Gather(h_local, totalLocalCells, MPI_FLOAT, h_global, totalLocalCells, MPI_FLOAT, 0, cart_comm);
+    MPI_Gather(uh_local, totalLocalCells, MPI_FLOAT, uh_global, totalLocalCells, MPI_FLOAT, 0, cart_comm);
+    MPI_Gather(vh_local, totalLocalCells, MPI_FLOAT, vh_global, totalLocalCells, MPI_FLOAT, 0, cart_comm);
+  }
+
+  // Unpack data into the global array
+  if(rank == 0)
+  {
+    float *h_write  = malloc((nx_global) * (ny_global) * sizeof(float));
+    float *uh_write = malloc((nx_global) * (ny_global) * sizeof(float));
+    float *vh_write = malloc((nx_global) * (ny_global) * sizeof(float));
+
+    for(p = 0; p < numProcessors; p++)
+    {
+      // Use px_size and py_size to compute px/py for each rank
+      int py_p = p / px_size;   // row index
+      int px_p = p % px_size;   // column index
+
+      for (int i = 0; i < ny_local; i++)
+        for (int j = 0; j < nx_local; j++) 
+        {
+          int global_i = py_p * ny_local + i;
+          int global_j = px_p * nx_local + j;
+          int global_id = global_i * nx_global + global_j;
+          int local_id  = p * nx_local * ny_local + i * nx_local + j;
+
+          h_write[global_id]  = h_global[local_id];
+          uh_write[global_id] = uh_global[local_id];
+          vh_write[global_id] = vh_global[local_id];
+        }
+      }
+
+    // Gather x and y coordinates
+    for (i = 0; i < ny_local; i++)
+      for (j = 0; j < nx_local; j++) 
+      {
+        id = ID_2D(i, j, nx_local);
+        x_write[id] = x[id];
+        y_write[id] = y[id];
+      }
+
+    // Write the data.
     for ( i = 0; i < ny_global; i++ ) 
       for ( j = 0; j < nx_global; j++ )
       {
         id = j * N + i;
 	
-	      fprintf ( output, "  %24.16g\t%24.16g\t%24.16g\t%24.16g\t%24.16g\n", x, y, h_write[id], 0.0, 0.0); //added extra zeros for backward-compatibility with plotting routines
+	      fprintf ( output, "  %24.16g\t%24.16g\t%24.16g\t%24.16g\t%24.16g\n", x_write[id], y_write[id], h_write[id], uh_write[id], vh_write[id]); //added extra zeros for backward-compatibility with plotting routines
       }
 
     //Close the file.
@@ -352,6 +365,9 @@ int main (int argc, char *argv[])
   // MPI variables
   int px; 
   int py;
+
+  int px_size;
+  int py_size;
 
   int rank;
   int numProcessors;
@@ -445,24 +461,15 @@ int main (int argc, char *argv[])
   px = coords[1];  // x-axis rank
   py = coords[0];  // y-axis rank
 
-  nx_local = nx_global / dims[1];
-  ny_local = ny_global / dims[0];
+  px_size = dims[1]; // number of processes in x direction
+  py_size = dims[0]; // number of processes in y direction
 
-  nx_extra = nx_global % dims[1];
-  ny_extra = ny_global % dims[0];
+  // Calculate the local grid size
+  nx_local = computeLocalSize(nx_global, px, px_size);
+  ny_local = computeLocalSize(ny_global, py, py_size);
 
-  if (px < nx_extra)
-  {
-    nx_local++;
-  }
-
-  if (py < ny_extra)
-  {
-    ny_local++;
-  }
-
-  x_start = (nx_local * px + (px < nx_extra ? px : nx_extra));
-  y_start = (ny_local * py + (py < ny_extra ? py : ny_extra));
+  x_start = computeGlobalStart(px, nx_global, px_size);
+  y_start = computeGlobalStart(py, ny_global, py_size);
 
   for (l = 0; l < numProcessors; l++) 
   {
