@@ -340,7 +340,7 @@ int main (int argc, char *argv[])
   x_start = (nx_local * px + (px < nx_extra ? px : nx_extra));
   y_start = (ny_local * py + (py < ny_extra ? py : ny_extra));
 
-  for (l = 0; l < size; l++) 
+  for (l = 0; l < numProcessors; l++) 
   {
     MPI_Barrier(MPI_COMM_WORLD);
     if (rank == l) 
@@ -349,6 +349,15 @@ int main (int argc, char *argv[])
       fflush(stdout); // Ensure immediate flush to console
     }
   }
+
+  // Define column data type for vertical halo exchange
+  MPI_Datatype column_type;
+  MPI_Type_vector(ny_local, 1, nx_local + 2, MPI_FLOAT, &column_type);
+  MPI_Type_commit(&column_type);
+
+  // Identify neighbors in Cartesian grid
+  MPI_Cart_shift(cart_comm, 0, 1, &north, &south); // shift in y-direction (rows)
+  MPI_Cart_shift(cart_comm, 1, 1, &west, &east);   // shift in x-direction (columns)
 
   /****************************************************************************** ALLOCATE MEMORY ******************************************************************************/
   //Allocate space (nx_global+2)((nx_global+2) long, to account for ghosts
@@ -391,19 +400,9 @@ int main (int argc, char *argv[])
 
   for (k = 0; k < 5; k++)
   {
-
     programRuntime = 0.0f;
 
     initialConditions(nx_local, ny_local, px, py, dims, nx_global, ny_global, x_length, y_length, dx, dy, h, uh, vh);
-
-    // Define column data type for vertical halo exchange
-    MPI_Datatype column_type;
-    MPI_Type_vector(ny_local, 1, nx_local + 2, MPI_FLOAT, &column_type);
-    MPI_Type_commit(&column_type);
-
-    // Identify neighbors in Cartesian grid
-    MPI_Cart_shift(cart_comm, 0, 1, &north, &south); // shift in y-direction (rows)
-    MPI_Cart_shift(cart_comm, 1, 1, &west, &east);   // shift in x-direction (columns)
 
     MPI_Barrier(cart_comm);
     // Start timing the program
