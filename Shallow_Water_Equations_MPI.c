@@ -80,9 +80,11 @@ void getArgs(int *nx_global, int *ny_global, double *dt, float *x_length, float 
 }
 /******************************************************************************/
 
-void initialConditions(int nx_local, int ny_local, int px, int py, int dims[2], int nx_global, int ny_global, float x_length, float y_length, float dx, float dy, float *h, float *uh, float *vh)
+void initialConditions(int nx_local, int ny_local, int nx_global, int ny_global, int px, int py, float dx, float dy, float x_length, float y_length, int dims[2], float *h, float *uh, float *vh)
 {
   int i, j, id, id_ghost;
+
+  int global_i, global_j;
 
   float *x_coords = malloc((nx_local + 2) * sizeof(float));
   float *y_coords = malloc((ny_local + 2) * sizeof(float));
@@ -90,22 +92,22 @@ void initialConditions(int nx_local, int ny_local, int px, int py, int dims[2], 
   int global_x_start = computeGlobalStart(px, nx_global, dims[1]);
   int global_y_start = computeGlobalStart(py, ny_global, dims[0]);
 
-  for (j = 0; j < nx_local + 2; j++) 
+  for (j = 1; j < nx_local + 1; j++) 
   {
-    int global_j = global_x_start + j - 1;
+    global_j = global_x_start + j - 1;
 
     x_coords[j] = -x_length / 2 + dx / 2 + global_j * dx;
   }
 
-  for (i = 0; i < ny_local + 2; i++) 
+  for (i = 1; i < ny_local + 1; i++) 
   {
-    int global_i = global_y_start + i - 1;
+    global_i = global_y_start + i - 1;
     
     y_coords[i] = -y_length / 2 + dy / 2 + global_i * dy;
   }
 
-  for (i = 0; i < ny_local + 2; i++) 
-    for (j = 0; j < nx_local + 2; j++) 
+  for (i = 1; i < ny_local + 1; i++) 
+    for (j = 1; j < nx_local + 1; j++) 
     {
       id = ID_2D(i, j, nx_local);
 
@@ -217,9 +219,131 @@ void haloExchange(float *data, int nx_local, int ny_local, MPI_Comm cart_comm, M
 }
 /******************************************************************************/
 
+void write_results_mpi(char *output_filename, int nx_global, int ny_global, int nx_local, int ny_local, float x[], float y[], float h[], float uh[], float vh[], int rank, int numProcessors)
+{
+  int i, j;
+
+  int idx, idy,;
+
+  char filename[50];
+
+  //Create the filename based on the time step.
+  sprintf(filename, "tc2d_%08.6f.dat", time);
+
+  //Open the file.
+  FILE *file = fopen (filename, "wt" );
+
+  if (!file)
+  {
+    fprintf (stderr, "\n" );
+
+    fprintf (stderr, "WRITE_RESULTS - Fatal error!\n");
+
+    fprintf (stderr, "  Could not open the output file.\n");
+
+    exit (1);
+  }
+   
+  float *h_local  = malloc((nx_local) * (ny_local) * sizeof(float));
+  float *h_global = malloc((nx_global) * (ny_global) * sizeof(float));
+  float *h_write  = malloc((nx_global) * (ny_global) * sizeof(float));
+
+  float *uh_local  = malloc((nx_local) * (ny_local) * sizeof(float));
+  float *uh_global = malloc((nx_global) * (ny_global) * sizeof(float));
+  float *uh_write  = malloc((nx_global) * (ny_global) * sizeof(float));
+
+  float *vh_local  = malloc((nx_local) * (ny_local) * sizeof(float));
+  float *vh_global = malloc((nx_global) * (ny_global) * sizeof(float));
+  float *vh_write  = malloc((nx_global) * (ny_global) * sizeof(float));
+
+  float *x_global = malloc((nx_global) * sizeof(float));
+  float *x_local  = malloc((nx_local) * sizeof(float));
+  float *x_write  = malloc((nx_global) * sizeof(float));
+
+  float *y_global = malloc((ny_global) * sizeof(float));
+  float *y_local  = malloc((ny_local) * sizeof(float));
+  float *y_write  = malloc((ny_global) * sizeof(float));
+  
+
+  //pack the data for gather (to avoid sending ghosts)
+  int id_local = 0;
+  for(j = 1; j < nx_local + 1; j++)
+  {
+    for(i = 1; i < ny_local + 1; i++)
+    {
+      idx = ID_2D(i,j, nx_local);
+      idy = ID_2D(j,i, ny_local);
+
+      h_local[id_local] = u[idx];
+
+      id_local++;
+    }
+  }
+
+  // Gather data to rank 0
+  MPI_Gather(h_local, id_local, MPI_FLOAT, h_global, id_local, MPI_FLOAT, 0, MPI_COMM_WORLD);
+
+  // Unpack data into the global array
+  int id_write, id_global;
+  int rank_x, rank_y;
+
+  if(rank == 0)
+  {
+    for(int p = 0; p < numProcessors;p++)
+    {
+      rank_x = p % q;
+      rank_y = p/q;
+      for(j = 0; j < N_loc; j++)
+      {
+	      for(i = 0; i < N_loc; i++)
+        {
+          id_global = p * N_loc * N_loc + j * N_loc + i;
+          id_write  = rank_x*N_loc*N_loc*q + j*N_loc*q + rank_y*N_loc + i;
+	        h_write[id_write] = h_global[id_global];
+	      }
+      }
+    }
+
+    //Write the data.
+    for ( i = 0; i < ny_global; i++ ) 
+      for ( j = 0; j < nx_global; j++ )
+      {
+        id = j * N + i;
+	
+	      fprintf ( output, "  %24.16g\t%24.16g\t%24.16g\t%24.16g\t%24.16g\n", x, y, h_write[id], 0.0, 0.0); //added extra zeros for backward-compatibility with plotting routines
+      }
+
+    //Close the file.
+    fclose ( output );
+  }
+
+  free(h_global); 
+  free(h_write);
+  free(h_local);
+
+  free(uh_global); 
+  free(uh_write);
+  free(uh_local);
+
+  free(vh_global); 
+  free(vh_write);
+  free(vh_local);
+
+  free(x_global);
+  free(x_write);
+  free(x_local);
+
+  free(y_global);
+  free(y_write);
+  free(y_local);
+
+  return;
+}
+/******************************************************************************/
+
 int main (int argc, char *argv[])
 {
-  /****************************************************************************** Instantiation ******************************************************************************/
+  /****************************************************************************** INSTANTIATION ******************************************************************************/
   
   // Initialize MPI environment
   MPI_Init(&argc, &argv);
@@ -251,7 +375,7 @@ int main (int argc, char *argv[])
   double time_elapsed;
   double time_max;
 
-  int i, j, k, l;
+  int i, j, k, l, m;
 
   int id;   
   int id_left;
@@ -318,8 +442,8 @@ int main (int argc, char *argv[])
   MPI_Cart_create(MPI_COMM_WORLD, 2, dims, periods, 0, &cart_comm);
   MPI_Cart_coords(cart_comm, rank, 2, coords);
   
-  px = coords[1];  // corresponds to dimension 0 (rows)
-  py = coords[0];  // corresponds to dimension 1 (columns)
+  px = coords[1];  // x-axis rank
+  py = coords[0];  // y-axis rank
 
   nx_local = nx_global / dims[1];
   ny_local = ny_global / dims[0];
@@ -362,47 +486,46 @@ int main (int argc, char *argv[])
   /****************************************************************************** ALLOCATE MEMORY ******************************************************************************/
   //Allocate space (nx_global+2)((nx_global+2) long, to account for ghosts
   //height array
-  h  = ( float * ) malloc ( (nx_local + 2) * (ny_local + 2) * sizeof ( float ) );
-  hm = ( float * ) malloc ( (nx_local + 2) * (ny_local + 2) * sizeof ( float ) );
-  fh = ( float * ) malloc ( (nx_local + 2) * (ny_local + 2) * sizeof ( float ) );
-  gh = ( float * ) malloc ( (nx_local + 2) * (ny_local + 2) * sizeof ( float ) );
+  h  = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
+  hm = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
+  fh = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
+  gh = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
   
   //x momentum array
-  uh  = ( float * ) malloc ( (nx_local + 2) * (ny_local + 2) * sizeof ( float ) );
-  uhm = ( float * ) malloc ( (nx_local + 2) * (ny_local + 2) * sizeof ( float ) );
-  fuh = ( float * ) malloc ( (nx_local + 2) * (ny_local + 2) * sizeof ( float ) );
-  guh = ( float * ) malloc ( (nx_local + 2) * (ny_local + 2) * sizeof ( float ) );
+  uh  = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
+  uhm = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
+  fuh = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
+  guh = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
   
   //y momentum array
-  vh  = ( float * ) malloc ( (nx_local + 2) * (ny_local + 2) * sizeof ( float ) );
-  vhm = ( float * ) malloc ( (nx_local + 2) * (ny_local + 2) * sizeof ( float ) );
-  fvh = ( float * ) malloc ( (nx_local + 2) * (ny_local + 2) * sizeof ( float ) );
-  gvh = ( float * ) malloc ( (nx_local + 2) * (ny_local + 2) * sizeof ( float ) );
+  vh  = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
+  vhm = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
+  fvh = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
+  gvh = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
   
   /****************************************************************************** MAIN LOOP ******************************************************************************/
   if (rank == 0)
   {
     printf ("SHALLOW_WATER_2D:\n");
-    printf ("  A program to solve the shallow water equations.\n");
-    printf ("\n");
-    printf ("  The problem is solved on a rectangular grid.\n");
-    printf ("\n");
-    printf ("  The grid has %d x %d nodes.\n", nx_global, ny_global);
+    printf (" A program to solve the shallow water equations.\n");
+    printf (" The problem is solved on a rectangular grid.\n");
+    printf (" The grid has %d x %d nodes.\n", nx_global, ny_global);
     printf (" The total program runtime is %g.\n", totalRuntime);
-    printf ("  The time step is %g.\n", dt);
-    printf ("  The grid spacing is %g x %g.\n", dx, dy);
-    printf ("  The grid length is %g x %g.\n", x_length, y_length);
+    printf (" The time step is %g.\n", dt);
+    printf (" The grid spacing is %g x %g.\n", dx, dy);
+    printf (" The grid length is %g x %g.\n", x_length, y_length);
     printf (" The number of processes is %d.\n", numProcessors);
     printf (" The processor grid dimensions are %d x %d.\n", dims[0], dims[1]);
   }
 
   // **** INITIAL CONDITIONS ****
 
-  for (k = 0; k < 5; k++)
+  for (k = 0; k < 10; k++)
   {
     programRuntime = 0.0f;
+    m = 0;
 
-    initialConditions(nx_local, ny_local, px, py, dims, nx_global, ny_global, x_length, y_length, dx, dy, h, uh, vh);
+    initialConditions(nx_local, ny_local, nx_global, ny_global, px, py, dx, dy, x_length, y_length, dims, h, uh, vh);
 
     MPI_Barrier(cart_comm);
     // Start timing the program
@@ -541,6 +664,8 @@ int main (int argc, char *argv[])
           vh[id_top] = -vh[id];
         }
       }
+
+      m++;
     }
 
     // Stop timing the program
@@ -550,7 +675,7 @@ int main (int argc, char *argv[])
 
     if (rank == 0) 
     {
-      printf("Total time taken: %f seconds\n", time_max);
+      printf("Problem size: %d, iteration: %d, Time steps: %d, Elapsed time: %f s\n", nx_global, k, m, time_elapsed);
     }
   }
   /****************************************************************************** Post-Processing ******************************************************************************/
