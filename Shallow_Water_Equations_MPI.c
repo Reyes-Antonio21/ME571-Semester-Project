@@ -40,13 +40,13 @@ int computeGlobalStart(int coord, int global_size, int divisions)
 }
 /******************************************************************************/
 
-void gather_subdomain_info(SubdomainInfo *my_info, SubdomainInfo *all_info, int rank, int size, MPI_Comm comm)
+void gather_subdomain_info(SubdomainInfo *my_info, SubdomainInfo *all_info, int rank, int numProcessors, MPI_Comm comm)
 {
   MPI_Gather(my_info, sizeof(SubdomainInfo), MPI_BYTE, all_info, sizeof(SubdomainInfo), MPI_BYTE, 0, comm);
 }
 /******************************************************************************/
 
-void gather_field_data(float *u_local, int nx_local, int ny_local, float *global_field, SubdomainInfo *all_info, int rank, int size, int nx_global, int ny_global, MPI_Comm comm)
+void gather_field_data(float *u_local, int nx_local, int ny_local, float *global_field, SubdomainInfo *all_info, int rank, int numProcessors, int nx_global, int ny_global, MPI_Comm comm)
 {
   int *recvcounts = NULL;
   int *displs = NULL;
@@ -56,12 +56,12 @@ void gather_field_data(float *u_local, int nx_local, int ny_local, float *global
 
   if (rank == 0) 
   {
-    recvcounts = malloc(size * sizeof(int));
-    displs     = malloc(size * sizeof(int));
+    recvcounts = malloc(numProcessors * sizeof(int));
+    displs     = malloc(numProcessors * sizeof(int));
     gathered_data = malloc(nx_global * ny_global * sizeof(float));
 
     int offset = 0;
-    for (int p = 0; p < size; p++) 
+    for (int p = 0; p < numProcessors; p++) 
     {
       recvcounts[p] = all_info[p].nx_local * all_info[p].ny_local;
       displs[p]     = offset;
@@ -73,7 +73,7 @@ void gather_field_data(float *u_local, int nx_local, int ny_local, float *global
 
   if (rank == 0) 
   {
-    for (int p = 0, offset = 0; p < size; p++) 
+    for (int p = 0, offset = 0; p < numProcessors; p++) 
     {
       int nx = all_info[p].nx_local;
       int ny = all_info[p].ny_local;
@@ -201,9 +201,9 @@ void initialConditions(int nx_local, int ny_local, int x_start, int y_start, flo
 
   // Apply physical domain boundary conditions
   // Bottom boundary
-  if (px == 0) 
+  if (py == 0) 
   {  
-    for (j = 1; j <= nx_local; j++) 
+    for (j = 1; j < nx_local + 1; j++) 
     {
       id = ID_2D(0, j, nx_local);
 
@@ -211,16 +211,16 @@ void initialConditions(int nx_local, int ny_local, int x_start, int y_start, flo
 
       h[id] = h[id_ghost];
 
-      uh[id] = 0.0f;
+      uh[id] = -uh[id_ghost];
 
-      vh[id] = 0.0f;
+      vh[id] = vh[id_ghost];
     }
   }
 
   // Top boundary
-  if (px == py_size - 1) 
+  if (py == py_size - 1) 
   { 
-    for (j = 1; j <= nx_local; j++) 
+    for (j = 1; j < nx_local + 1; j++) 
     {
       id = ID_2D(ny_local + 1, j, nx_local);
 
@@ -228,14 +228,14 @@ void initialConditions(int nx_local, int ny_local, int x_start, int y_start, flo
 
       h[id] = h[id_ghost];
 
-      uh[id] = 0.0f;
+      uh[id] = -uh[id_ghost];
 
-      vh[id] = 0.0f;
+      vh[id] = vh[id_ghost];
     }
   }
 
   // Left boundary
-  if (py == 0) 
+  if (px == 0) 
   {  
     for (i = 1; i <= ny_local; i++) 
     {
@@ -245,14 +245,14 @@ void initialConditions(int nx_local, int ny_local, int x_start, int y_start, flo
 
       h[id] = h[id_ghost];
 
-      uh[id] = 0.0f;
+      uh[id] = uh[id_ghost];
 
-      vh[id] = 0.0f;
+      vh[id] = -vh[id_ghost];
     }
   }
 
   // Right boundary
-  if (py == px_size - 1) 
+  if (px == px_size - 1) 
   {  
     for (i = 1; i <= ny_local; i++) 
     {
@@ -262,9 +262,9 @@ void initialConditions(int nx_local, int ny_local, int x_start, int y_start, flo
 
       h[id] = h[id_ghost];
       
-      uh[id] = 0.0f;
+      uh[id] = uh[id_ghost];
 
-      vh[id] = 0.0f;
+      vh[id] = -vh[id_ghost];
     }
   }  
   
@@ -297,129 +297,140 @@ void haloExchange(float *data, int nx_local, int ny_local, MPI_Comm cart_comm, M
 }
 /******************************************************************************/
 
-void write_results_mpi(float *h, float *uh, float *vh, float *x, float *y, int nx_local, int ny_local, int x_start, int y_start, int nx_global, int ny_global, double time, int rank, int size, MPI_Comm cart_comm)
+void writeResultsMPI(float *h, float *uh, float *vh, float *x, float *y, int nx_local, int ny_local, int x_start, int y_start, int nx_global, int ny_global, double time, int rank, int numProcessors, MPI_Comm cart_comm)
 {
   char filename[50];
 
   //Create the filename based on the time step.
   sprintf(filename, "tc2d_%08.6f.dat", time);
 
-// === Pack local field data ===
-int count = nx_local * ny_local;
-float *h_local  = malloc(count * sizeof(float));
-float *uh_local = malloc(count * sizeof(float));
-float *vh_local = malloc(count * sizeof(float));
+  // === Pack local field data ===
+  int totalLocalCells = nx_local * ny_local;
+  float *h_local  = malloc(totalLocalCells * sizeof(float));
+  float *uh_local = malloc(totalLocalCells * sizeof(float));
+  float *vh_local = malloc(totalLocalCells * sizeof(float));
 
-int id_local = 0;
-for (int i = 1; i <= ny_local; i++) {
-  for (int j = 1; j <= nx_local; j++) {
-    int id = ID_2D(i, j, nx_local);
-    h_local[id_local]  = h[id];
-    uh_local[id_local] = uh[id];
-    vh_local[id_local] = vh[id];
-    id_local++;
-  }
-}
+  int id_local = 0;
+  for (int i = 1; i <= ny_local; i++)
+    for (int j = 1; j <= nx_local; j++) 
+    {
+      int id = ID_2D(i, j, nx_local);
 
-// === Gather subdomain sizes and offsets ===
-int my_sizes[4] = {nx_local, ny_local, x_start, y_start};
-int *all_sizes = NULL;
-if (rank == 0)
-  all_sizes = malloc(4 * size * sizeof(int));
+      h_local[id_local]  = h[id];
 
-MPI_Gather(my_sizes, 4, MPI_INT, all_sizes, 4, MPI_INT, 0, cart_comm);
+      uh_local[id_local] = uh[id];
 
-// === Gather x and y coordinates ===
-float *x_recvbuf = NULL, *y_recvbuf = NULL;
-if (rank == 0) {
-  x_recvbuf = malloc(nx_local * size * sizeof(float));
-  y_recvbuf = malloc(ny_local * size * sizeof(float));
-}
+      vh_local[id_local] = vh[id];
 
-MPI_Gather(x, nx_local, MPI_FLOAT, x_recvbuf, nx_local, MPI_FLOAT, 0, cart_comm);
-MPI_Gather(y, ny_local, MPI_FLOAT, y_recvbuf, ny_local, MPI_FLOAT, 0, cart_comm);
+      id_local++;
+    }
 
-float *x_all = NULL, *y_all = NULL;
-if (rank == 0) {
-  x_all = malloc(nx_global * sizeof(float));
-  y_all = malloc(ny_global * sizeof(float));
+  // === Gather subdomain sizes and offsets ===
+  int my_sizes[4] = {nx_local, ny_local, x_start, y_start};
+  int *all_sizes = NULL;
+  if (rank == 0)
+    all_sizes = malloc(4 * numProcessors * sizeof(int));
 
-  for (int p = 0, x_off = 0, y_off = 0; p < size; p++) {
-    int nx = all_sizes[4*p + 0];
-    int ny = all_sizes[4*p + 1];
-    int x0 = all_sizes[4*p + 2];
-    int y0 = all_sizes[4*p + 3];
+  MPI_Gather(my_sizes, 4, MPI_INT, all_sizes, 4, MPI_INT, 0, cart_comm);
 
-    for (int j = 0; j < nx; j++) x_all[x0 + j] = x_recvbuf[x_off + j];
-    for (int i = 0; i < ny; i++) y_all[y0 + i] = y_recvbuf[y_off + i];
-
-    x_off += nx;
-    y_off += ny;
-  }
-}
-
-// === Gather field values ===
-float *gathered_data = NULL;
-int *recvcounts = NULL, *displs = NULL;
-if (rank == 0) {
-  gathered_data = malloc(3 * nx_global * ny_global * sizeof(float));
-  recvcounts = malloc(size * sizeof(int));
-  displs     = malloc(size * sizeof(int));
-
-  int offset = 0;
-  for (int p = 0; p < size; p++) {
-    int nx = all_sizes[4*p + 0];
-    int ny = all_sizes[4*p + 1];
-    recvcounts[p] = nx * ny;
-    displs[p] = offset;
-    offset += nx * ny;
-  }
-}
-
-MPI_Gatherv(h_local, nx_local * ny_local, MPI_FLOAT,
-            gathered_data, recvcounts, displs, MPI_FLOAT, 0, cart_comm);
-MPI_Gatherv(uh_local, nx_local * ny_local, MPI_FLOAT,
-            gathered_data + nx_global * ny_global, recvcounts, displs, MPI_FLOAT, 0, cart_comm);
-MPI_Gatherv(vh_local, nx_local * ny_local, MPI_FLOAT,
-            gathered_data + 2 * nx_global * ny_global, recvcounts, displs, MPI_FLOAT, 0, cart_comm);
-
-// === Write to file ===
-if (rank == 0) 
-{
-  //Open the file.
-  FILE *file = fopen (filename, "wt" );
-    
-  if (!file)
+  // === Gather x and y coordinates ===
+  float *x_recvbuf = NULL, *y_recvbuf = NULL;
+  if (rank == 0) 
   {
-    fprintf (stderr, "\n" );
-
-    fprintf (stderr, "WRITE_RESULTS - Fatal error!\n");
-
-    fprintf (stderr, "Could not open the output file.\n");
-
-    MPI_Abort(cart_comm, 1);
+    x_recvbuf = malloc(nx_local * numProcessors * sizeof(float));
+    y_recvbuf = malloc(ny_local * numProcessors * sizeof(float));
   }
 
-  for (int i = 0; i < ny_global; i++) {
-    for (int j = 0; j < nx_global; j++) {
-      int id = i * nx_global + j;
-      float x = x_all[j];
-      float y = y_all[i];
-      float h_val  = gathered_data[id];
-      float uh_val = gathered_data[nx_global * ny_global + id];
-      float vh_val = gathered_data[2 * nx_global * ny_global + id];
+  MPI_Gather(x, nx_local, MPI_FLOAT, x_recvbuf, nx_local, MPI_FLOAT, 0, cart_comm);
+  MPI_Gather(y, ny_local, MPI_FLOAT, y_recvbuf, ny_local, MPI_FLOAT, 0, cart_comm);
 
-      fprintf(f, "%24.16g\t%24.16g\t%24.16g\t%24.16g\t%24.16g\n", x, y, h_val, uh_val, vh_val);
+  float *x_all = NULL, *y_all = NULL;
+  if (rank == 0) 
+  {
+    x_all = malloc(nx_global * sizeof(float));
+    y_all = malloc(ny_global * sizeof(float));
+
+    for (int p = 0, x_off = 0, y_off = 0; p < numProcessors; p++) 
+    {
+      int nx = all_sizes[4*p + 0];
+      int ny = all_sizes[4*p + 1];
+      int x0 = all_sizes[4*p + 2];
+      int y0 = all_sizes[4*p + 3];
+
+      for (int j = 0; j < nx; j++) x_all[x0 + j] = x_recvbuf[x_off + j];
+      for (int i = 0; i < ny; i++) y_all[y0 + i] = y_recvbuf[y_off + i];
+
+      x_off += nx;
+      y_off += ny;
     }
   }
 
-  fclose(f);
-  free(x_all); free(y_all);
-  free(x_recvbuf); free(y_recvbuf);
-  free(gathered_data); free(recvcounts); free(displs); free(all_sizes);
-}
+  // === Gather field values ===
+  float *gathered_data = NULL;
+  int *recvcounts = NULL, *displs = NULL;
 
-free(h_local); free(uh_local); free(vh_local);
+  if (rank == 0) 
+  {
+    gathered_data = malloc(3 * nx_global * ny_global * sizeof(float));
+    recvcounts = malloc(numProcessors * sizeof(int));
+    displs = malloc(numProcessors * sizeof(int));
+
+    int offset = 0;
+    for (int p = 0; p < numProcessors; p++) 
+    {
+      int nx = all_sizes[4*p + 0];
+      int ny = all_sizes[4*p + 1];
+      recvcounts[p] = nx * ny;
+      displs[p] = offset;
+      offset += nx * ny;
+    }
+  }
+
+  MPI_Gatherv(h_local, nx_local * ny_local, MPI_FLOAT,
+              gathered_data, recvcounts, displs, MPI_FLOAT, 0, cart_comm);
+  MPI_Gatherv(uh_local, nx_local * ny_local, MPI_FLOAT,
+              gathered_data + nx_global * ny_global, recvcounts, displs, MPI_FLOAT, 0, cart_comm);
+  MPI_Gatherv(vh_local, nx_local * ny_local, MPI_FLOAT,
+              gathered_data + 2 * nx_global * ny_global, recvcounts, displs, MPI_FLOAT, 0, cart_comm);
+
+
+  // === Write to file ===
+  if (rank == 0) 
+  {
+    //Open the file.
+    FILE *file = fopen (filename, "wt" );
+      
+    if (!file)
+    {
+      fprintf (stderr, "\n" );
+
+      fprintf (stderr, "WRITE_RESULTS - Fatal error!\n");
+
+      fprintf (stderr, "Could not open the output file.\n");
+
+      MPI_Abort(cart_comm, 1);
+    }
+
+    for (int i = 0; i < ny_global; i++) 
+      for (int j = 0; j < nx_global; j++) 
+      {
+        int id = i * nx_global + j;
+        float x = x_all[j];
+        float y = y_all[i];
+        float h_val  = gathered_data[id];
+        float uh_val = gathered_data[nx_global * ny_global + id];
+        float vh_val = gathered_data[2 * nx_global * ny_global + id];
+
+        fprintf(f, "%24.16g\t%24.16g\t%24.16g\t%24.16g\t%24.16g\n", x, y, h_val, uh_val, vh_val);
+      }
+
+    fclose(f);
+    free(x_all); free(y_all);
+    free(x_recvbuf); free(y_recvbuf);
+    free(gathered_data); free(recvcounts); free(displs); free(all_sizes);
+  }
+
+  free(h_local); free(uh_local); free(vh_local);
 }
 /******************************************************************************/
 
@@ -534,7 +545,7 @@ int main (int argc, char *argv[])
   px_size = dims[1]; // number of processes in x direction
   py_size = dims[0]; // number of processes in y direction
 
-  // Calculate the local grid size
+  // Calculate the local grid numProcessors
   nx_local = computeLocalSize(nx_global, px, px_size);
   ny_local = computeLocalSize(ny_global, py, py_size);
 
@@ -603,6 +614,8 @@ int main (int argc, char *argv[])
     m = 0;
 
     initialConditions(nx_local, ny_local, nx_global, ny_global, px, py, dx, dy, x_length, y_length, dims, h, uh, vh);
+
+    writeResultsMPI(h, uh, vh, x, y, nx_local, ny_local, x_start, y_start, nx_global, ny_global, programRuntime, rank, numProcessors, cart_comm);
 
     MPI_Barrier(cart_comm);
     // Start timing the program
@@ -752,11 +765,13 @@ int main (int argc, char *argv[])
 
     if (rank == 0) 
     {
-      printf("Problem size: %d, iteration: %d, Time steps: %d, Elapsed time: %f s\n", nx_global, k, m, time_elapsed);
+      printf("Problem numProcessors: %d, iteration: %d, Time steps: %d, Elapsed time: %f s\n", nx_global, k, m, time_elapsed);
     }
   }
   /****************************************************************************** Post-Processing ******************************************************************************/
 
+  writeResultsMPI(h, uh, vh, x, y, nx_local, ny_local, x_start, y_start, nx_global, ny_global, programRuntime, rank, numProcessors, cart_comm);
+  
   //Free memory.
   free ( h );
   free ( uh );
