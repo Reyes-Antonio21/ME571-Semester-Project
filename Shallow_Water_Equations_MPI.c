@@ -323,12 +323,12 @@ void write_results_mpi (int N, int N_loc, double time, float dx, float u[], int 
   //unpack data so that it is in nice array format
   int id_write, id_global;
   int irank_x, irank_y;
-  int q = sqrt(nproc);
+  int q = sqrt(numProcessors);
 
-  if(irank==0)
+  if(rank==0)
   {
   
-    for(int p=0; p<nproc;p++){
+    for(int p=0; p<numProcessors;p++){
       irank_x = p%q;
       irank_y = p/q;
       for(j=0;j<N_loc;j++){
@@ -365,7 +365,7 @@ void write_results_mpi (int N, int N_loc, double time, float dx, float u[], int 
       }
 
     //Close the file.
-    fclose ( output );
+    fclose ( file );
 
   }
   free(u_global); 
