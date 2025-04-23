@@ -508,10 +508,13 @@ int main (int argc, char *argv[])
   }
 
   // **** INITIAL CONDITIONS ****
-  for (k = 1; k < 11; k++)
+  for(k = 1; k < 11; k++)
   {
     programRuntime = 0.0f;
-    m = 0;
+    if (rank == 0)
+    {
+      m = 0;
+    }
 
     initialConditions(nx_local, ny_local, x_start, y_start, dx, dy, px, py, px_size, py_size, x_length, y_length, x, y, h, uh, vh);
 
@@ -677,7 +680,10 @@ int main (int argc, char *argv[])
       time_elapsed_bc += time_end_bc - time_start_bc;
 
       MPI_Barrier(cart_comm);
-      m++;
+      if (rank == 0)
+      {
+        m++;
+      }
     }
 
     // Stop timing the program

@@ -37,6 +37,7 @@ do
         # Extract data from one-liner
         echo "$output" | grep "Number of processors" | while read -r line; do
 
+            # Parse fields
             processors=$(echo "$line" | awk -F'[:,]' '{print $2}' | tr -d ' ')
             problem_size=$(echo "$line" | awk -F'[:,]' '{print $4}' | tr -d ' ')
             time_steps=$(echo "$line" | awk -F'[:,]' '{print $6}' | tr -d ' ')
@@ -47,7 +48,7 @@ do
             avg_uv=$(echo "$line" | awk -F'[:,]' '{print $16}' | tr -d ' s')
             avg_bc=$(echo "$line" | awk -F'[:,]' '{print $18}' | tr -d ' s')
 
-            # Append row to CSV
+            # Append to CSV
             echo "$processors,$problem_size,$time_steps,$iterations,$elapsed_time,$avg_cf,$avg_cv,$avg_uv,$avg_bc" >> $output_file
         done
     done
