@@ -7,11 +7,6 @@
 #SBATCH -t 00:05:00
 #SBATCH --exclusive
 
-module load gcc
-module load openmpi
-module load slurm
-#source ~/.bashrc
-
 mpirun -np 1 ./swe_2d_mpi
 mpirun -np 2 ./swe_2d_mpi
 mpirun -np 4 ./swe_2d_mpi
