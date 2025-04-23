@@ -527,7 +527,7 @@ int main ( int argc, char *argv[] )
     double avg_time_elapsed_dthd = time_elapsed_dthd / (double) k;
   
     // Print out the results
-    printf("Problem size: %d, iteration: %d,  elapsed time: %f s\n", nx, k, time_elapsed);
+    printf("Problem size: %d, Iteration: %d,  Elapsed time: %f s\n", nx, k, time_elapsed);
     printf("Time elapsed for host-device data transfer: %f s\n", avg_time_elapsed_dthd);
 
     k++;

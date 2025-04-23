@@ -573,7 +573,7 @@ int main ( int argc, char *argv[] )
     double avg_time_elapsed_bc = time_elapsed_bc / (double) k;
 
     // Print out the results
-    printf("Problem size: %d, time steps taken: %d, iteration: %d,  elapsed time: %f s\n", nx, k, l, time_elapsed);
+    printf("Problem size: %d, Time steps: %d, Iteration: %d,  Elapsed time: %f s\n", nx, k, l, time_elapsed);
     printf("Average time elapsed for compute fluxes: %f s\n", avg_time_elapsed_cf);
     printf("Average time elapsed for compute variables: %f s\n", avg_time_elapsed_cv);
     printf("Average time elapsed for update variables: %f s\n", avg_time_elapsed_uv);

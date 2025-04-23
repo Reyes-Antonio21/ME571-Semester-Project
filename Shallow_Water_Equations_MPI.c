@@ -199,87 +199,90 @@ void initialConditions(int nx_local, int ny_local, int x_start, int y_start, flo
 }
 /******************************************************************************/
 
-void write_results_mpi (int N, int N_loc, double time, float dx, float u[], int rank, int numProcessors)
+void writeResultsMPI(float *x_local, float *y_local, float *h, float *uh, float *vh,
+  int nx_local, int ny_local, int x_start, int y_start,
+  int nx_global, int ny_global, double time,
+  int rank, int numProcessors, MPI_Comm cart_comm)
 {
-  char filename[50];
-  //Create the filename based on the time step.
-  sprintf(filename, "tc2d_%08.6f.dat", time);
+int localSize = nx_local * ny_local;
+float *sendbuf_h = malloc(localSize * sizeof(float));
+float *sendbuf_uh = malloc(localSize * sizeof(float));
+float *sendbuf_vh = malloc(localSize * sizeof(float));
+float *sendbuf_x = malloc(localSize * sizeof(float));
+float *sendbuf_y = malloc(localSize * sizeof(float));
 
-  int i, j, id;
+int id_local = 0;
+for (int i = 1; i <= ny_local; i++) {
+for (int j = 1; j <= nx_local; j++) {
+int id = ID_2D(i, j, nx_local);
 
-  float x, y;
-   
-  float *u_local = malloc((N_loc)*(N_loc)*sizeof(float));
-  float *u_global = malloc((N)*(N)*sizeof(float));
-  float *u_write  = malloc((N)*(N)*sizeof(float));
-  
-  //pack the data for gather (to avoid sending ghosts)
-  int id_loc = 0;
-  for(j=1;j<N_loc+1;j++)
-  {
-    for(i=1;i<N_loc+1;i++)
-    {
-      id = ID_2D(i,j,N_loc);
-      u_local[id_loc] = u[id];
-      id_loc++;
-    }
-  }
+sendbuf_h[id_local] = h[id];
+sendbuf_uh[id_local] = uh[id];
+sendbuf_vh[id_local] = vh[id];
+sendbuf_x[id_local] = x_local[j - 1]; // x depends on column index
+sendbuf_y[id_local] = y_local[i - 1]; // y depends on row index
+id_local++;
+}
+}
 
-  //gather data on rank 0
-  MPI_Gather(u_local,id_loc,MPI_FLOAT,u_global,id_loc,MPI_FLOAT,0,MPI_COMM_WORLD);
+// Gather counts
+int *recvcounts = NULL;
+int *displs = NULL;
+if (rank == 0) {
+recvcounts = malloc(numProcessors * sizeof(int));
+displs = malloc(numProcessors * sizeof(int));
+}
 
-  //unpack data so that it is in nice array format
-  int id_write, id_global;
-  int irank_x, irank_y;
-  int q = sqrt(numProcessors);
+int localDataCount = nx_local * ny_local;
+MPI_Gather(&localDataCount, 1, MPI_INT, recvcounts, 1, MPI_INT, 0, cart_comm);
 
-  if(rank==0)
-  {
-  
-    for(int p=0; p<numProcessors;p++){
-      irank_x = p%q;
-      irank_y = p/q;
-      for(j=0;j<N_loc;j++){
-	for(i=0;i<N_loc;i++){
-	  id_global = p*N_loc*N_loc + j*N_loc + i;
-	  id_write  = irank_x*N_loc*N_loc*q + j*N_loc*q + irank_y*N_loc + i;
+float *recv_h = NULL, *recv_uh = NULL, *recv_vh = NULL, *recv_x = NULL, *recv_y = NULL;
 
-	  u_write[id_write] = u_global[id_global];
-	}
-      }
-    }
+if (rank == 0) {
+int total = 0;
+displs[0] = 0;
+total += recvcounts[0];
+for (int i = 1; i < numProcessors; i++) {
+displs[i] = displs[i - 1] + recvcounts[i - 1];
+total += recvcounts[i];
+}
 
-    //Open the file.
-  FILE *file = fopen (filename, "wt" );
-    
-  if (!file)
-  {
-    fprintf (stderr, "\n" );
+recv_h  = malloc(total * sizeof(float));
+recv_uh = malloc(total * sizeof(float));
+recv_vh = malloc(total * sizeof(float));
+recv_x  = malloc(total * sizeof(float));
+recv_y  = malloc(total * sizeof(float));
+}
 
-    fprintf (stderr, "WRITE_RESULTS - Fatal error!\n");
+MPI_Gatherv(sendbuf_h, localDataCount, MPI_FLOAT, recv_h, recvcounts, displs, MPI_FLOAT, 0, cart_comm);
+MPI_Gatherv(sendbuf_uh, localDataCount, MPI_FLOAT, recv_uh, recvcounts, displs, MPI_FLOAT, 0, cart_comm);
+MPI_Gatherv(sendbuf_vh, localDataCount, MPI_FLOAT, recv_vh, recvcounts, displs, MPI_FLOAT, 0, cart_comm);
+MPI_Gatherv(sendbuf_x, localDataCount, MPI_FLOAT, recv_x, recvcounts, displs, MPI_FLOAT, 0, cart_comm);
+MPI_Gatherv(sendbuf_y, localDataCount, MPI_FLOAT, recv_y, recvcounts, displs, MPI_FLOAT, 0, cart_comm);
 
-    fprintf (stderr, "  Could not open the output file.\n");
+if (rank == 0) {
+char filename[64];
+sprintf(filename, "tc2d_%08.6f.dat", time);
+FILE *fp = fopen(filename, "w");
+if (fp == NULL) {
+fprintf(stderr, "Error opening file %s\n", filename);
+MPI_Abort(cart_comm, -1);
+}
 
-    exit (1);
-  }
-    //Write the data.
-    for ( i = 0; i < N; i++ ) 
-      for ( j = 0; j < N; j++ ){
-        id=j*N+i;
-	      x = i*dx; //I am a bit lazy here with not gathering x and y
-	      y = j*dx;
-	
-	fprintf ( file, "%24.16g\t%24.16g\t%24.16g\t%24.16g\t%24.16g\n", x, y,u_write[id], 0.0, 0.0); //added extra zeros for backward-compatibility with plotting routines
-      }
+for (int i = 0; i < displs[numProcessors - 1] + recvcounts[numProcessors - 1]; i++) {
+fprintf(fp, "%f\t%f\t%f\t%f\t%f\n", recv_x[i], recv_y[i], recv_h[i], recv_uh[i], recv_vh[i]);
+}
+fclose(fp);
+}
 
-    //Close the file.
-    fclose ( file );
-
-  }
-  free(u_global); 
-  free(u_write);
-  free(u_local);
-  return;
+// Cleanup
+free(sendbuf_h);  free(sendbuf_uh);  free(sendbuf_vh);
+free(sendbuf_x);  free(sendbuf_y);
+if (rank == 0) {
+free(recv_h);   free(recv_uh);     free(recv_vh);
+free(recv_x);   free(recv_y);
+free(recvcounts); free(displs);
+}
 }
 /******************************************************************************/
 
@@ -495,7 +498,7 @@ int main (int argc, char *argv[])
 
     initialConditions(nx_local, ny_local, x_start, y_start, dx, dy, px, py, px_size, py_size, x_length, y_length, x, y, h, uh, vh);
 
-    write_results_mpi(nx_global, nx_local, programRuntime, dx, uh, rank, numProcessors);
+    writeResultsMPI(x, y, h, uh, vh, nx_local, ny_local, x_start, y_start, nx_global, ny_global, programRuntime, rank, numProcessors, cart_comm);
 
     MPI_Barrier(cart_comm);
     // Start timing the program
@@ -645,12 +648,12 @@ int main (int argc, char *argv[])
 
     if (rank == 0) 
     {
-      printf("Number of Processors: %d, Problem size: %d, iteration: %d, Time steps: %d, Elapsed time: %f s\n", numProcessors, nx_global, k, m, time_elapsed);
+      printf("Number of Processors: %d, Problem size: %d, iterations: %d, Time steps: %d, Elapsed time: %f s\n", numProcessors, nx_global, k, m, time_elapsed);
     }
   }
   /****************************************************************************** Post-Processing ******************************************************************************/
 
-  write_results_mpi(nx_global, nx_local, programRuntime, dx, uh, rank, numProcessors);
+  writeResultsMPI(x, y, h, uh, vh, nx_local, ny_local, x_start, y_start, nx_global, ny_global, programRuntime, rank, numProcessors, cart_comm);
 
   //Free memory.
   free ( h );

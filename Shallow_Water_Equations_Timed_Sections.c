@@ -420,7 +420,7 @@ int main ( int argc, char *argv[] )
     double avg_update_variables_time = total_update_variables_time / (double) l;
     double avg_apply_boundary_conditions_time = total_apply_boundary_conditions_time / (double) l;
 
-    printf("Problem size: %d, Time Elapsed: %f s, Time steps taken: %d \n", nx, time_elapsed, l);
+    printf("Problem size: %d, Elapsed time: %f s, Time steps: %d \n", nx, time_elapsed, l);
     printf("Average Flux computation time: %fs\n", avg_flux_time);
     printf("Average Compute Variables time: %fs\n", avg_compute_variables_time);
     printf("Average Update Variables time: %fs\n", avg_update_variables_time);
