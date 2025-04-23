@@ -15,9 +15,8 @@ h_max=1.4
 CFL=0.5
 output_file="Shallow_Water_Equations_Serial_Section_Runtime_Performance.csv"
 
-# Write CSV header
-# CSV Header
-echo "Problem size,dt,Time steps,Iterations,Elapsed time (s),Avg compute fluxes time (s),Avg compute variables time (s),Avg update variables time (s),Avg apply boundary conditions time (s)" > $output_file
+# Write CSV header (once)
+echo "Problem size,Time steps,Iterations,Elapsed time (s),Avg fluxes (s),Avg variables (s),Avg update (s),Avg boundary (s)" > $output_file
 
 # Problem size loop
 for nx in 200 300 400 500 600 700 800 900 1000 1100 1200 1300 1400 1500 1600 1700 1800 1900 2000 \
@@ -32,23 +31,19 @@ do
     # Run CUDA program
     output=$(./swep_2d_ts $nx $dt $xlen $t_final)
 
-    # Extract values from the output
-    main_line=$(echo "$output" | grep "Problem size")
-    flux_line=$(echo "$output" | grep "fluxes")
-    var_line=$(echo "$output" | grep "variables")
-    upd_line=$(echo "$output" | grep "update")
-    bc_line=$(echo "$output" | grep "boundary")
+    # Extract line
+    line=$(echo "$output" | grep "Problem size")
 
-    problem_size=$(echo "$main_line" | awk -F'[:,]' '{print $2}' | tr -d ' ')
-    time_steps=$(echo "$main_line" | awk -F'[:,]' '{print $4}' | tr -d ' ')
-    iterations=$(echo "$main_line" | awk -F'[:,]' '{print $6}' | tr -d ' ')
-    elapsed_time=$(echo "$main_line" | awk -F'[:,]' '{print $8}' | tr -d ' s')
+    # Parse each field using awk
+    problem_size=$(echo "$line" | awk -F'[:,]' '{print $2}' | tr -d ' ')
+    time_steps=$(echo "$line" | awk -F'[:,]' '{print $4}' | tr -d ' ')
+    iterations=$(echo "$line" | awk -F'[:,]' '{print $6}' | tr -d ' ')
+    elapsed_time=$(echo "$line" | awk -F'[:,]' '{print $8}' | tr -d ' s')
+    avg_cf=$(echo "$line" | awk -F'[:,]' '{print $10}' | tr -d ' s')
+    avg_cv=$(echo "$line" | awk -F'[:,]' '{print $12}' | tr -d ' s')
+    avg_uv=$(echo "$line" | awk -F'[:,]' '{print $14}' | tr -d ' s')
+    avg_bc=$(echo "$line" | awk -F'[:,]' '{print $16}' | tr -d ' s')
 
-    avg_cf=$(echo "$flux_line" | awk -F':' '{print $2}' | tr -d ' s')
-    avg_cv=$(echo "$var_line" | awk -F':' '{print $2}' | tr -d ' s')
-    avg_uv=$(echo "$upd_line" | awk -F':' '{print $2}' | tr -d ' s')
-    avg_bc=$(echo "$bc_line" | awk -F':' '{print $2}' | tr -d ' s')
-
-    # Append to CSV
-    echo "$problem_size,$dt,$time_steps,$iterations,$elapsed_time,$avg_cf,$avg_cv,$avg_uv,$avg_bc" >> $output_file
+    # Append row to CSV
+    echo "$problem_size,$time_steps,$iterations,$elapsed_time,$avg_cf,$avg_cv,$avg_uv,$avg_bc" >> $output_file
 done

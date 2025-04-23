@@ -496,8 +496,6 @@ int main (int argc, char *argv[])
 
     initialConditions(nx_local, ny_local, x_start, y_start, dx, dy, px, py, px_size, py_size, x_length, y_length, x, y, h, uh, vh);
 
-    writeResultsMPI(x, y, h, uh, vh, nx_local, ny_local, x_start, y_start, nx_global, ny_global, programRuntime, rank, numProcessors, cart_comm);
-
     MPI_Barrier(cart_comm);
     // Start timing the program
     time_start = MPI_Wtime();
@@ -646,12 +644,10 @@ int main (int argc, char *argv[])
 
     if (rank == 0) 
     {
-      printf("Number of Processors: %d, Problem size: %d, iterations: %d, Time steps: %d, Elapsed time: %f s\n", numProcessors, nx_global, k, m, time_elapsed);
+      printf("Number of Processors: %d, Problem size: %d, iterations: %d, Time steps: %d, Elapsed time: %f s\n", numProcessors, nx_global, k, m, time_max);
     }
   }
   /****************************************************************************** Post-Processing ******************************************************************************/
-
-  writeResultsMPI(x, y, h, uh, vh, nx_local, ny_local, x_start, y_start, nx_global, ny_global, programRuntime, rank, numProcessors, cart_comm);
 
   //Free memory.
   free ( h );

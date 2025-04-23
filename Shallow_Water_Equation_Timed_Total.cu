@@ -373,7 +373,7 @@ __global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int n
 int main ( int argc, char *argv[] )
 { 
 // ************************************************** INSTANTIATION ************************************************* //
-  int k;
+  int k, l;
   int nx; 
   int ny; 
 
@@ -473,12 +473,11 @@ int main ( int argc, char *argv[] )
   printf ( "SHALLOW_WATER_2D\n" );
   printf ( "\n" );
   
-  k = 1;
-  while (k < 11)
+  for(k = 1; k < 11; k++)
   {
     // set initial time & step counter
-    // set time to zero and step counter to zero
     time = 0.0f;
+    l = 0;
 
     // instantiate data transfer timing variable
     double time_elapsed_dthd = 0.0;
@@ -505,6 +504,7 @@ int main ( int argc, char *argv[] )
     {
       // Take a time step and increase step counter
       time = time + dt;
+      l++;
 
       // **** COMPUTE FLUXES ****
       computeFluxesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, nx, ny);
@@ -527,9 +527,7 @@ int main ( int argc, char *argv[] )
     double avg_time_elapsed_dthd = time_elapsed_dthd / (double) k;
   
     // Print out the results
-    printf("Problem size: %d, Iteration: %d, Elapsed time: %f s, Host-device data transfer: %f s\n", nx, k, time_elapsed, avg_time_elapsed_dthd);
-
-    k++;
+    printf("Problem size: %d, Time steps: %d, Iteration: %d, Elapsed time: %f s, Host-device data transfer: %f s\n", nx, l, k, time_elapsed, avg_time_elapsed_dthd);
   }  
 
   // ******************************************************************** DEALLOCATE MEMORY ******************************************************************** //

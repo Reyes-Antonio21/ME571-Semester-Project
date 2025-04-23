@@ -393,7 +393,7 @@ int main ( int argc, char *argv[] )
     double avg_time_elapsed_uv = time_elapsed_uv / (double) l;
     double avg_time_elapsed_bc = time_elapsed_bc / (double) l;
 
-    printf("Problem size: %d, Time steps: %d, Iteration: %d, Elapsed time: %f s\nAverage elapsed time for compute fluxes: %f s\nAverage elapsed time for compute variables: %f s\nAverage elapsed time for update variables: %f s\nAverage elapsed time for apply boundary conditions: %f s\n", nx, l, k, time_elapsed, avg_time_elapsed_cf, avg_time_elapsed_cv, avg_time_elapsed_uv, avg_time_elapsed_bc);
+    printf("Problem size: %d, Time steps: %d, Iteration: %d, Elapsed time: %f s, Average elapsed time for compute fluxes: %f s, Average elapsed time for compute variables: %f s, Average elapsed time for update variables: %f s, Average elapsed time for apply boundary conditions: %f s\n", nx, l, k, time_elapsed, avg_time_elapsed_cf, avg_time_elapsed_cv, avg_time_elapsed_uv, avg_time_elapsed_bc);
 
   } // End for loop for 5 iterations of calculation
   

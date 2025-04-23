@@ -185,14 +185,11 @@ int main ( int argc, char *argv[] )
 
   for (k = 1; k < 4; k++)
   {
-  
     //Define the locations of the nodes and time steps and the spacing.
     dx = x_length / ( float ) ( nx );
     dy = x_length / ( float ) ( nx );
 
     // **** INITIAL CONDITIONS ****
-    //Apply the initial conditions.
-    printf("Before initial conditions\n");
     initial_conditions ( nx, ny, dx, dy, x_length,  x, y, h, uh, vh);
 
     // **** TIME LOOP ****
@@ -204,9 +201,8 @@ int main ( int argc, char *argv[] )
 
     while (time < t_final) //time loop begins
     {
-
     //  Take a time step
-    time = time + dt;
+    time += dt;
       
     // **** COMPUTE FLUXES ****
     //Compute fluxes (including ghosts)

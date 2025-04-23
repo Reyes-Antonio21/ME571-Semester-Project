@@ -16,8 +16,8 @@ h_max=1.4
 CFL=0.5
 output_file="Shallow_Water_Equations_Cuda_Total_Runtime_Performance.csv"
 
-# Write CSV header
-echo "Problem size,dt,Iteration,Elapsed time (s),Host-Device data transfer time (s)" > $output_file
+# CSV Header
+echo "Problem size,Time steps,Iterations,Elapsed time (s),Host-device transfer time (s)" > $output_file
 
 # Loop over problem sizes
 for nx in 200 300 400 500 600 700 800 900 1000 1100 1200 1300 1400 1500 1600 1700 1800 1900 2000 \
@@ -33,13 +33,16 @@ do
     # Run simulation
     output=$(./swep_2d_tt $nx $dt $xlen $t_final)
 
-    # Extract performance line(s)
-    echo "$output" | grep "Problem size" | while read -r line; do
-        problem_size=$(echo "$line" | awk -F'[:,]' '{print $2}' | tr -d ' ')
-        iterations=$(echo "$line" | awk -F'[:,]' '{print $4}' | tr -d ' ')
-        elapsed_time=$(echo "$line" | awk -F'[:,]' '{print $6}' | tr -d ' s')
-        transfer_time=$(echo "$line" | awk -F'[:,]' '{print $8}' | tr -d ' s')
+    # Extract line
+    line=$(echo "$output" | grep "Problem size")
 
-        echo "$problem_size,$dt,$iterations,$elapsed_time,$transfer_time" >> $output_file
-    done
+    # Parse values
+    problem_size=$(echo "$line" | awk -F'[:,]' '{print $2}' | tr -d ' ')
+    time_steps=$(echo "$line" | awk -F'[:,]' '{print $4}' | tr -d ' ')
+    iterations=$(echo "$line" | awk -F'[:,]' '{print $6}' | tr -d ' ')
+    elapsed_time=$(echo "$line" | awk -F'[:,]' '{print $8}' | tr -d ' s')
+    transfer_time=$(echo "$line" | awk -F'[:,]' '{print $10}' | tr -d ' s')
+
+    # Append to CSV
+    echo "$problem_size,$time_steps,$iterations,$elapsed_time,$transfer_time" >> $output_file
 done
