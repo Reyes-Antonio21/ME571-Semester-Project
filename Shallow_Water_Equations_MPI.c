@@ -754,7 +754,8 @@ int main (int argc, char *argv[])
 
 
 
-/*void writeResultsMPI(float *h, float *uh, float *vh, float *x, float *y, int nx_local, int ny_local, int x_start, int y_start, int nx_global, int ny_global, double time, int rank, int numProcessors, MPI_Comm cart_comm)
+/*
+void writeResultsMPI(float *h, float *uh, float *vh, float *x, float *y, int nx_local, int ny_local, int x_start, int y_start, int nx_global, int ny_global, double time, int rank, int numProcessors, MPI_Comm cart_comm)
 {
   char filename[50];
   sprintf(filename, "tc2d_%08.6f.dat", time);
@@ -906,4 +907,4 @@ int main (int argc, char *argv[])
 
   free(h_local); free(uh_local); free(vh_local);
 }
-/******************************************************************************/
+*/
