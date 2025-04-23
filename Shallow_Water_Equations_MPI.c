@@ -199,10 +199,7 @@ void initialConditions(int nx_local, int ny_local, int x_start, int y_start, flo
 }
 /******************************************************************************/
 
-void writeResultsMPI(float *x_local, float *y_local, float *h, float *uh, float *vh,
-  int nx_local, int ny_local, int x_start, int y_start,
-  int nx_global, int ny_global, double time,
-  int rank, int numProcessors, MPI_Comm cart_comm)
+void writeResultsMPI(float *x_local, float *y_local, float *h, float *uh, float *vh, int nx_local, int ny_local, int x_start, int y_start, int nx_global, int ny_global, double time, int rank, int numProcessors, MPI_Comm cart_comm)
 {
 int localSize = nx_local * ny_local;
 float *sendbuf_h = malloc(localSize * sizeof(float));
@@ -518,8 +515,8 @@ int main (int argc, char *argv[])
       // === vh field ===
       haloExchange(vh, nx_local, ny_local, cart_comm, column_type, north, south, west, east, 8);
 
-      for (i = 1; i <= ny_local; i++)   
-        for (j = 1; j <= nx_local; j++) 
+      for (i = 1; i < ny_local + 2; i++)   
+        for (j = 1; j < nx_local + 2; j++) 
         {
           id = ID_2D(i, j, nx_local);
 
@@ -536,8 +533,8 @@ int main (int argc, char *argv[])
           gvh[id] = vh[id] * vh[id] / h[id] + 0.5f * g * h[id] * h[id];
         }
 
-      for (i = 1; i <= ny_local; i++)
-        for (j = 1; j <= nx_local; j++) 
+      for (i = 1; i < ny_local + 1; i++)
+        for (j = 1; j < nx_local + 1; j++) 
         {
           id = ID_2D(i, j, nx_local);
           id_left = ID_2D(i, j - 1, nx_local);
@@ -574,7 +571,7 @@ int main (int argc, char *argv[])
       if (py == 0) 
       {
         j = 1;
-        for (i = 1; i <= ny_local; i++) 
+        for (i = 1; i < ny_local + 1; i++) 
         {
           id = ID_2D(i, j, nx_local);
           id_left = ID_2D(i, j - 1, nx_local);
@@ -591,7 +588,7 @@ int main (int argc, char *argv[])
       if (py == py_size - 1) 
       {
         j = nx_local;
-        for (i = 1; i <= ny_local; i++) 
+        for (i = 1; i < ny_local + 1; i++) 
         {
           id = ID_2D(i, j, nx_local);
           id_right = ID_2D(i, j + 1, nx_local);
@@ -608,7 +605,7 @@ int main (int argc, char *argv[])
       if (px == 0) 
       {
         i = 1;
-        for (j = 1; j <= nx_local; j++) 
+        for (j = 1; j < nx_local + 1; j++) 
         {
           id = ID_2D(i, j, nx_local);
           id_bottom = ID_2D(i - 1, j, nx_local);
@@ -625,7 +622,7 @@ int main (int argc, char *argv[])
       if (px == px_size - 1) 
       {
         i = ny_local;
-        for (j = 1; j <= nx_local; j++) 
+        for (j = 1; j < nx_local + 1; j++) 
         {
           id = ID_2D(i, j, nx_local);
           id_top = ID_2D(i + 1, j, nx_local);
