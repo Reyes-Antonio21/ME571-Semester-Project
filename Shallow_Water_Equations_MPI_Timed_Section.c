@@ -692,10 +692,10 @@ int main (int argc, char *argv[])
     MPI_Reduce(&time_elapsed_uv, &time_max_uv, 1, MPI_DOUBLE, MPI_MAX, 0, cart_comm);
     MPI_Reduce(&time_elapsed_bc, &time_max_bc, 1, MPI_DOUBLE, MPI_MAX, 0, cart_comm);
 
-    avg_time_cf = time_max_cf / (double) m;
-    avg_time_cv = time_max_cv / (double) m;
-    avg_time_uv = time_max_uv / (double) m;
-    avg_time_bc = time_max_bc / (double) m;
+    double avg_time_cf = time_max_cf / (double) m;
+    double avg_time_cv = time_max_cv / (double) m;
+    double avg_time_uv = time_max_uv / (double) m;
+    double avg_time_bc = time_max_bc / (double) m;
 
     if (rank == 0) 
     {

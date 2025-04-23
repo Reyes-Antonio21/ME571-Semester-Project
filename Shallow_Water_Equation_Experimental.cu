@@ -524,7 +524,7 @@ int main ( int argc, char *argv[] )
   k = 0;
 
   dropTrigger = 25;
-  dropDelay = 40;
+  dropDelay = 60;
 
   // Apply the initial conditions.
   initialConditions(nx, ny, dx, dy, x_length, x, y, h, uh, vh);
