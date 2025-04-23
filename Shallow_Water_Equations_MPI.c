@@ -415,10 +415,10 @@ void writeResultsMPI(float *h, float *uh, float *vh, float *x, float *y, int nx_
         float uh_val = gathered_data[nx_global * ny_global + id];
         float vh_val = gathered_data[2 * nx_global * ny_global + id];
 
-        fprintf(f, "%24.16g\t%24.16g\t%24.16g\t%24.16g\t%24.16g\n", x, y, h_val, uh_val, vh_val);
+        fprintf(file, "%24.16g\t%24.16g\t%24.16g\t%24.16g\t%24.16g\n", x, y, h_val, uh_val, vh_val);
       }
 
-    fclose(f);
+    fclose(file);
     free(x_all); free(y_all);
     free(x_recvbuf); free(y_recvbuf);
     free(gathered_data); free(recvcounts); free(displs); free(all_sizes);
