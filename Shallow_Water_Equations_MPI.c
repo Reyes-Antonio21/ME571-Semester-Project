@@ -614,8 +614,6 @@ int main (int argc, char *argv[])
 
     initialConditions(nx_local, ny_local, x_start, y_start, dx, dy, px, py, px_size, py_size, x_length, y_length, x, y, h, uh, vh);
 
-    writeResultsMPI(h, uh, vh, x, y, nx_local, ny_local, x_start, y_start, nx_global, ny_global, programRuntime, rank, numProcessors, cart_comm);
-
     MPI_Barrier(cart_comm);
     // Start timing the program
     time_start = MPI_Wtime();
@@ -768,8 +766,6 @@ int main (int argc, char *argv[])
     }
   }
   /****************************************************************************** Post-Processing ******************************************************************************/
-
-  writeResultsMPI(h, uh, vh, x, y, nx_local, ny_local, x_start, y_start, nx_global, ny_global, programRuntime, rank, numProcessors, cart_comm);
   
   //Free memory.
   free ( h );
