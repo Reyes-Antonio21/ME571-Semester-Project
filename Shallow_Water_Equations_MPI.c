@@ -327,8 +327,15 @@ void writeResultsMPI(float *h, float *uh, float *vh, float *x, float *y, int nx_
 
   if (rank == 0) 
   {
-    x_recvbuf = malloc(nx_global * sizeof(float));
-    y_recvbuf = malloc(ny_global * sizeof(float));
+    int total_x = 0, total_y = 0;
+    for (int p = 0; p < numProcessors; p++) 
+    {
+      total_x += all_sizes[4*p + 0];  // nx
+      total_y += all_sizes[4*p + 1];  // ny
+    }
+    
+    x_recvbuf = malloc(total_x * sizeof(float));
+    y_recvbuf = malloc(total_y * sizeof(float));
 
     x_counts = malloc(numProcessors * sizeof(int));
     x_displs = malloc(numProcessors * sizeof(int));
@@ -604,6 +611,7 @@ int main (int argc, char *argv[])
   MPI_Barrier(MPI_COMM_WORLD);
   if (rank == 0)
   {
+    printf("\n");
     printf ("SHALLOW_WATER_2D:\n");
     printf (" A program to solve the shallow water equations.\n");
     printf (" The problem is solved on a rectangular grid.\n");
