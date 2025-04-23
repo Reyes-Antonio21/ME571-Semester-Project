@@ -703,7 +703,8 @@ int main (int argc, char *argv[])
 
     if (rank == 0) 
     {
-      printf("Number of processors: %d, Problem size: %d, Time steps: %d, Iteration: %d, Elapsed time: %f s, Average elapsed time for compute fluxes: %f s, Average elapsed time for compute variables: %f s, Average elapsed time for update variables: %f s, Average elapsed time for apply boundary conditions: %f s", numProcessors, nx_global, m, k, time_max, avg_time_cf, avg_time_cv, avg_time_uv, avg_time_bc);
+      printf("Number of processors: %d, Problem size: %d, Time steps: %d, Iteration: %d, Elapsed time: %f s, Average elapsed time for compute fluxes: %f s, Average elapsed time for compute variables: %f s, Average elapsed time for update variables: %f s, Average elapsed time for apply boundary conditions: %f s\n", numProcessors, nx_global, m, k, time_max, avg_time_cf, avg_time_cv, avg_time_uv, avg_time_bc);
+      fflush(stdout);
     }
   }
   /****************************************************************************** Post-Processing ******************************************************************************/
