@@ -34,15 +34,15 @@ do
     output=$(./swep_2d_tt $nx $dt $xlen $t_final)
 
     # Extract line
-    line=$(echo "$output" | grep "Problem size")
+    echo "$output" | grep "Problem size" | while read -r line; do
+        # Extract values using awk
+        problem_size=$(echo "$line" | awk -F'[:,]' '{print $2}' | tr -d ' ')
+        time_steps=$(echo "$line" | awk -F'[:,]' '{print $4}' | tr -d ' ')
+        iterations=$(echo "$line" | awk -F'[:,]' '{print $6}' | tr -d ' ')
+        elapsed_time=$(echo "$line" | awk -F'[:,]' '{print $8}' | tr -d ' s')
+        transfer_time=$(echo "$line" | awk -F'[:,]' '{print $10}' | tr -d ' s')
 
-    # Parse values
-    problem_size=$(echo "$line" | awk -F'[:,]' '{print $2}' | tr -d ' ')
-    time_steps=$(echo "$line" | awk -F'[:,]' '{print $4}' | tr -d ' ')
-    iterations=$(echo "$line" | awk -F'[:,]' '{print $6}' | tr -d ' ')
-    elapsed_time=$(echo "$line" | awk -F'[:,]' '{print $8}' | tr -d ' s')
-    transfer_time=$(echo "$line" | awk -F'[:,]' '{print $10}' | tr -d ' s')
-
-    # Append to CSV
-    echo "$problem_size,$time_steps,$iterations,$elapsed_time,$transfer_time" >> $output_file
+        # Append to CSV
+        echo "$problem_size,$time_steps,$iterations,$elapsed_time,$transfer_time" >> $output_file
+    done
 done

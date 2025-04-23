@@ -32,18 +32,18 @@ do
     output=$(./swep_2d_ts $nx $dt $xlen $t_final)
 
     # Extract line
-    line=$(echo "$output" | grep "Problem size")
+    echo "$output" | grep "Problem size" | while read -r line; do
+        # Extract values using awk
+        problem_size=$(echo "$line" | awk -F'[:,]' '{print $2}' | tr -d ' ')
+        time_steps=$(echo "$line" | awk -F'[:,]' '{print $4}' | tr -d ' ')
+        iterations=$(echo "$line" | awk -F'[:,]' '{print $6}' | tr -d ' ')
+        elapsed_time=$(echo "$line" | awk -F'[:,]' '{print $8}' | tr -d ' s')
+        avg_cf=$(echo "$line" | awk -F'[:,]' '{print $10}' | tr -d ' s')
+        avg_cv=$(echo "$line" | awk -F'[:,]' '{print $12}' | tr -d ' s')
+        avg_uv=$(echo "$line" | awk -F'[:,]' '{print $14}' | tr -d ' s')
+        avg_bc=$(echo "$line" | awk -F'[:,]' '{print $16}' | tr -d ' s')
 
-    # Parse each field using awk
-    problem_size=$(echo "$line" | awk -F'[:,]' '{print $2}' | tr -d ' ')
-    time_steps=$(echo "$line" | awk -F'[:,]' '{print $4}' | tr -d ' ')
-    iterations=$(echo "$line" | awk -F'[:,]' '{print $6}' | tr -d ' ')
-    elapsed_time=$(echo "$line" | awk -F'[:,]' '{print $8}' | tr -d ' s')
-    avg_cf=$(echo "$line" | awk -F'[:,]' '{print $10}' | tr -d ' s')
-    avg_cv=$(echo "$line" | awk -F'[:,]' '{print $12}' | tr -d ' s')
-    avg_uv=$(echo "$line" | awk -F'[:,]' '{print $14}' | tr -d ' s')
-    avg_bc=$(echo "$line" | awk -F'[:,]' '{print $16}' | tr -d ' s')
-
-    # Append row to CSV
-    echo "$problem_size,$time_steps,$iterations,$elapsed_time,$avg_cf,$avg_cv,$avg_uv,$avg_bc" >> $output_file
+        # Append to CSV
+        echo "$problem_size,$time_steps,$iterations,$elapsed_time,$avg_cf,$avg_cv,$avg_uv,$avg_bc" >> $output_file
+    done
 done

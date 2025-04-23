@@ -40,7 +40,7 @@ do
             time_steps=$(echo "$line" | awk -F'[:,]' '{print $8}' | tr -d ' ')
             elapsed_time=$(echo "$line" | awk -F'[:,]' '{print $10}' | tr -d ' s')
 
-            echo "$problem_size,$num_proc,$time_steps,$iterations,$elapsed_time" >> $output_file
+            echo "$problem_size,$num_proc,$iterations,$time_steps,$elapsed_time" >> $output_file
         done
     done
 done

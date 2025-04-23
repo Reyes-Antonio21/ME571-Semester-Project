@@ -35,20 +35,20 @@ do
         output=$(mpirun -np $p ./swem_2d_ts $nx $nx $dt $xlen $ylen $t_final)
 
         # Extract data from one-liner
-        line=$(echo "$output" | grep "Number of processors")
+        echo "$output" | grep "Number of processors" | while read -r line; do
 
-        # Parse using awk (split by colon/comma to extract values)
-        processors=$(echo "$line" | awk -F'[:,]' '{print $2}' | tr -d ' ')
-        problem_size=$(echo "$line" | awk -F'[:,]' '{print $4}' | tr -d ' ')
-        time_steps=$(echo "$line" | awk -F'[:,]' '{print $6}' | tr -d ' ')
-        iterations=$(echo "$line" | awk -F'[:,]' '{print $8}' | tr -d ' ')
-        elapsed_time=$(echo "$line" | awk -F'[:,]' '{print $10}' | tr -d ' s')
-        avg_cf=$(echo "$line" | awk -F'[:,]' '{print $12}' | tr -d ' s')
-        avg_cv=$(echo "$line" | awk -F'[:,]' '{print $14}' | tr -d ' s')
-        avg_uv=$(echo "$line" | awk -F'[:,]' '{print $16}' | tr -d ' s')
-        avg_bc=$(echo "$line" | awk -F'[:,]' '{print $18}' | tr -d ' s')
+            processors=$(echo "$line" | awk -F'[:,]' '{print $2}' | tr -d ' ')
+            problem_size=$(echo "$line" | awk -F'[:,]' '{print $4}' | tr -d ' ')
+            time_steps=$(echo "$line" | awk -F'[:,]' '{print $6}' | tr -d ' ')
+            iterations=$(echo "$line" | awk -F'[:,]' '{print $8}' | tr -d ' ')
+            elapsed_time=$(echo "$line" | awk -F'[:,]' '{print $10}' | tr -d ' s')
+            avg_cf=$(echo "$line" | awk -F'[:,]' '{print $12}' | tr -d ' s')
+            avg_cv=$(echo "$line" | awk -F'[:,]' '{print $14}' | tr -d ' s')
+            avg_uv=$(echo "$line" | awk -F'[:,]' '{print $16}' | tr -d ' s')
+            avg_bc=$(echo "$line" | awk -F'[:,]' '{print $18}' | tr -d ' s')
 
-        # Append row to CSV
-        echo "$processors,$problem_size,$time_steps,$iterations,$elapsed_time,$avg_cf,$avg_cv,$avg_uv,$avg_bc" >> $output_file
+            # Append row to CSV
+            echo "$processors,$problem_size,$time_steps,$iterations,$elapsed_time,$avg_cf,$avg_cv,$avg_uv,$avg_bc" >> $output_file
+        done
     done
 done
