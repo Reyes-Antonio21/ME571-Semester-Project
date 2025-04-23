@@ -483,6 +483,7 @@ int main (int argc, char *argv[])
     if (rank == l) 
     {
       printf("Rank %d: Global x-start position for rank %d: %d, Global y-start position for rank %d: %d\n", rank, rank, x_start, rank, y_start);
+      printf("\n");
       fflush(stdout); // Ensure immediate flush to console
     }
   }
