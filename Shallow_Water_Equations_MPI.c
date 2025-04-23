@@ -495,6 +495,8 @@ int main (int argc, char *argv[])
 
     initialConditions(nx_local, ny_local, x_start, y_start, dx, dy, px, py, px_size, py_size, x_length, y_length, x, y, h, uh, vh);
 
+    write_results_mpi(nx_global, nx_local, programRuntime, dx, uh, rank, numProcessors);
+
     MPI_Barrier(cart_comm);
     // Start timing the program
     time_start = MPI_Wtime();
@@ -647,6 +649,8 @@ int main (int argc, char *argv[])
     }
   }
   /****************************************************************************** Post-Processing ******************************************************************************/
+
+  write_results_mpi(nx_global, nx_local, programRuntime, dx, uh, rank, numProcessors);
 
   //Free memory.
   free ( h );
