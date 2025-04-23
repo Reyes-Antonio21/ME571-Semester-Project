@@ -161,14 +161,11 @@ void getArgs(int *nx_global, int *ny_global, double *dt, float *x_length, float 
 }
 /******************************************************************************/
 
-void initialConditions(int nx_local, int ny_local, int x_start, int y_start, float dx, float dy, int px, int py, int px_size, int py_size, float x_length, float y_length, float *h, float *uh, float *vh)
+void initialConditions(int nx_local, int ny_local, int x_start, int y_start, float dx, float dy, int px, int py, int px_size, int py_size, float x_length, float y_length, float *x[], float *y[], float *h[], float *uh[], float *vh[])
 {
   int i, j, id, id_ghost;
 
   int global_i, global_j;
-
-  float *x = malloc((nx_local) * sizeof(float));
-  float *y = malloc((ny_local) * sizeof(float));
 
   for (j = 0; j < nx_local; j++) 
   {
@@ -189,10 +186,10 @@ void initialConditions(int nx_local, int ny_local, int x_start, int y_start, flo
     {
       id = ID_2D(i + 1, j + 1, nx_local);
 
-      float x = x[j];
-      float y = y[i];
+      float xx = x[j];
+      float yy = y[i];
       
-      h[id] = 1.0f + 0.4f * expf(-5.0f * (x * x + y * y));
+      h[id] = 1.0f + 0.4f * expf(-5.0f * (xx * xx + yy * yy));
 
       uh[id] = 0.0f;
 
@@ -267,9 +264,6 @@ void initialConditions(int nx_local, int ny_local, int x_start, int y_start, flo
       vh[id] = -vh[id_ghost];
     }
   }  
-  
-  free(x);
-  free(y);
 
   return;
 }
@@ -297,7 +291,7 @@ void haloExchange(float *data, int nx_local, int ny_local, MPI_Comm cart_comm, M
 }
 /******************************************************************************/
 
-void writeResultsMPI(float *h, float *uh, float *vh, float *x, float *y, int nx_local, int ny_local, int x_start, int y_start, int nx_global, int ny_global, double time, int rank, int numProcessors, MPI_Comm cart_comm)
+void writeResultsMPI(float *h[], float *uh[], float *vh[], float *x[], float *y[], int nx_local, int ny_local, int x_start, int y_start, int nx_global, int ny_global, double time, int rank, int numProcessors, MPI_Comm cart_comm)
 {
   char filename[50];
 
@@ -485,8 +479,6 @@ int main (int argc, char *argv[])
 
   int nx_local;
   int ny_local;
-  int nx_extra;
-  int ny_extra;
 
   int x_start;
   int y_start;
@@ -514,6 +506,9 @@ int main (int argc, char *argv[])
   float *hm;
   float *uhm;
   float *vhm;
+
+  float *x;
+  float *y;
 
   // Get the rank of the process
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -573,23 +568,27 @@ int main (int argc, char *argv[])
 
   /****************************************************************************** ALLOCATE MEMORY ******************************************************************************/
   //Allocate space (nx_global+2)((nx_global+2) long, to account for ghosts
-  //height array
+  // height array
   h  = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
   hm = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
   fh = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
   gh = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
   
-  //x momentum array
+  // x-momentum array
   uh  = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
   uhm = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
   fuh = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
   guh = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
   
-  //y momentum array
+  //  y-momentum array
   vh  = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
   vhm = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
   fvh = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
   gvh = (float*) malloc((nx_local + 2) * (ny_local + 2) * sizeof(float));
+
+  // coordinate Array
+  x = malloc((nx_local) * sizeof(float));
+  y = malloc((ny_local) * sizeof(float));
   
   /****************************************************************************** MAIN LOOP ******************************************************************************/
   if (rank == 0)
@@ -613,7 +612,7 @@ int main (int argc, char *argv[])
     programRuntime = 0.0f;
     m = 0;
 
-    initialConditions(nx_local, ny_local, nx_global, ny_global, px, py, dx, dy, x_length, y_length, dims, h, uh, vh);
+    initialConditions(nx_local, ny_local, x_start, y_start, dx, dy, px, py, px_size, py_size, x_length, y_length, x, y, h, uh, vh);
 
     writeResultsMPI(h, uh, vh, x, y, nx_local, ny_local, x_start, y_start, nx_global, ny_global, programRuntime, rank, numProcessors, cart_comm);
 
@@ -785,6 +784,8 @@ int main (int argc, char *argv[])
   free ( hm );
   free ( uhm );
   free ( vhm );
+  free ( x );
+  free ( y );
 
   MPI_Type_free(&column_type);
   MPI_Comm_free(&cart_comm);
