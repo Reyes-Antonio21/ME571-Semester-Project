@@ -46,7 +46,7 @@ void getArgs(int *nx_global, int *ny_global, double *dt, float *x_length, float 
 
   if (argc <= 2)
   {
-    *ny_global = 300;
+    *ny_global = 200;
   }
   else
   {
@@ -55,7 +55,7 @@ void getArgs(int *nx_global, int *ny_global, double *dt, float *x_length, float 
   
   if (argc <= 3)
   {
-    *dt = 0.003;
+    *dt = 0.004;
   }
   else
   {
