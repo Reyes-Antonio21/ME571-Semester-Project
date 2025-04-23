@@ -4,7 +4,7 @@
 #SBATCH -N 1
 #SBATCH -n 48
 #SBATCH -p bsudfq
-#SBATCH -t 08:00:00
+#SBATCH -t 00:05:00
 #SBATCH --exclusive
 
 module load gcc
@@ -14,5 +14,5 @@ module load slurm
 
 for p in 1 2 4 8 12 16 24 32 48
 do 
-    srun -n $p ./swe_2d_mpi 800 800 0.001 10 10 0.5
+    mpirun -np $p ./swe_2d_mpi 100 100 0.008 10 10 0.5
 done

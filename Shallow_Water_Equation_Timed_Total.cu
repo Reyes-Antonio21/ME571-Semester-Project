@@ -71,7 +71,7 @@ void writeResults(float h[], float uh[], float vh[], float x[], float y[], float
       for ( j = 0; j < nx; j++ )
       {
         id = ID_2D(i + 1, j + 1, nx);
-        fprintf ( file, "%24.16g\t%24.16g\t%24.16g\t %24.16g\t %24.16g\n", x[j], y[i], h[id], uh[id], vh[id]);
+        fprintf (file, "%24.16g\t%24.16g\t%24.16g\t %24.16g\t %24.16g\n", x[j], y[i], h[id], uh[id], vh[id]);
       }
     
     //Close the file.
