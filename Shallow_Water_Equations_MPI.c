@@ -627,7 +627,7 @@ int main (int argc, char *argv[])
 
     if (rank == 0) 
     {
-      printf("Problem numProcessors: %d, iteration: %d, Time steps: %d, Elapsed time: %f s\n", nx_global, k, m, time_elapsed);
+      printf("Problem size: %d, iteration: %d, Time steps: %d, Elapsed time: %f s\n", nx_global, k, m, time_elapsed);
     }
   }
   /****************************************************************************** Post-Processing ******************************************************************************/
