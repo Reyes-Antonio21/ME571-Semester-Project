@@ -161,7 +161,7 @@ void getArgs(int *nx_global, int *ny_global, double *dt, float *x_length, float 
 }
 /******************************************************************************/
 
-void initialConditions(int nx_local, int ny_local, int x_start, int y_start, float dx, float dy, int px, int py, int px_size, int py_size, float x_length, float y_length, float *x[], float *y[], float *h[], float *uh[], float *vh[])
+void initialConditions(int nx_local, int ny_local, int x_start, int y_start, float dx, float dy, int px, int py, int px_size, int py_size, float x_length, float y_length, float *x, float *y, float *h, float *uh, float *vh)
 {
   int i, j, id, id_ghost;
 
@@ -291,7 +291,7 @@ void haloExchange(float *data, int nx_local, int ny_local, MPI_Comm cart_comm, M
 }
 /******************************************************************************/
 
-void writeResultsMPI(float *h[], float *uh[], float *vh[], float *x[], float *y[], int nx_local, int ny_local, int x_start, int y_start, int nx_global, int ny_global, double time, int rank, int numProcessors, MPI_Comm cart_comm)
+void writeResultsMPI(float *h, float *uh, float *vh, float *x, float *y, int nx_local, int ny_local, int x_start, int y_start, int nx_global, int ny_global, double time, int rank, int numProcessors, MPI_Comm cart_comm)
 {
   char filename[50];
 
