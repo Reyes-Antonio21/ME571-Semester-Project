@@ -7,4 +7,4 @@
 #SBATCH -t 00:05:00
 #SBATCH --exclusive
 
-mpirun -np 36 ./swe_2d_mpi 400 400 0.002 10 10 0.5
+mpirun -np 36 ./swe_2d_mpi
