@@ -4,7 +4,7 @@
 #SBATCH -c 1
 #SBATCH -N 1
 #SBATCH -p gpu
-#SBATCH -t 08:00:00
+#SBATCH -t 05:00:00
 #SBATCH --gres=gpu:1
 #SBATCH --exclusive
 

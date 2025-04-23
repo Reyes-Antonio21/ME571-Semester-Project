@@ -201,85 +201,114 @@ void initialConditions(int nx_local, int ny_local, int x_start, int y_start, flo
 
 void writeResultsMPI(float *x_local, float *y_local, float *h, float *uh, float *vh, int nx_local, int ny_local, int x_start, int y_start, int nx_global, int ny_global, double time, int rank, int numProcessors, MPI_Comm cart_comm)
 {
-int localSize = nx_local * ny_local;
-float *sendbuf_h = malloc(localSize * sizeof(float));
-float *sendbuf_uh = malloc(localSize * sizeof(float));
-float *sendbuf_vh = malloc(localSize * sizeof(float));
-float *sendbuf_x = malloc(localSize * sizeof(float));
-float *sendbuf_y = malloc(localSize * sizeof(float));
+  int totalLocalCells = nx_local * ny_local;
+  float *sendbuf_h = malloc(totalLocalCells * sizeof(float));
+  float *sendbuf_uh = malloc(totalLocalCells * sizeof(float));
+  float *sendbuf_vh = malloc(totalLocalCells * sizeof(float));
+  float *sendbuf_x = malloc(totalLocalCells * sizeof(float));
+  float *sendbuf_y = malloc(totalLocalCells * sizeof(float));
 
-int id_local = 0;
-for (int i = 1; i <= ny_local; i++) {
-for (int j = 1; j <= nx_local; j++) {
-int id = ID_2D(i, j, nx_local);
+  int id_local = 0;
+  for (int i = 1; i < ny_local + 1; i++)
+    for (int j = 1; j < nx_local + 1; j++) 
+    {
+      int id = ID_2D(i, j, nx_local);
 
-sendbuf_h[id_local] = h[id];
-sendbuf_uh[id_local] = uh[id];
-sendbuf_vh[id_local] = vh[id];
-sendbuf_x[id_local] = x_local[j - 1]; // x depends on column index
-sendbuf_y[id_local] = y_local[i - 1]; // y depends on row index
-id_local++;
-}
-}
+      sendbuf_h[id_local] = h[id];
 
-// Gather counts
-int *recvcounts = NULL;
-int *displs = NULL;
-if (rank == 0) {
-recvcounts = malloc(numProcessors * sizeof(int));
-displs = malloc(numProcessors * sizeof(int));
-}
+      sendbuf_uh[id_local] = uh[id];
 
-int localDataCount = nx_local * ny_local;
-MPI_Gather(&localDataCount, 1, MPI_INT, recvcounts, 1, MPI_INT, 0, cart_comm);
+      sendbuf_vh[id_local] = vh[id];
 
-float *recv_h = NULL, *recv_uh = NULL, *recv_vh = NULL, *recv_x = NULL, *recv_y = NULL;
+      sendbuf_x[id_local] = x_local[j - 1];
 
-if (rank == 0) {
-int total = 0;
-displs[0] = 0;
-total += recvcounts[0];
-for (int i = 1; i < numProcessors; i++) {
-displs[i] = displs[i - 1] + recvcounts[i - 1];
-total += recvcounts[i];
-}
+      sendbuf_y[id_local] = y_local[i - 1];
 
-recv_h  = malloc(total * sizeof(float));
-recv_uh = malloc(total * sizeof(float));
-recv_vh = malloc(total * sizeof(float));
-recv_x  = malloc(total * sizeof(float));
-recv_y  = malloc(total * sizeof(float));
-}
+      id_local++;
+    }
 
-MPI_Gatherv(sendbuf_h, localDataCount, MPI_FLOAT, recv_h, recvcounts, displs, MPI_FLOAT, 0, cart_comm);
-MPI_Gatherv(sendbuf_uh, localDataCount, MPI_FLOAT, recv_uh, recvcounts, displs, MPI_FLOAT, 0, cart_comm);
-MPI_Gatherv(sendbuf_vh, localDataCount, MPI_FLOAT, recv_vh, recvcounts, displs, MPI_FLOAT, 0, cart_comm);
-MPI_Gatherv(sendbuf_x, localDataCount, MPI_FLOAT, recv_x, recvcounts, displs, MPI_FLOAT, 0, cart_comm);
-MPI_Gatherv(sendbuf_y, localDataCount, MPI_FLOAT, recv_y, recvcounts, displs, MPI_FLOAT, 0, cart_comm);
+  // Gather counts
+  int *recvcounts = NULL;
 
-if (rank == 0) {
-char filename[64];
-sprintf(filename, "tc2d_%08.6f.dat", time);
-FILE *fp = fopen(filename, "w");
-if (fp == NULL) {
-fprintf(stderr, "Error opening file %s\n", filename);
-MPI_Abort(cart_comm, -1);
-}
+  int *displs = NULL;
 
-for (int i = 0; i < displs[numProcessors - 1] + recvcounts[numProcessors - 1]; i++) {
-fprintf(fp, "%f\t%f\t%f\t%f\t%f\n", recv_x[i], recv_y[i], recv_h[i], recv_uh[i], recv_vh[i]);
-}
-fclose(fp);
-}
+  if (rank == 0) 
+  {
+    recvcounts = malloc(numProcessors * sizeof(int));
+    displs = malloc(numProcessors * sizeof(int));
+  }
 
-// Cleanup
-free(sendbuf_h);  free(sendbuf_uh);  free(sendbuf_vh);
-free(sendbuf_x);  free(sendbuf_y);
-if (rank == 0) {
-free(recv_h);   free(recv_uh);     free(recv_vh);
-free(recv_x);   free(recv_y);
-free(recvcounts); free(displs);
-}
+  int localDataCount = nx_local * ny_local;
+
+  MPI_Gather(&localDataCount, 1, MPI_INT, recvcounts, 1, MPI_INT, 0, cart_comm);
+
+  float *recv_h = NULL, *recv_uh = NULL, *recv_vh = NULL, *recv_x = NULL, *recv_y = NULL;
+
+  if (rank == 0) 
+  {
+    int total = 0;
+
+    displs[0] = 0;
+
+    total += recvcounts[0];
+
+    for (int i = 1; i < numProcessors; i++) 
+    {
+      displs[i] = displs[i - 1] + recvcounts[i - 1];
+
+      total += recvcounts[i];
+    }
+
+    recv_h  = malloc(total * sizeof(float));
+
+    recv_uh = malloc(total * sizeof(float));
+
+    recv_vh = malloc(total * sizeof(float));
+
+    recv_x  = malloc(total * sizeof(float));
+
+    recv_y  = malloc(total * sizeof(float));
+  }
+
+  MPI_Gatherv(sendbuf_h, localDataCount, MPI_FLOAT, recv_h, recvcounts, displs, MPI_FLOAT, 0, cart_comm);
+  MPI_Gatherv(sendbuf_uh, localDataCount, MPI_FLOAT, recv_uh, recvcounts, displs, MPI_FLOAT, 0, cart_comm);
+  MPI_Gatherv(sendbuf_vh, localDataCount, MPI_FLOAT, recv_vh, recvcounts, displs, MPI_FLOAT, 0, cart_comm);
+  MPI_Gatherv(sendbuf_x, localDataCount, MPI_FLOAT, recv_x, recvcounts, displs, MPI_FLOAT, 0, cart_comm);
+  MPI_Gatherv(sendbuf_y, localDataCount, MPI_FLOAT, recv_y, recvcounts, displs, MPI_FLOAT, 0, cart_comm);
+
+  if (rank == 0) 
+  {
+    char filename[64];
+
+    sprintf(filename, "tc2d_%08.6f.dat", time);
+
+    FILE *file = fopen(filename, "w");
+
+    if (file == NULL) 
+    {
+      fprintf(stderr, "Error opening file %s\n", filename);
+
+      MPI_Abort(cart_comm, -1);
+    }
+
+    for (int i = 0; i < displs[numProcessors - 1] + recvcounts[numProcessors - 1]; i++) 
+    {
+      fprintf(file, "%f\t%f\t%f\t%f\t%f\n", recv_x[i], recv_y[i], recv_h[i], recv_uh[i], recv_vh[i]);
+    }
+
+    fclose(file);
+  }
+
+  // Cleanup
+  free(sendbuf_h);  free(sendbuf_uh);  free(sendbuf_vh);
+  free(sendbuf_x);  free(sendbuf_y);
+
+  if (rank == 0) 
+  {
+    free(recv_h);   free(recv_uh);     free(recv_vh);
+    free(recv_x);   free(recv_y);
+    free(recvcounts); free(displs);
+  }
 }
 /******************************************************************************/
 
@@ -339,24 +368,28 @@ int main (int argc, char *argv[])
   double totalRuntime;
 
   double time_start;
+  double time_start_dt;
   double time_start_cf;
   double time_start_cv;
   double time_start_uv;
   double time_start_bc;
 
   double time_end;
+  double time_end_dt;
   double time_end_cf;
   double time_end_cv;
   double time_end_uv;
   double time_end_bc;
 
   double time_elapsed;
+  double time_elapsed_dt;
   double time_elapsed_cf;
   double time_elapsed_cv;
   double time_elapsed_uv;
   double time_elapsed_bc;
 
   double time_max;
+  double time_max_dt;
   double time_max_cf;
   double time_max_cv;
   double time_max_uv;
@@ -493,7 +526,7 @@ int main (int argc, char *argv[])
     printf (" The processor grid dimensions are %d x %d.\n", dims[0], dims[1]);
     printf (" The local grid dimensions are %d x %d.\n", nx_local, ny_local);
     printf ("\n");
-    fflush(stdout); // Ensure immediate flush to console
+    fflush(stdout); 
   }
 
   for (l = 0; l < numProcessors; l++) 
@@ -503,7 +536,7 @@ int main (int argc, char *argv[])
     {
       printf("Rank %d: Global x-start position for rank %d: %d, Global y-start position for rank %d: %d\n", rank, rank, x_start, rank, y_start);
       printf("\n");
-      fflush(stdout); // Ensure immediate flush to console
+      fflush(stdout); 
     }
   }
 
@@ -511,21 +544,22 @@ int main (int argc, char *argv[])
   for(k = 1; k < 11; k++)
   {
     programRuntime = 0.0f;
-    if (rank == 0)
-    {
-      m = 0;
-    }
+    m = 0;
 
     initialConditions(nx_local, ny_local, x_start, y_start, dx, dy, px, py, px_size, py_size, x_length, y_length, x, y, h, uh, vh);
 
     MPI_Barrier(cart_comm);
+    
     // Start timing the program
     time_start = MPI_Wtime();
 
     // **** TIME LOOP ****
     while (programRuntime < totalRuntime) 
     {
-      programRuntime += dt; 
+      programRuntime += dt;
+
+      MPI_Barrier(cart_comm);
+      time_start_dt = MPI_Wtime();
 
       // === h field ===
       haloExchange(h, nx_local, ny_local, cart_comm, column_type, north, south, west, east, 0);
@@ -535,6 +569,9 @@ int main (int argc, char *argv[])
 
       // === vh field ===
       haloExchange(vh, nx_local, ny_local, cart_comm, column_type, north, south, west, east, 8);
+
+      time_end_dt = MPI_Wtime();
+      time_elapsed_dt += time_end_dt - time_start_dt;
 
       MPI_Barrier(cart_comm);
       time_start_cf = MPI_Wtime();
@@ -679,11 +716,7 @@ int main (int argc, char *argv[])
       time_end_bc = MPI_Wtime();
       time_elapsed_bc += time_end_bc - time_start_bc;
 
-      MPI_Barrier(cart_comm);
-      if (rank == 0)
-      {
-        m++;
-      }
+      m++;
     }
 
     // Stop timing the program
@@ -691,11 +724,13 @@ int main (int argc, char *argv[])
     time_elapsed = time_end - time_start;
 
     MPI_Reduce(&time_elapsed, &time_max, 1, MPI_DOUBLE, MPI_MAX, 0, cart_comm);
+    MPI_Reduce(&time_elapsed_dt, &time_max_dt, 1, MPI_DOUBLE, MPI_MAX, 0, cart_comm);
     MPI_Reduce(&time_elapsed_cf, &time_max_cf, 1, MPI_DOUBLE, MPI_MAX, 0, cart_comm);
     MPI_Reduce(&time_elapsed_cv, &time_max_cv, 1, MPI_DOUBLE, MPI_MAX, 0, cart_comm);
     MPI_Reduce(&time_elapsed_uv, &time_max_uv, 1, MPI_DOUBLE, MPI_MAX, 0, cart_comm);
     MPI_Reduce(&time_elapsed_bc, &time_max_bc, 1, MPI_DOUBLE, MPI_MAX, 0, cart_comm);
 
+    double avg_time_dt = time_max_dt / (double) m;
     double avg_time_cf = time_max_cf / (double) m;
     double avg_time_cv = time_max_cv / (double) m;
     double avg_time_uv = time_max_uv / (double) m;
@@ -703,7 +738,7 @@ int main (int argc, char *argv[])
 
     if (rank == 0) 
     {
-      printf("Number of processors: %d, Problem size: %d, Time steps: %d, Iteration: %d, Elapsed time: %f s, Average elapsed time for compute fluxes: %f s, Average elapsed time for compute variables: %f s, Average elapsed time for update variables: %f s, Average elapsed time for apply boundary conditions: %f s\n", numProcessors, nx_global, m, k, time_max, avg_time_cf, avg_time_cv, avg_time_uv, avg_time_bc);
+      printf("Number of processors: %d, Problem size: %d, Time steps: %d, Iteration: %d, Elapsed time: %f s, Average elapsed time for compute fluxes: %f s, Average elapsed time for compute variables: %f s, Average elapsed time for update variables: %f s, Average elapsed time for apply boundary conditions: %f s, Average elapsed time for data transfer: %f s\n", numProcessors, nx_global, m, k, time_max, avg_time_cf, avg_time_cv, avg_time_uv, avg_time_bc, avg_time_dt);
       fflush(stdout);
     }
   }

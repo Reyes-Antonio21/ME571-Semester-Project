@@ -17,7 +17,7 @@ CFL=0.5
 output_file="Shallow_Water_Equations_MPI_Section_Runtime_Performance.csv"
 
 # Write CSV header
-echo "Processors,Problem size,Time steps,Iterations,Elapsed time (s),Avg compute fluxes (s),Avg compute variables (s),Avg update variables (s),Avg apply boundary conditions (s)" > $output_file
+echo "Processors,Problem size,Time steps,Iterations,Elapsed time (s),Avg compute fluxes (s),Avg compute variables (s),Avg update variables (s),Avg apply boundary conditions (s),Avg data transfer (s)" > $output_file
 
 # Problem sizes
 for nx in 200 300 400 500 600 700 800 900 1000 1100 1200 1300 1400 1500 1600 1700 1800 1900 2000 \
@@ -47,9 +47,10 @@ do
             avg_cv=$(echo "$line" | awk -F'[:,]' '{print $14}' | tr -d ' s')
             avg_uv=$(echo "$line" | awk -F'[:,]' '{print $16}' | tr -d ' s')
             avg_bc=$(echo "$line" | awk -F'[:,]' '{print $18}' | tr -d ' s')
+            avg_dt=$(echo "$line" | awk -F'[:,]' '{print $20}' | tr -d ' s')
 
             # Append to CSV
-            echo "$processors,$problem_size,$time_steps,$iterations,$elapsed_time,$avg_cf,$avg_cv,$avg_uv,$avg_bc" >> $output_file
+            echo "$processors,$problem_size,$time_steps,$iterations,$elapsed_time,$avg_cf,$avg_cv,$avg_uv,$avg_bc,$avg_dt" >> $output_file
         done
     done
 done

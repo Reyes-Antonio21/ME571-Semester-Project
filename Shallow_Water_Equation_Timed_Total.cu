@@ -234,7 +234,7 @@ __global__ void updateVariablesGPU(float *h, float *uh, float *vh, float *hm, fl
 }
 /******************************************************************************/
 
-__global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int nx, int ny, int bc_type)
+__global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int nx, int ny)
 {
   unsigned int i = threadIdx.y + blockIdx.y * blockDim.y;
   unsigned int j = threadIdx.x + blockIdx.x * blockDim.x;
@@ -247,124 +247,36 @@ __global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int n
   unsigned int id_bottom = ((i - 1) * (nx + 2) + (j));
   unsigned int id_top    = ((i + 1) * (nx + 2) + (j));
 
-  if (bc_type == 1) // Dirichlet Boundary Conditions
-  {  
-    // Left Boundary (j = 0)
-    if (j == 0 && i >= 1 && i <= ny) 
-    {
-      id = ID_2D(i, 1, nx);
-      id_ghost = ID_2D(i, 0, nx);
-      h[id_ghost]  = h[id];
-      uh[id_ghost] = uh[id];
-      vh[id_ghost] = vh[id];
-    }
-
-    // Right Boundary (j = nx + 1)
-    if (j == nx + 1 && i >= 1 && i <= ny) 
-    {
-      id = ID_2D(i, nx, nx);
-      id_ghost = ID_2D(i, nx + 1, nx);
-      h[id_ghost]  = h[id];
-      uh[id_ghost] = uh[id];
-      vh[id_ghost] = vh[id];
-    }
-
-    // Bottom Boundary (i = 0)
-    if (i == 0 && j >= 1 && j <= nx) 
-    {
-      id = ID_2D(1, j, nx);
-      id_ghost = ID_2D(0, j, nx);
-      h[id_ghost]  = h[id];
-      uh[id_ghost] = uh[id];
-      vh[id_ghost] = vh[id];
-    }
-
-    // Top Boundary (i = ny + 1)
-    if (i == ny + 1 && j >= 1 && j <= nx) 
-    {
-      id = ID_2D(ny, j, nx);
-      id_ghost = ID_2D(ny + 1, j, nx);
-      h[id_ghost]  = h[id];
-      uh[id_ghost] = uh[id];
-      vh[id_ghost] = vh[id];
-    }
+  // Left Boundary (j = 1) - Reflective
+  if (j == 1 && i > 0 && i < ny + 1) 
+  {
+    h[id_left]  = h[id];
+    uh[id_left] = -uh[id];  // Flip x-momentum
+    vh[id_left] = vh[id];   
   }
 
-  else if (bc_type == 2) // Periodic Boundary Conditions
-  {  
-    // Left to Right Periodic Boundary (wraps leftmost to rightmost)
-    if (j == 0 && i >= 1 && i <= ny) 
-    {
-      id = ID_2D(i, nx, nx);
-      id_ghost = ID_2D(i, 0, nx);
-      h[id_ghost]  = h[id];
-      uh[id_ghost] = uh[id];
-      vh[id_ghost] = vh[id];
-    }
-
-    // Right to Left Periodic Boundary (wraps rightmost to leftmost)
-    if (j == nx + 1 && i >= 1 && i <= ny) 
-    {
-      id = ID_2D(i, 1, nx);
-      id_ghost = ID_2D(i, nx + 1, nx);
-      h[id_ghost]  = h[id];
-      uh[id_ghost] = uh[id];
-      vh[id_ghost] = vh[id];
-    }
-
-    // Bottom to Top Periodic Boundary (wraps bottom to top)
-    if (i == 0 && j >= 1 && j <= nx) 
-    {
-      id = ID_2D(ny, j, nx);
-      id_ghost = ID_2D(0, j, nx);
-      h[id_ghost]  = h[id];
-      uh[id_ghost] = uh[id];
-      vh[id_ghost] = vh[id];
-    }
-
-    // Top to Bottom Periodic Boundary (wraps top to bottom)
-    if (i == ny + 1 && j >= 1 && j <= nx) 
-    {
-      id = ID_2D(1, j, nx);
-      id_ghost = ID_2D(ny + 1, j, nx);
-      h[id_ghost]  = h[id];
-      uh[id_ghost] = uh[id];
-      vh[id_ghost] = vh[id];
-    }  
+  // Right Boundary (j = nx) - Reflective
+  if (j == nx && i > 0 && i < ny + 1) 
+  {
+    h[id_right]  = h[id];
+    uh[id_right] = -uh[id];  // Flip x-momentum
+    vh[id_right] = vh[id];   
   }
-  else if (bc_type == 3) // Reflective Boundary Conditions
-  {  
-    // Left Boundary (j = 1) - Reflective
-    if (j == 1 && i > 0 && i < ny + 1) 
-    {
-      h[id_left]  = h[id];
-      uh[id_left] = -uh[id];  // Flip normal velocity
-      vh[id_left] = vh[id];   // Keep tangential velocity
-    }
 
-    // Right Boundary (j = nx) - Reflective
-    if (j == nx && i > 0 && i < ny + 1) 
-    {
-      h[id_right]  = h[id];
-      uh[id_right] = -uh[id];  // Flip normal velocity
-      vh[id_right] = vh[id];   // Keep tangential velocity
-    }
+  // Bottom Boundary (i = 1) - Reflective
+  if (i == 1 && j > 0 && j < nx + 1) 
+  {
+    h[id_bottom]  = h[id];
+    uh[id_bottom] = uh[id];   
+    vh[id_bottom] = -vh[id];  // Flip y-momentum
+  }
 
-    // Bottom Boundary (i = 1) - Reflective
-    if (i == 1 && j > 0 && j < nx + 1) 
-    {
-      h[id_bottom]  = h[id];
-      uh[id_bottom] = uh[id];   // Keep tangential velocity
-      vh[id_bottom] = -vh[id];  // Flip normal velocity
-    }
-
-    // Top Boundary (i = ny) - Reflective
-    if (i == ny && j > 0 && j < nx + 1) 
-    {
-      h[id_top]  = h[id];
-      uh[id_top] = uh[id];   // Keep tangential velocity
-      vh[id_top] = -vh[id];  // Flip normal velocity
-    }
+  // Top Boundary (i = ny) - Reflective
+  if (i == ny && j > 0 && j < nx + 1) 
+  {
+    h[id_top]  = h[id];
+    uh[id_top] = uh[id];   
+    vh[id_top] = -vh[id];  // Flip y-momentum
   }
 }
 // ****************************************************************************************************************** //
@@ -516,7 +428,7 @@ int main ( int argc, char *argv[] )
       updateVariablesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_hm, d_uhm, d_vhm, nx, ny);
 
       // **** APPLY BOUNDARY CONDITIONS ****
-      applyBoundaryConditionsGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, nx, ny, 3); 
+      applyBoundaryConditionsGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, nx, ny); 
 
     } // end time loop
 
