@@ -515,8 +515,8 @@ int main (int argc, char *argv[])
       // === vh field ===
       haloExchange(vh, nx_local, ny_local, cart_comm, column_type, north, south, west, east, 8);
 
-      for (i = 1; i < ny_local + 2; i++)   
-        for (j = 1; j < nx_local + 2; j++) 
+      for (i = 0; i < ny_local + 2; i++)   
+        for (j = 0; j < nx_local + 2; j++) 
         {
           id = ID_2D(i, j, nx_local);
 
