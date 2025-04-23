@@ -291,90 +291,6 @@ void haloExchange(float *data, int nx_local, int ny_local, MPI_Comm cart_comm, M
 }
 /******************************************************************************/
 
-void write_results_mpi (int N, int N_loc, double time, float dx, float u[], int rank, int numProcessors)
-{
-  char filename[50];
-  //Create the filename based on the time step.
-  sprintf(filename, "tc2d_%08.6f.dat", time);
-
-  int i, j, id;
-
-  float x, y;
-   
-  float *u_local       = malloc((N_loc)*(N_loc)*sizeof(float));
-  float *u_global      = malloc((N)*(N)*sizeof(float));
-  float *u_write       = malloc((N)*(N)*sizeof(float));
-  
-  //pack the data for gather (to avoid sending ghosts)
-  int id_loc = 0;
-  for(j=1;j<N_loc+1;j++)
-  {
-    for(i=1;i<N_loc+1;i++)
-    {
-      id = ID_2D(i,j,N_loc);
-      u_local[id_loc] = u[id];
-      id_loc++;
-    }
-  }
-
-  //gather data on rank 0
-  MPI_Gather(u_local,id_loc,MPI_FLOAT,u_global,id_loc,MPI_FLOAT,0,MPI_COMM_WORLD);
-
-  //unpack data so that it is in nice array format
-  int id_write, id_global;
-  int irank_x, irank_y;
-  int q = sqrt(numProcessors);
-
-  if(rank==0)
-  {
-  
-    for(int p=0; p<numProcessors;p++){
-      irank_x = p%q;
-      irank_y = p/q;
-      for(j=0;j<N_loc;j++){
-	for(i=0;i<N_loc;i++){
-	  id_global = p*N_loc*N_loc + j*N_loc + i;
-	  id_write  = irank_x*N_loc*N_loc*q + j*N_loc*q + irank_y*N_loc + i;
-
-	  u_write[id_write] = u_global[id_global];
-	}
-      }
-    }
-
-    //Open the file.
-  FILE *file = fopen (filename, "wt" );
-    
-  if (!file)
-  {
-    fprintf (stderr, "\n" );
-
-    fprintf (stderr, "WRITE_RESULTS - Fatal error!\n");
-
-    fprintf (stderr, "  Could not open the output file.\n");
-
-    exit (1);
-  }
-    //Write the data.
-    for ( i = 0; i < N; i++ ) 
-      for ( j = 0; j < N; j++ ){
-        id=j*N+i;
-	      x = i*dx; //I am a bit lazy here with not gathering x and y
-	      y = j*dx;
-	
-	fprintf ( file, "%24.16g\t%24.16g\t%24.16g\t%24.16g\t%24.16g\n", x, y,u_write[id], 0.0, 0.0); //added extra zeros for backward-compatibility with plotting routines
-      }
-
-    //Close the file.
-    fclose ( file );
-
-  }
-  free(u_global); 
-  free(u_write);
-  free(u_local);
-  return;
-}
-/******************************************************************************/
-
 /****************************************************************************** MAIN FUNCTION ******************************************************************************/
 int main (int argc, char *argv[])
 {
@@ -563,8 +479,6 @@ int main (int argc, char *argv[])
 
     initialConditions(nx_local, ny_local, x_start, y_start, dx, dy, px, py, px_size, py_size, x_length, y_length, x, y, h, uh, vh);
 
-    write_results_mpi(nx_global, nx_local, programRuntime, dx, h, rank, numProcessors);
-
     MPI_Barrier(cart_comm);
     // Start timing the program
     time_start = MPI_Wtime();
@@ -717,8 +631,6 @@ int main (int argc, char *argv[])
     }
   }
   /****************************************************************************** Post-Processing ******************************************************************************/
-  
-  write_results_mpi(nx_global, nx_local, programRuntime, dx, h, rank, numProcessors);
 
   //Free memory.
   free ( h );
