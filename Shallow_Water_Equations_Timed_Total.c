@@ -1,58 +1,3 @@
-/*
-  Purpose:
-    MAIN is the main program for SHALLOW_WATER_2D.
-
-  Discussion:
-    SHALLOW_WATER_2D approximates the 2D shallow water equations.
-    The version of the shallow water equations being solved here is in
-    conservative form, and omits the Coriolis force.  The state variables
-    are H (the height) and UH (the mass velocity).
-
-    The equations have the form
-      dH/dt + d UH/dx = 0
-      d UH/dt + d ( U^2 H + 1/2 g H^2 )/dx + d ( U V H             )/dy = 0
-      d VH/dt + d ( U V H             )/dx + d ( V^2 H + 1/2 g H^2 )/dy = 0
-
-    Here U is the ordinary velocity, U = UH/H, and g is the gravitational
-    acceleration.
-    The initial conditions are used to specify ( H, UH ) at an equally
-    spaced set of points, and then the Lax-Friedrichs method is used to advance
-    the solution until a final time t_final, with
-    boundary conditions supplying the first and last spatial values.
-    Some input values will result in an unstable calculation that
-    quickly blows up.  This is related to the Courant-Friedrichs-Levy
-    condition, which requires that DT be small enough, relative to DX and
-    the velocity, that information cannot cross an entire cell.
-
-    A "reasonable" set of input quantities is
-      sw_2d 401 0.002 10.0 0.2
-
-  Licensing:
-    This code is distributed under the GNU LGPL license.
-
-  Modified:
-    26 March 2019 by Michal A. Kopera
-    20 April 2022 by Michal A. Kopera
-
-  Author:
-    John Burkardt
-
-  Reference:
-    Cleve Moler,
-    "The Shallow Water Equations",
-    Experiments with MATLAB.
-
-  Parameters:
-    Input, integer NX, the number of spatial nodes.
-    Input, integer DT, the size of a time step.
-    Input, real X_LENGTH, the length of the region.
-    Input, real T_FINAL, the final time of simulation.
-
-    Output, real X[NX], the X coordinates.
-    Output, real H[NX], the height for all space points at time t_final.
-    Output, real UH[NX], the mass velocity (discharge) for all space points at time t_final.
-*/
-
 # include <stdlib.h>
 # include <stdio.h>
 # include <math.h>
@@ -136,37 +81,6 @@ void initial_conditions ( int nx, int ny, float dx, float dy,  float x_length, f
       vh[id] = 0.0;
     }
 
-  return;
-}
-/******************************************************************************/
-
-void write_results ( char *output_filename, int nx, int ny, float x[], float y[], float h[], float uh[], float vh[])
-/******************************************************************************/
-
-{
-  int i,j, id;
-  FILE *output;
-   
-  //Open the file.
-  output = fopen ( output_filename, "wt" );
-    
-  if ( !output ){
-    fprintf ( stderr, "\n" );
-    fprintf ( stderr, "WRITE_RESULTS - Fatal error!\n" );
-    fprintf ( stderr, "  Could not open the output file.\n" );
-    exit ( 1 );
-  }
-    
-  //Write the data.
-  for ( i = 0; i < ny; i++ ) 
-    for ( j = 0; j < nx; j++ ){
-        id=ID_2D(i+1,j+1,nx);
-	fprintf ( output, "  %24.16g\t%24.16g\t%24.16g\t %24.16g\t %24.16g\n", x[j], y[i],h[id], uh[id], vh[id]);
-      }
-    
-  //Close the file.
-  fclose ( output );
-  
   return;
 }
 /******************************************************************************/
@@ -429,7 +343,7 @@ int main ( int argc, char *argv[] )
     clock_t time_end = clock();
     double time_elapsed = (double)(time_end - time_start) / CLOCKS_PER_SEC;
 
-    printf("Problem size: %d, Elapsed Time: %f s \n", nx, time_elapsed);
+    printf("Problem size: %d, Iteration: %d, Elapsed Time: %f s \n", nx, k, time_elapsed);
   } // End for loop for 5 iterations of calculation
   
   // **** POSTPROCESSING ****

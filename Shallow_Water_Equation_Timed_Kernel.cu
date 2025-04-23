@@ -473,14 +473,13 @@ int main ( int argc, char *argv[] )
   printf ( "SHALLOW_WATER_2D\n" );
   printf ( "\n" );
   
-  l = 1;
-  while (l < 11)
+
+  for(k = 1; k < 10; k++)
   {
-    // set initial time & step counter
     // set time to zero and step counter to zero
     time = 0.0f;
-    k = 0;
-
+    l = 0;
+    
     // instantiate section timing variables
     double time_elapsed_cf = 0.0;
     double time_elapsed_cv = 0.0;
@@ -503,7 +502,7 @@ int main ( int argc, char *argv[] )
     {
       // Take a time step and increase step counter
       time = time + dt;
-      k++;
+      l++;
 
       // *********************************************************************************************************************************************************** //
 
@@ -560,26 +559,19 @@ int main ( int argc, char *argv[] )
       // calculate time elapsed for apply boundary conditions
       time_elapsed_bc = time_elapsed_bc + std::chrono::duration<double>(end_time_bc - start_time_bc).count();
 
-      // *********************************************************************************************************************************************************** //
-
     } // end time loop
 
     // stop timer
     auto end_time = std::chrono::steady_clock::now();
     std::chrono::duration<double> time_elapsed = end_time - start_time;
-    double avg_time_elapsed_cf = time_elapsed_cf / (double) k;
-    double avg_time_elapsed_cv = time_elapsed_cv / (double) k;
-    double avg_time_elapsed_uv = time_elapsed_uv / (double) k;
-    double avg_time_elapsed_bc = time_elapsed_bc / (double) k;
+    
+    double avg_time_elapsed_cf = time_elapsed_cf / (double) l;
+    double avg_time_elapsed_cv = time_elapsed_cv / (double) l;
+    double avg_time_elapsed_uv = time_elapsed_uv / (double) l;
+    double avg_time_elapsed_bc = time_elapsed_bc / (double) l;
 
     // Print out the results
-    printf("Problem size: %d, Time steps: %d, Iteration: %d,  Elapsed time: %f s\n", nx, k, l, time_elapsed);
-    printf("Average time elapsed for compute fluxes: %f s\n", avg_time_elapsed_cf);
-    printf("Average time elapsed for compute variables: %f s\n", avg_time_elapsed_cv);
-    printf("Average time elapsed for update variables: %f s\n", avg_time_elapsed_uv);
-    printf("Average time elapsed for apply boundary conditions: %f s\n", avg_time_elapsed_bc);
-
-    l++;
+    printf("Problem size: %d, Time steps: %d, Iteration: %d, Elapsed time: %f s\nAverage elapsed time for compute fluxes: %f s\nAverage elapsed time for compute variables: %f s\nAverage elapsed time for update variables: %f s\nAverage elapsed time for apply boundary conditions: %f s\n", nx, l, k, time_elapsed, avg_time_elapsed_cf, avg_time_elapsed_cv, avg_time_elapsed_uv, avg_time_elapsed_bc);
   }
 
   // ******************************************************************** DEALLOCATE MEMORY ******************************************************************** //

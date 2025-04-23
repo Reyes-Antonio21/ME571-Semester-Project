@@ -85,38 +85,7 @@ void initial_conditions ( int nx, int ny, float dx, float dy,  float x_length, f
 }
 /******************************************************************************/
 
-void write_results ( char *output_filename, int nx, int ny, float x[], float y[], float h[], float uh[], float vh[])
-/******************************************************************************/
-
-{
-  int i,j, id;
-  FILE *output;
-   
-  //Open the file.
-  output = fopen ( output_filename, "wt" );
-    
-  if ( !output ){
-    fprintf ( stderr, "\n" );
-    fprintf ( stderr, "WRITE_RESULTS - Fatal error!\n" );
-    fprintf ( stderr, "  Could not open the output file.\n" );
-    exit ( 1 );
-  }
-    
-  //Write the data.
-  for ( i = 0; i < ny; i++ ) 
-    for ( j = 0; j < nx; j++ ){
-        id=ID_2D(i+1,j+1,nx);
-	fprintf ( output, "  %24.16g\t%24.16g\t%24.16g\t %24.16g\t %24.16g\n", x[j], y[i],h[id], uh[id], vh[id]);
-      }
-    
-  //Close the file.
-  fclose ( output );
-  
-  return;
-}
-/******************************************************************************/
-
-void getArgs(int *nx, float *dt, float *x_length, float *t_final, int argc, char *argv[])
+void getArgs(int *nx, double *dt, float *x_length, double *totalRuntime, int argc, char *argv[])
 {
 
   /*
@@ -141,9 +110,9 @@ void getArgs(int *nx, float *dt, float *x_length, float *t_final, int argc, char
     }
   
   if ( argc <= 4 ){
-    *t_final = 0.5;
+    *totalRuntime = 0.5;
   }else{
-    *t_final = atof ( argv[4] );
+    *totalRuntime = atof ( argv[4] );
   }
     
   
@@ -152,44 +121,62 @@ void getArgs(int *nx, float *dt, float *x_length, float *t_final, int argc, char
 
 int main ( int argc, char *argv[] )
 {
+  double dt;
+  double programRuntime;
+  double totalRuntime;
+  
+  int i, j, k, l;
+
+  int id;   
+  int id_left;
+  int id_right;
+  int id_bottom;
+  int id_top;
+
+  int nx;
+  int ny; 
+
+  int x_start;
+  int y_start;
+
   float dx;
   float dy;
-  float dt;
-  float g = 9.81; //[m^2/s] gravitational constant
+
+  float x_length;
+
+  float g = 9.81f; 
+
   float *h;
-  float *fh;
-  float *gh;
-  float *hm;
-  int i, j, k, l, id, id_left, id_right, id_bottom, id_top;
-  int nx, ny;
-  float t_final;
   float *uh;
-  float *fuh;
-  float *guh;
-  float *uhm;
   float *vh;
+
+  float *fh;
+  float *fuh;
   float *fvh;
+
+  float *gh;
+  float *guh;
   float *gvh;
+
+  float *hm;
+  float *uhm;
   float *vhm;
+
   float *x;
   float *y;
-  float x_length, time;
-
-  printf ( "\n" );
-  printf ( "SHALLOW_WATER_2D\n" );
-  printf ( "\n" );
 
   //get command line arguments
-  getArgs(&nx, &dt, &x_length, &t_final, argc, argv);
-   
-  printf ( "  NX = %d\n", nx );
-  printf ( "  DT = %g\n", dt );
-  printf ( "  X_LENGTH = %g\n", x_length );
-  printf ( "  T_FINAL = %g\n", t_final );
-  
+  getArgs(&nx, &dt, &x_length, &totalRuntime, argc, argv);
   ny = nx; // we assume this, does not have to be this way
 
-  // **** ALLOCATE MEMORY ****
+  //Define the locations of the nodes and time steps and the spacing.
+  dx = x_length / ( float ) ( nx );
+  dy = x_length / ( float ) ( nx );
+
+  float lambda_x = 0.5*dt/dx;
+  float lambda_y = 0.5*dt/dy;
+
+  // ************************************************ MEMORY ALLOCATIONS ************************************************ //
   
   //Allocate space (nx+2)((nx+2) long, to accound for ghosts
   //height array
@@ -216,39 +203,26 @@ int main ( int argc, char *argv[] )
 
   for (k = 1; k < 4; k++)
   {
-    //Define time-step counter
+    // set time to zero and step counter to zero
+    programRuntime = 0.0f;
     l = 0;
-    
-    //Define the locations of the nodes and time steps and the spacing.
-    dx = x_length / ( float ) ( nx );
-    dy = x_length / ( float ) ( nx );
 
-    // **** INITIAL CONDITIONS ****
-    //Apply the initial conditions.
-    printf("Before initial conditions\n");
+    // instantiate section timing variables
+    double time_elapsed_cf = 0.0;
+    double time_elapsed_cv = 0.0;
+    double time_elapsed_uv = 0.0;
+    double time_elapsed_bc = 0.0;
+
     initial_conditions ( nx, ny, dx, dy, x_length, x, y, h, uh, vh);
 
-    printf("Before write results\n");
-    //Write initial condition to a file
-    //write_results("sw2d_init.dat",nx,ny,x,y,h,uh,vh);
-
-    // **** TIME LOOP ****
-    float lambda_x = 0.5*dt/dx;
-    float lambda_y = 0.5*dt/dy;
-
-    double total_flux_time = 0.0;
-    double total_compute_variables_time = 0.0;
-    double total_update_variables_time = 0.0;
-    double total_apply_boundary_conditions_time = 0.0;
-
-    time = 0;
+    // start timer
     clock_t time_start = clock();
 
-    while (time < t_final) //time loop begins
+    while (programRuntime < totalRuntime) //time loop begins
     {
-
     //  Take a time step
-    time = time + dt;
+    programRuntime += dt;
+    l++;
       
     // **** COMPUTE FLUXES ****
     //Compute fluxes (including ghosts)
@@ -276,7 +250,7 @@ int main ( int argc, char *argv[] )
       
     // End timing the compute fluxes section
     clock_t flux_end = clock();
-    total_flux_time += (double)(flux_end - flux_start) / CLOCKS_PER_SEC;
+    time_elapsed_cf += (double)(flux_end - flux_start) / CLOCKS_PER_SEC;
 
     // **** COMPUTE VARIABLES ****
     //Compute updated variables
@@ -313,7 +287,7 @@ int main ( int argc, char *argv[] )
 
     // End timing the compute variables section
     clock_t compute_variables_end = clock();
-    total_compute_variables_time += (double)(compute_variables_end - compute_variables_start) / CLOCKS_PER_SEC;
+    time_elapsed_cv += (double)(compute_variables_end - compute_variables_start) / CLOCKS_PER_SEC;
 
     // **** UPDATE VARIABLES ****
     //update interior state variables
@@ -337,7 +311,7 @@ int main ( int argc, char *argv[] )
 
     // End timing update variables section
     clock_t update_variables_end = clock();
-    total_update_variables_time += (double)(update_variables_end - update_variables_start) / CLOCKS_PER_SEC;
+    time_elapsed_uv += (double)(update_variables_end - update_variables_start) / CLOCKS_PER_SEC;
 
     // **** APPLY BOUNDARY CONDITIONS ****
     //Update the ghosts (boundary conditions)
@@ -407,24 +381,19 @@ int main ( int argc, char *argv[] )
 
     // End timing apply boundary conditions section
     clock_t apply_boundary_conditions_end = clock();
-    total_apply_boundary_conditions_time += (double)(apply_boundary_conditions_end - apply_boundary_conditions_start) / CLOCKS_PER_SEC;
-
-    l = l + 1;
+    time_elapsed_bc += (double)(apply_boundary_conditions_end - apply_boundary_conditions_start) / CLOCKS_PER_SEC;
     
     } //end time loop
 
     clock_t time_end = clock();
     double time_elapsed = (double)(time_end - time_start) / CLOCKS_PER_SEC;
-    double avg_flux_time = total_flux_time / (double) l;
-    double avg_compute_variables_time = total_compute_variables_time / (double) l;
-    double avg_update_variables_time = total_update_variables_time / (double) l;
-    double avg_apply_boundary_conditions_time = total_apply_boundary_conditions_time / (double) l;
 
-    printf("Problem size: %d, Elapsed time: %f s, Time steps: %d \n", nx, time_elapsed, l);
-    printf("Average Flux computation time: %fs\n", avg_flux_time);
-    printf("Average Compute Variables time: %fs\n", avg_compute_variables_time);
-    printf("Average Update Variables time: %fs\n", avg_update_variables_time);
-    printf("Average Apply Boundary Conditions time: %fs\n", avg_apply_boundary_conditions_time);
+    double avg_time_elapsed_cf = time_elapsed_cf / (double) l;
+    double avg_time_elapsed_cv = time_elapsed_cv / (double) l;
+    double avg_time_elapsed_uv = time_elapsed_uv / (double) l;
+    double avg_time_elapsed_bc = time_elapsed_bc / (double) l;
+
+    printf("Problem size: %d, Time steps: %d, Iteration: %d, Elapsed time: %f s\nAverage elapsed time for compute fluxes: %f s\nAverage elapsed time for compute variables: %f s\nAverage elapsed time for update variables: %f s\nAverage elapsed time for apply boundary conditions: %f s\n", nx, l, k, time_elapsed, avg_time_elapsed_cf, avg_time_elapsed_cv, avg_time_elapsed_uv, avg_time_elapsed_bc);
 
   } // End for loop for 5 iterations of calculation
   
