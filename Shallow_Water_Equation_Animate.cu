@@ -236,139 +236,47 @@ __global__ void updateVariablesGPU(float *h, float *uh, float *vh, float *hm, fl
 }
 /******************************************************************************/
 
-__global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int nx, int ny, int bc_type)
+__global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int nx, int ny)
 {
   unsigned int i = threadIdx.y + blockIdx.y * blockDim.y;
   unsigned int j = threadIdx.x + blockIdx.x * blockDim.x;
 
-  unsigned int id, id_ghost;
+  unsigned int id = ((i) * (nx + 2) + (j));
+  unsigned int id_left   = ((i) * (nx + 2) + (j - 1));
+  unsigned int id_right  = ((i) * (nx + 2) + (j + 1));
+  unsigned int id_bottom = ((i - 1) * (nx + 2) + (j));
+  unsigned int id_top    = ((i + 1) * (nx + 2) + (j));
 
-  if (bc_type == 1) // Dirichlet Boundary Conditions
-  {  
-    // Left Boundary (j = 0)
-    if (j == 0 && i >= 1 && i <= ny) 
-    {
-      id = ID_2D(i, 1, nx);
-      id_ghost = ID_2D(i, 0, nx);
-      h[id_ghost]  = h[id];
-      uh[id_ghost] = uh[id];
-      vh[id_ghost] = vh[id];
-    }
-
-    // Right Boundary (j = nx + 1)
-    if (j == nx + 1 && i >= 1 && i <= ny) 
-    {
-      id = ID_2D(i, nx, nx);
-      id_ghost = ID_2D(i, nx + 1, nx);
-      h[id_ghost]  = h[id];
-      uh[id_ghost] = uh[id];
-      vh[id_ghost] = vh[id];
-    }
-
-    // Bottom Boundary (i = 0)
-    if (i == 0 && j >= 1 && j <= nx) 
-    {
-      id = ID_2D(1, j, nx);
-      id_ghost = ID_2D(0, j, nx);
-      h[id_ghost]  = h[id];
-      uh[id_ghost] = uh[id];
-      vh[id_ghost] = vh[id];
-    }
-
-    // Top Boundary (i = ny + 1)
-    if (i == ny + 1 && j >= 1 && j <= nx) 
-    {
-      id = ID_2D(ny, j, nx);
-      id_ghost = ID_2D(ny + 1, j, nx);
-      h[id_ghost]  = h[id];
-      uh[id_ghost] = uh[id];
-      vh[id_ghost] = vh[id];
-    }
+  // Left Boundary (j = 1) - Reflective
+  if (j == 1 && i > 0 && i < ny + 1) 
+  {
+    h[id_left]  = h[id];
+    uh[id_left] = -uh[id];  // Flip x-momentum
+    vh[id_left] = vh[id];   
   }
 
-  else if (bc_type == 2) // Periodic Boundary Conditions
-  {  
-    // Left to Right Periodic Boundary (wraps leftmost to rightmost)
-    if (j == 0 && i >= 1 && i <= ny) 
-    {
-      id = ID_2D(i, nx, nx);
-      id_ghost = ID_2D(i, 0, nx);
-      h[id_ghost]  = h[id];
-      uh[id_ghost] = uh[id];
-      vh[id_ghost] = vh[id];
-    }
-
-    // Right to Left Periodic Boundary (wraps rightmost to leftmost)
-    if (j == nx + 1 && i >= 1 && i <= ny) 
-    {
-      id = ID_2D(i, 1, nx);
-      id_ghost = ID_2D(i, nx + 1, nx);
-      h[id_ghost]  = h[id];
-      uh[id_ghost] = uh[id];
-      vh[id_ghost] = vh[id];
-    }
-
-    // Bottom to Top Periodic Boundary (wraps bottom to top)
-    if (i == 0 && j >= 1 && j <= nx) 
-    {
-      id = ID_2D(ny, j, nx);
-      id_ghost = ID_2D(0, j, nx);
-      h[id_ghost]  = h[id];
-      uh[id_ghost] = uh[id];
-      vh[id_ghost] = vh[id];
-    }
-
-    // Top to Bottom Periodic Boundary (wraps top to bottom)
-    if (i == ny + 1 && j >= 1 && j <= nx) 
-    {
-      id = ID_2D(1, j, nx);
-      id_ghost = ID_2D(ny + 1, j, nx);
-      h[id_ghost]  = h[id];
-      uh[id_ghost] = uh[id];
-      vh[id_ghost] = vh[id];
-    }  
+  // Right Boundary (j = nx) - Reflective
+  if (j == nx && i > 0 && i < ny + 1) 
+  {
+    h[id_right]  = h[id];
+    uh[id_right] = -uh[id];  // Flip x-momentum
+    vh[id_right] = vh[id];   
   }
-  else if (bc_type == 3) // Reflective Boundary Conditions
-  {  
-    // Left Boundary (j = 1) - Reflective
-    if (j == 1 && i > 0 && i < ny + 1) 
-    {
-      id = ((i) * (nx + 2) + (j));
-      id_ghost = ((i) * (nx + 2) + (j - 1));
-      h[id_ghost]  = h[id];
-      uh[id_ghost] = -uh[id];  // Flip normal velocity
-      vh[id_ghost] = vh[id];   // Keep tangential velocity
-    }
 
-    // Right Boundary (j = nx) - Reflective
-    if (j == nx && i > 0 && i < ny + 1) 
-    {
-      id = ((i) * (nx + 2) + (j));
-      id_ghost = ((i) * (nx + 2) + (j + 1));
-      h[id_ghost]  = h[id];
-      uh[id_ghost] = -uh[id];  // Flip normal velocity
-      vh[id_ghost] = vh[id];   // Keep tangential velocity
-    }
+  // Bottom Boundary (i = 1) - Reflective
+  if (i == 1 && j > 0 && j < nx + 1) 
+  {
+    h[id_bottom]  = h[id];
+    uh[id_bottom] = uh[id];   
+    vh[id_bottom] = -vh[id];  // Flip y-momentum
+  }
 
-    // Bottom Boundary (i = 1) - Reflective
-    if (i == 1 && j > 0 && j < nx + 1) 
-    {
-      id = ((i) * (nx + 2) + (j));
-      id_ghost = ((i - 1) * (nx + 2) + (j));
-      h[id_ghost]  = h[id];
-      uh[id_ghost] = uh[id];   // Keep tangential velocity
-      vh[id_ghost] = -vh[id];  // Flip normal velocity
-    }
-
-    // Top Boundary (i = ny) - Reflective
-    if (i == ny && j > 0 && j < nx + 1) 
-    {
-      id = ((i) * (nx + 2) + (j));
-      id_ghost = ((i + 1) * (nx + 2) + (j));
-      h[id_ghost]  = h[id];
-      uh[id_ghost] = uh[id];   // Keep tangential velocity
-      vh[id_ghost] = -vh[id];  // Flip normal velocity
-    }
+  // Top Boundary (i = ny) - Reflective
+  if (i == ny && j > 0 && j < nx + 1) 
+  {
+    h[id_top]  = h[id];
+    uh[id_top] = uh[id];   
+    vh[id_top] = -vh[id];  // Flip y-momentum
   }
 }
 // ****************************************************************************************************************** //
@@ -377,15 +285,12 @@ __global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int n
 int main ( int argc, char *argv[] )
 { 
 // ************************************************** INSTANTIATION ************************************************* //
-  int k;
   int nx; 
   int ny; 
 
-  float *x, *d_x;
-  float *y, *d_y;
-
   float dx;
   float dy;
+
   float x_length;
 
   double dt;
@@ -408,6 +313,9 @@ int main ( int argc, char *argv[] )
   float *hm, *d_hm; 
   float *uhm, *d_uhm;
   float *vhm, *d_vhm;
+
+  float *x, *d_x;
+  float *y, *d_y;
 
   // get command line arguments
   getArgs(&nx, &dt, &x_length, &t_final, argc, argv);
@@ -454,9 +362,6 @@ int main ( int argc, char *argv[] )
 
   // **** Allocate memory on device ****
 
-  CHECK(cudaMalloc((void **)&d_x, nx * sizeof ( float )));
-  CHECK(cudaMalloc((void **)&d_y, ny * sizeof ( float )));
-
   // Allocate space (nx+2)((nx+2) long, to account for ghosts
   CHECK(cudaMalloc((void **)&d_h, (nx+2)*(ny+2) * sizeof ( float )));
   CHECK(cudaMalloc((void **)&d_uh, (nx+2)*(ny+2) * sizeof ( float )));
@@ -474,16 +379,17 @@ int main ( int argc, char *argv[] )
   CHECK(cudaMalloc((void **)&d_uhm, (nx+2)*(ny+2) * sizeof ( float )));
   CHECK(cudaMalloc((void **)&d_vhm, (nx+2)*(ny+2) * sizeof ( float )));
 
+  CHECK(cudaMalloc((void **)&d_x, nx * sizeof ( float )));
+  CHECK(cudaMalloc((void **)&d_y, ny * sizeof ( float )));
+
   // ************************************************ INITIAL CONDITIONS ************************************************ //
 
   printf ( "\n" );
   printf ( "SHALLOW_WATER_2D\n" );
   printf ( "\n" );
 
-  // set initial time & step counter
-  // set time to zero and step counter to zero
+  // set time to zero
   time = 0.0f;
-  k = 0;
 
   //Apply the initial conditions.
   initial_conditions(nx, ny, dx, dy, x_length, x, y, h, uh, vh);
@@ -498,14 +404,10 @@ int main ( int argc, char *argv[] )
 
   // ******************************************************************** COMPUTATION SECTION ******************************************************************** //
 
-  // start timer
-  clock_t time_start = clock();
-
   while (time < t_final) // time loop begins
   {
     // Take a time step and increase step counter
     time = time + dt;
-    k++;
 
     // **** COMPUTE FLUXES ****
     computeFluxesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, nx, ny);
@@ -517,7 +419,7 @@ int main ( int argc, char *argv[] )
     updateVariablesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_hm, d_uhm, d_vhm, nx, ny);
 
     // **** APPLY BOUNDARY CONDITIONS ****
-    applyBoundaryConditionsGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, nx, ny, 3);  
+    applyBoundaryConditionsGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, nx, ny);  
 
     CHECK(cudaMemcpy(h, d_h, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
     CHECK(cudaMemcpy(uh, d_uh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
@@ -530,13 +432,6 @@ int main ( int argc, char *argv[] )
     CHECK(cudaMemcpy(d_vh, vh, (nx+2)*(ny+2) * sizeof ( float ), cudaMemcpyHostToDevice));
 
   } // end time loop
-
-  // stop timer
-  clock_t time_end = clock();
-  double time_elapsed = (double)(time_end - time_start) / CLOCKS_PER_SEC;
-
-  // Print out the results
-  printf("Problem size: %d, time steps taken: %d,  elapsed time: %f s\n", nx, k, time_elapsed);
 
   // ******************************************************************** DEALLOCATE MEMORY ******************************************************************** //
 
