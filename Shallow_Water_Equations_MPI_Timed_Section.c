@@ -381,20 +381,6 @@ int main (int argc, char *argv[])
   double time_end_uv;
   double time_end_bc;
 
-  double time_elapsed;
-  double time_elapsed_dt;
-  double time_elapsed_cf;
-  double time_elapsed_cv;
-  double time_elapsed_uv;
-  double time_elapsed_bc;
-
-  double time_max;
-  double time_max_dt;
-  double time_max_cf;
-  double time_max_cv;
-  double time_max_uv;
-  double time_max_bc;
-
   int i, j, k, l, m;
 
   int id;   
@@ -541,11 +527,25 @@ int main (int argc, char *argv[])
   }
 
   // **** INITIAL CONDITIONS ****
-  for(k = 1; k < 7; k++)
+  for(k = 1; k < 6; k++)
   {
     programRuntime = 0.0f;
     m = 0;
 
+    double time_elapsed = 0.0;
+    double time_elapsed_dt = 0.0;
+    double time_elapsed_cf = 0.0;
+    double time_elapsed_cv = 0.0;
+    double time_elapsed_uv = 0.0;
+    double time_elapsed_bc = 0.0;
+
+    double time_max = 0.0;
+    double time_max_dt = 0.0;
+    double time_max_cf = 0.0;
+    double time_max_cv = 0.0;
+    double time_max_uv = 0.0;
+    double time_max_bc = 0.0;
+    
     initialConditions(nx_local, ny_local, x_start, y_start, dx, dy, px, py, px_size, py_size, x_length, y_length, x, y, h, uh, vh);
 
     MPI_Barrier(cart_comm);

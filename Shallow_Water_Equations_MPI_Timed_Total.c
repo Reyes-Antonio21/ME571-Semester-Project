@@ -367,11 +367,6 @@ int main (int argc, char *argv[])
   double programRuntime;
   double totalRuntime;
 
-  double time_start;
-  double time_end;
-  double time_elapsed;
-  double time_max;
-
   int i, j, k, l, m;
 
   int id;   
@@ -523,11 +518,14 @@ int main (int argc, char *argv[])
     programRuntime = 0.0f;
     m = 0;
 
+    double time_elapsed = 0.0;
+    double time_max = 0.0;
+
     initialConditions(nx_local, ny_local, x_start, y_start, dx, dy, px, py, px_size, py_size, x_length, y_length, x, y, h, uh, vh);
 
     MPI_Barrier(cart_comm);
     // Start timing the program
-    time_start = MPI_Wtime();
+    double time_start = MPI_Wtime();
 
     // **** TIME LOOP ****
     while (programRuntime < totalRuntime) 
@@ -667,7 +665,7 @@ int main (int argc, char *argv[])
     }
 
     // Stop timing the program
-    time_end = MPI_Wtime();
+    double time_end = MPI_Wtime();
     time_elapsed = time_end - time_start;
     MPI_Reduce(&time_elapsed, &time_max, 1, MPI_DOUBLE, MPI_MAX, 0, cart_comm);
 
