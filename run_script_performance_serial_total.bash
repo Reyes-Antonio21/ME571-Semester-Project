@@ -29,7 +29,7 @@ do
     dt=$(echo "$CFL * $dx / $c" | bc -l)
 
     # Run simulation
-    output=$(./swep_2d_tt $nx $dt $xlen $t_final)
+    output=$(./swe_2d_tt $nx $dt $xlen $t_final)
 
     # Extract the relevant line
     echo "$output" | grep "Problem size" | while read -r line; do
