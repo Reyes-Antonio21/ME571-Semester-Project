@@ -1,17 +1,16 @@
-# include "common.h"
 # include <stdlib.h>
 # include <stdio.h>
 # include <math.h>
 # include <string.h>
 # include <time.h>
-#include <chrono>
+# include <chrono>
 # include <cuda_runtime.h>
 
-#define ID_2D(i,j,nx) ((i)*(nx+2)+(j))
+# define ID_2D(i,j,nx) ((i)*(nx+2)+(j))
 
 //************************************************ UTILITIES ************************************************//
 
-void getArgs(int *nx, double *dt, float *x_length, double *t_final, int argc, char *argv[])
+void getArgs(int *nx, double *dt, float *x_length, double *finalRuntime, int argc, char *argv[])
 {
   // Get the quadrature file root name:
 
@@ -34,9 +33,9 @@ void getArgs(int *nx, double *dt, float *x_length, double *t_final, int argc, ch
     }
   
   if ( argc <= 4 ){
-    *t_final = 0.5;
+    *finalRuntime = 0.5;
   }else{
-    *t_final = atof ( argv[4] );
+    *finalRuntime = atof ( argv[4] );
   }
 }
 // ****************************************************************************** //
@@ -310,7 +309,7 @@ int main ( int argc, char *argv[] )
 
   // get command line arguments
   getArgs(&nx, &dt, &x_length, &finalRuntime, argc, argv);
-  ny = nx; // we assume this, does not have to be this way
+  ny = nx; // we assume the grid is square
 
   // Define the locations of the nodes and time steps and the spacing.
   dx = x_length / ( float ) ( nx );
@@ -391,7 +390,6 @@ int main ( int argc, char *argv[] )
   printf ( "\n" );
 
   // set initial time & step counter
-  // set time to zero and step counter to zero
   programRuntime = 0.0f;
   k = 0;
 
@@ -423,10 +421,10 @@ int main ( int argc, char *argv[] )
 
   // ******************************************************************** COMPUTATION SECTION ******************************************************************** //
 
-  while (programRuntime < finalRuntime) // time loop begins
+  while (programRuntime < finalRuntime)
   {
     // Take a time step and increase step counter
-    programRuntime = programRuntime + dt;
+    programRuntime += dt;
     k++;
 
     // **** COMPUTE FLUXES ****
@@ -472,9 +470,9 @@ int main ( int argc, char *argv[] )
         cudaMemcpy(d_h, h, (nx+2) * (ny+2) * sizeof (float), cudaMemcpyHostToDevice);
       }
 
-      dropTrigger = dropTrigger + dropDelay; 
+      dropTrigger += dropDelay; 
     }
-  } // end time loop
+  }
 
   // ******************************************************************** POSTPROCESSING ******************************************************************** //
 
