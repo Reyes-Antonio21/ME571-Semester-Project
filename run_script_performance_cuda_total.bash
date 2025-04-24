@@ -17,7 +17,7 @@ CFL=0.5
 output_file="Shallow_Water_Equations_Cuda_Total_Runtime_Performance.csv"
 
 # CSV Header
-echo "Problem size,Time steps,Iterations,Elapsed time (s),Host-device transfer time (s)" > $output_file
+echo "Problem size,Time steps,Iterations,Elapsed time (s),Host-device transfer time (s),Device-host transfer time (s)" > $output_file
 
 # Loop over problem sizes
 for nx in 200 300 400 500 600 700 800 900 1000 1100 1200 1300 1400 1500 1600 1700 1800 1900 2000 \
