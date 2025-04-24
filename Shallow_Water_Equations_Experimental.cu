@@ -411,12 +411,12 @@ int main ( int argc, char *argv[] )
 
   applyTopBoundary<<<gridSizeX, boundaryBlockSize>>>(d_h, d_uh, d_vh, nx, ny);
 
-  cudamemcpy(h, d_h, (nx+2) * (ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost);
-  cudamemcpy(uh, d_uh, (nx+2) * (ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost);
-  cudamemcpy(vh, d_vh, (nx+2) * (ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost);
+  cudaMemcpy(h, d_h, (nx+2) * (ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost);
+  cudaMemcpy(uh, d_uh, (nx+2) * (ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost);
+  cudaMemcpy(vh, d_vh, (nx+2) * (ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost);
 
-  cudamemcpy(x, d_x, nx * sizeof ( float ), cudaMemcpyDeviceToHost);
-  cudamemcpy(y, d_y, ny * sizeof ( float ), cudaMemcpyDeviceToHost);
+  cudaMemcpy(x, d_x, nx * sizeof ( float ), cudaMemcpyDeviceToHost);
+  cudaMemcpy(y, d_y, ny * sizeof ( float ), cudaMemcpyDeviceToHost);
 
   // Write initial condition to a file
   writeResults(h, uh, vh, x, y, programRuntime, nx, ny);
