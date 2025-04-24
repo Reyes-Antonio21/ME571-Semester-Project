@@ -29,7 +29,7 @@ do
     dt=$(echo "$CFL * $dx / $c" | bc -l)
 
     # Run CUDA program
-    output=$(./swe_2d_ts $nx $dt $xlen $t_final)
+    output=$(./swep_2d_ts $nx $dt $xlen $t_final)
 
     # Extract line
     echo "$output" | grep "Problem size" | while read -r line; do
