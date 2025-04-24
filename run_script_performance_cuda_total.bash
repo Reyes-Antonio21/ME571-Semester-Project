@@ -40,9 +40,10 @@ do
         time_steps=$(echo "$line" | awk -F'[:,]' '{print $4}' | tr -d ' ')
         iterations=$(echo "$line" | awk -F'[:,]' '{print $6}' | tr -d ' ')
         elapsed_time=$(echo "$line" | awk -F'[:,]' '{print $8}' | tr -d ' s')
-        transfer_time=$(echo "$line" | awk -F'[:,]' '{print $10}' | tr -d ' s')
+        transfer_time_hd=$(echo "$line" | awk -F'[:,]' '{print $10}' | tr -d ' s')
+        transfer_time_dh=$(echo "$line" | awk -F'[:,]' '{print $12}' | tr -d ' s')
 
         # Append to CSV
-        echo "$problem_size,$time_steps,$iterations,$elapsed_time,$transfer_time" >> $output_file
+        echo "$problem_size,$time_steps,$iterations,$elapsed_time,$transfer_time_hd,$transfer_timd_dh" >> $output_file
     done
 done
