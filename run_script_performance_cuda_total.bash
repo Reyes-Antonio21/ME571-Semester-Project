@@ -44,6 +44,6 @@ do
         transfer_time_dh=$(echo "$line" | awk -F'[:,]' '{print $12}' | tr -d ' s')
 
         # Append to CSV
-        echo "$problem_size,$time_steps,$iterations,$elapsed_time,$transfer_time_hd,$transfer_timd_dh" >> $output_file
+        echo "$problem_size,$time_steps,$iterations,$elapsed_time,$transfer_time_hd,$transfer_time_dh" >> $output_file
     done
 done
