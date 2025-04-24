@@ -201,7 +201,7 @@ int main ( int argc, char *argv[] )
   x = ( float * ) malloc ( nx * sizeof ( float ) );
   y = ( float * ) malloc ( ny * sizeof ( float ) );
 
-  for (k = 1; k < 4; k++)
+  for (k = 1; k < 7; k++)
   {
     // set time to zero and step counter to zero
     programRuntime = 0.0f;

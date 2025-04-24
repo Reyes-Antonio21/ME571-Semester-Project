@@ -239,8 +239,6 @@ __global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int n
   unsigned int i = threadIdx.y + blockIdx.y * blockDim.y;
   unsigned int j = threadIdx.x + blockIdx.x * blockDim.x;
 
-  unsigned int id_ghost;
-
   unsigned int id = ((i) * (nx + 2) + (j));
   unsigned int id_left   = ((i) * (nx + 2) + (j - 1));
   unsigned int id_right  = ((i) * (nx + 2) + (j + 1));
@@ -286,6 +284,7 @@ int main ( int argc, char *argv[] )
 { 
 // ************************************************** INSTANTIATION ************************************************* //
   int k, l;
+  
   int nx; 
   int ny; 
 
@@ -294,6 +293,7 @@ int main ( int argc, char *argv[] )
 
   float dx;
   float dy;
+
   float x_length;
 
   double dt;

@@ -183,7 +183,7 @@ int main ( int argc, char *argv[] )
   x = ( float * ) malloc ( nx * sizeof ( float ) );
   y = ( float * ) malloc ( ny * sizeof ( float ) );
 
-  for (k = 1; k < 4; k++)
+  for (k = 1; k < 7; k++)
   {
     //Define the locations of the nodes and time steps and the spacing.
     dx = x_length / ( float ) ( nx );

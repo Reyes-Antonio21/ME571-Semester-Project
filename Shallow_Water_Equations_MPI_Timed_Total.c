@@ -518,7 +518,7 @@ int main (int argc, char *argv[])
   }
 
   // **** INITIAL CONDITIONS ****
-  for (k = 1; k < 11; k++)
+  for (k = 1; k < 7; k++)
   {
     programRuntime = 0.0f;
     m = 0;
