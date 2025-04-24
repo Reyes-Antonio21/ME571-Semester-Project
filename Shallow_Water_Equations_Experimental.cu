@@ -131,7 +131,7 @@ __global__ void initializeInterior(float *x, float *y, float *h, float *uh, floa
 }
 // ****************************************************************************** //
 
-__global__ void computeFluxesGPU(float *h, float *uh, float *vh, float *fh, float *fuh, float *fvh, float *gh, float *guh, float *gvh, int nx, int ny) 
+__global__ void computeFluxes(float *h, float *uh, float *vh, float *fh, float *fuh, float *fvh, float *gh, float *guh, float *gvh, int nx, int ny) 
 {
   unsigned int i = threadIdx.y + blockIdx.y * blockDim.y;
   unsigned int j = threadIdx.x + blockIdx.x * blockDim.x;
@@ -159,7 +159,7 @@ __global__ void computeFluxesGPU(float *h, float *uh, float *vh, float *fh, floa
 }
 // ****************************************************************************** //
 
-__global__ void computeVariablesGPU(float *hm, float *uhm, float *vhm, float *fh, float *fuh, float *fvh, float *gh, float *guh, float *gvh, float *h, float *uh, float *vh, float lambda_x, float lambda_y, int nx, int ny)
+__global__ void computeVariables(float *hm, float *uhm, float *vhm, float *fh, float *fuh, float *fvh, float *gh, float *guh, float *gvh, float *h, float *uh, float *vh, float lambda_x, float lambda_y, int nx, int ny)
 {
   unsigned int i = threadIdx.y + blockIdx.y * blockDim.y;
   unsigned int j = threadIdx.x + blockIdx.x * blockDim.x;
@@ -189,7 +189,7 @@ __global__ void computeVariablesGPU(float *hm, float *uhm, float *vhm, float *fh
 }
 // ****************************************************************************** //
 
-__global__ void updateVariablesGPU(float *h, float *uh, float *vh, float *hm, float *uhm, float *vhm, int nx, int ny)
+__global__ void updateVariables(float *h, float *uh, float *vh, float *hm, float *uhm, float *vhm, int nx, int ny)
 {
   unsigned int i = threadIdx.y + blockIdx.y * blockDim.y;
   unsigned int j = threadIdx.x + blockIdx.x * blockDim.x;
@@ -380,9 +380,9 @@ int main ( int argc, char *argv[] )
   cudaMalloc((void **)&d_x, nx * sizeof ( float ));
   cudaMalloc((void **)&d_y, ny * sizeof ( float ));
 
-  cudamemset(d_h, 0, (nx+2) * (ny+2) * sizeof ( float ));
-  cudamemset(d_uh, 0, (nx+2) * (ny+2) * sizeof ( float ));
-  cudamemset(d_vh, 0, (nx+2) * (ny+2) * sizeof ( float ));
+  cudaMemset(d_h, 0, (nx+2) * (ny+2) * sizeof ( float ));
+  cudaMemset(d_uh, 0, (nx+2) * (ny+2) * sizeof ( float ));
+  cudaMemset(d_vh, 0, (nx+2) * (ny+2) * sizeof ( float ));
 
   // ************************************************ INITIAL CONDITIONS ************************************************ //
 
@@ -430,13 +430,13 @@ int main ( int argc, char *argv[] )
     k++;
 
     // **** COMPUTE FLUXES ****
-    computeFluxesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, nx, ny);
+    computeFluxes<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, nx, ny);
     
     // **** COMPUTE VARIABLES ****
-    computeVariablesGPU<<<gridSize, blockSize>>>(d_hm, d_uhm, d_vhm, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, d_h, d_uh, d_vh, lambda_x, lambda_y, nx, ny);
+    computeVariables<<<gridSize, blockSize>>>(d_hm, d_uhm, d_vhm, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, d_h, d_uh, d_vh, lambda_x, lambda_y, nx, ny);
 
     // **** UPDATE VARIABLES ****
-    updateVariablesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_hm, d_uhm, d_vhm, nx, ny);
+    updateVariables<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_hm, d_uhm, d_vhm, nx, ny);
 
     // Start timing apply boundary condition calculations
     auto start_time_bc = std::chrono::steady_clock::now();
