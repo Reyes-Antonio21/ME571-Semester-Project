@@ -272,37 +272,42 @@ __global__ void applyBoundaryConditionsGPU(float *h, float *uh, float *vh, int n
   unsigned int j = threadIdx.x + blockIdx.x * blockDim.x;
 
   unsigned int id = ((i) * (nx + 2) + (j));
-  unsigned int id_left   = ((i) * (nx + 2) + (j - 1));
-  unsigned int id_right  = ((i) * (nx + 2) + (j + 1));
-  unsigned int id_bottom = ((i - 1) * (nx + 2) + (j));
-  unsigned int id_top    = ((i + 1) * (nx + 2) + (j));
 
-  // Left Boundary (j = 1) - Reflective
-  if (j == 1 && i > 0 && i < ny + 1) 
+  unsigned int id_left   = ((i) * (nx + 2));
+  unsigned int id_right  = ((i) * (nx + 2) + (nx + 1));
+  unsigned int id_bottom = (j);
+  unsigned int id_top    = ((ny + 1) * (nx + 2) + (j));
+
+  // Left Boundary
+  j == 1;
+  if (i > 0 && i < ny + 1) 
   {
     h[id_left]  = h[id];
     uh[id_left] = -uh[id];  // Flip x-momentum
     vh[id_left] = vh[id];   
   }
 
-  // Right Boundary (j = nx) - Reflective
-  if (j == nx && i > 0 && i < ny + 1) 
+  // Right Boundary (j = nx)
+  j == nx;
+  if (i > 0 && i < ny + 1) 
   {
     h[id_right]  = h[id];
     uh[id_right] = -uh[id];  // Flip x-momentum
     vh[id_right] = vh[id];   
   }
 
-  // Bottom Boundary (i = 1) - Reflective
-  if (i == 1 && j > 0 && j < nx + 1) 
+  // Bottom Boundary
+  i == 1;
+  if (j > 0 && j < nx + 1) 
   {
     h[id_bottom]  = h[id];
     uh[id_bottom] = uh[id];   
     vh[id_bottom] = -vh[id];  // Flip y-momentum
   }
 
-  // Top Boundary (i = ny) - Reflective
-  if (i == ny && j > 0 && j < nx + 1) 
+  // Top Boundary
+  i == ny;
+  if (j > 0 && j < nx + 1) 
   {
     h[id_top]  = h[id];
     uh[id_top] = uh[id];   
@@ -435,6 +440,8 @@ int main ( int argc, char *argv[] )
   dropTrigger = 40;
   dropDelay = 55;
 
+  double time_elapsed_bc = 0.0;
+
   // Apply the initial conditions.
   initialConditions(nx, ny, dx, dy, x_length, x, y, h, uh, vh);
 
@@ -466,8 +473,17 @@ int main ( int argc, char *argv[] )
     // **** UPDATE VARIABLES ****
     updateVariablesGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_hm, d_uhm, d_vhm, nx, ny);
 
+    // Start timing apply boundary condition calculations
+    auto start_time_bc = std::chrono::steady_clock::now();
+
     // **** APPLY BOUNDARY CONDITIONS ****
     applyBoundaryConditionsGPU<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, nx, ny, 3);
+
+    // Stop timing apply boundary condition calculations
+    auto end_time_bc = std::chrono::steady_clock::now();
+
+    // calculate time elapsed for apply boundary conditions
+    time_elapsed_bc = time_elapsed_bc + std::chrono::duration<double>(end_time_bc - start_time_bc).count();
 
     if (k == dropTrigger)
     {
@@ -490,6 +506,9 @@ int main ( int argc, char *argv[] )
   } // end time loop
 
   // ******************************************************************** POSTPROCESSING ******************************************************************** //
+
+  double avg_time_elapsed_bc = time_elapsed_bc / (double) k;
+  printf("Average time elapsed for apply boundary conditions: %f seconds\n", avg_time_elapsed_bc);
 
   // Move data back to the host
   CHECK(cudaMemcpy(h, d_h, (nx+2 )* (ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost));
@@ -548,37 +567,3 @@ int main ( int argc, char *argv[] )
   return 0;
 }
 // ******************************************************************************************************************************************** //
-
-
-/*
-void generateDrops( int nx, int ny, float x[], float y[], float h[])
-{
-  int i, j, id;
-
-  unsigned int randNumber;
-
-  // Determine a section's grid size
-  // This value will be used to section off the nx x nx grid into 16 sections
-  unsigned int sectionSquareLength = (nx * ny) / 25;
-
-  // Generate a random number between 0 & 24
-  randNumber = rand() % 25;
-
-  // Determine section bounds based on random number
-  unsigned int sectionStart = randNumber * sectionSquareLength;
-  unsigned int sectionEnd = (randNumber + 1) * sectionSquareLength;
-
-  for (i > sectionStart; i < sectionEnd + 1; i++)
-    for (j > sectionStart; j < sectionEnd + 1; j++)
-    {
-      id = ID_2D(i,j,nx);
-      
-      float xx = x[j - 1];
-      float yy = y[i - 1];
-
-      h[id] += 0.4f * expf(-15 * ( xx*xx + yy*yy));
-
-    }
-}
-// ****************************************************************************** //
-*/
