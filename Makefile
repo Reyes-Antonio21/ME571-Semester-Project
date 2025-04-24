@@ -4,10 +4,10 @@ MPICC = mpicc
 CUDACC = nvcc
 
 swe_2d_ts: Shallow_Water_Equations_Timed_Sections.c
-	$(CC) -o swe_2d_ts Shallow_Water_Equations_Timed_Sections.c
+	$(CC) -o swe_2d_ts Shallow_Water_Equations_Timed_Sections.c -lm
 
 swe_2d_tt: Shallow_Water_Equations_Timed_Total.c
-	$(CC) -o swe_2d_tt Shallow_Water_Equations_Timed_Total.c
+	$(CC) -o swe_2d_tt Shallow_Water_Equations_Timed_Total.c -lm
 
 swem_2d_ts: Shallow_Water_Equations_MPI_Timed_Section.c
 	$(MPICC) -g -Wall -o swem_2d_ts Shallow_Water_Equations_MPI_Timed_Section.c -lm
