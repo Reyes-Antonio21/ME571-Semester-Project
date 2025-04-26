@@ -6,6 +6,7 @@
 #SBATCH -p gpu
 #SBATCH -t 00:10:00
 #SBATCH --gres=gpu:1
+#SBATCH --exclusive
 
 # Fixed simulation constants
 nx=2500
@@ -22,6 +23,7 @@ dt=$(echo "$CFL * $dx / $c" | bc -l)
 
 # Run CUDA program
 ./swep_2d_ex $nx $dt $xlen $t_final
+
 ./swep_2d_ex 8000 0.0001 10 0.5
 
 ./swep_2d_ex 200 0.004 10 0.5
