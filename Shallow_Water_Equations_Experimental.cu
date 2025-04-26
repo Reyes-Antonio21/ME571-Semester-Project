@@ -378,7 +378,7 @@ int main ( int argc, char *argv[] )
   printf ( "SHALLOW_WATER_2D\n" );
   printf ( "\n" );
   
-  for(k = 1; k < 11; k++)
+  for(k = 1; k < 6; k++)
   {
     // set initial time & step counter
     programRuntime = 0.0f;
