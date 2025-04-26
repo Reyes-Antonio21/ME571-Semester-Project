@@ -484,34 +484,6 @@ int main (int argc, char *argv[])
   
   /****************************************************************************** MAIN LOOP ******************************************************************************/
   MPI_Barrier(MPI_COMM_WORLD);
-  if (rank == 0)
-  {
-    printf("\n");
-    printf ("SHALLOW_WATER_2D:\n");
-    printf (" A program to solve the shallow water equations.\n");
-    printf (" The problem is solved on a rectangular grid.\n");
-    printf (" The grid has %d x %d nodes.\n", nx_global, ny_global);
-    printf (" The total program runtime is %g.\n", totalRuntime);
-    printf (" The time step is %g.\n", dt);
-    printf (" The grid spacing is %g x %g.\n", dx, dy);
-    printf (" The grid length is %g x %g.\n", x_length, y_length);
-    printf (" The number of processes is %d.\n", numProcessors);
-    printf (" The processor grid dimensions are %d x %d.\n", dims[0], dims[1]);
-    printf (" The local grid dimensions are %d x %d.\n", nx_local, ny_local);
-    printf ("\n");
-    fflush(stdout); // Ensure immediate flush to console
-  }
-
-  for (l = 0; l < numProcessors; l++) 
-  {
-    MPI_Barrier(MPI_COMM_WORLD);
-    if (rank == l) 
-    {
-      printf("Rank %d: Global x-start position for rank %d: %d, Global y-start position for rank %d: %d\n", rank, rank, x_start, rank, y_start);
-      printf("\n");
-      fflush(stdout); // Ensure immediate flush to console
-    }
-  }
 
   // **** INITIAL CONDITIONS ****
   for (k = 1; k < 6; k++)
