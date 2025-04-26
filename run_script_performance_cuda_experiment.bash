@@ -13,7 +13,7 @@ nx=8000
 xlen=10
 t_final=0.5
 g=9.81
-h_max=1.15
+h_max=1.40
 CFL=0.5
 
 # Compute dt using CFL condition
