@@ -4,7 +4,6 @@
 # include <stdio.h>
 # include <math.h>
 # include <string.h>
-# include <windows.h>
 
 #define ID_2D(i,j,nx) ((i)*(nx+2)+(j))
 
