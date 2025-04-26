@@ -401,6 +401,16 @@ int main ( int argc, char *argv[] )
 
     applyTopBoundary<<<gridSizeX, boundaryBlockSize>>>(d_h, d_uh, d_vh, nx, ny);
 
+    cudaMemcpy(h, d_h, (nx+2) * (ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost);
+    cudaMemcpy(uh, d_uh, (nx+2) * (ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost);
+    cudaMemcpy(vh, d_vh, (nx+2) * (ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost);
+
+    cudaMemcpy(x, d_x, nx * sizeof ( float ), cudaMemcpyDeviceToHost);
+    cudaMemcpy(y, d_y, ny * sizeof ( float ), cudaMemcpyDeviceToHost);
+
+    // Write initial condition to a file
+    writeResults(h, uh, vh, x, y, programRuntime, nx, ny);
+
     // ******************************************************************** COMPUTATION SECTION ******************************************************************** //
 
     // start program timer
@@ -487,6 +497,12 @@ int main ( int argc, char *argv[] )
     // Print out the results
     printf("Problem size: %d, Time steps: %d, Iteration: %d, Elapsed time: %f s, Average elapsed time for compute fluxes: %f s, Average elapsed time for compute variables: %f s, Average elapsed time for update variables: %f s, Average elapsed time for apply boundary conditions: %f s\n", nx, l, k, time_elapsed, avg_time_elapsed_cf, avg_time_elapsed_cv, avg_time_elapsed_uv, avg_time_elapsed_bc);
   }
+
+  cudaMemcpy(h, d_h, (nx+2) * (ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost);
+  cudaMemcpy(uh, d_uh, (nx+2) * (ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost);
+  cudaMemcpy(vh, d_vh, (nx+2) * (ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost);
+
+  writeResults(h, uh, vh, x, y, programRuntime, nx, ny);
 
   // ******************************************************************** DEALLOCATE MEMORY ******************************************************************** //
 
