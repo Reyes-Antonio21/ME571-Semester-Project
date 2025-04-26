@@ -333,22 +333,12 @@ int main ( int argc, char *argv[] )
 
     applyTopBoundary<<<gridSizeX, boundaryBlockSize>>>(d_h, d_uh, d_vh, nx, ny);
 
-    auto start_time_dthd = std::chrono::steady_clock::now();
+    auto start_time_dtdh = std::chrono::steady_clock::now();
 
     // Move data to the device for calculations
     cudaMemcpy(h, d_h, (nx+2) * (ny+2) * sizeof(float), cudaMemcpyDeviceToHost);
     cudaMemcpy(uh, d_uh, (nx+2) * (ny+2) * sizeof(float), cudaMemcpyDeviceToHost);
     cudaMemcpy(vh, d_vh, (nx+2) * (ny+2) * sizeof(float), cudaMemcpyDeviceToHost);
-
-    // stop timer
-    auto end_time_dthd = std::chrono::steady_clock::now();
-    time_elapsed_dthd = time_elapsed_dthd + std::chrono::duration<double>(end_time_dthd - start_time_dthd).count();
-
-    auto start_time_dtdh = std::chrono::steady_clock::now();
-
-    cudaMemcpy(d_h, h, (nx+2) * (ny+2) * sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_uh, uh, (nx+2) * (ny+2) * sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_vh, vh, (nx+2) * (ny+2) * sizeof(float), cudaMemcpyHostToDevice);
 
     // stop timer
     auto end_time_dtdh = std::chrono::steady_clock::now();
@@ -383,6 +373,16 @@ int main ( int argc, char *argv[] )
 
       applyTopBoundary<<<gridSizeX, boundaryBlockSize>>>(d_h, d_uh, d_vh, nx, ny); 
     } 
+
+    auto start_time_dthd = std::chrono::steady_clock::now();
+
+    cudaMemcpy(d_h, h, (nx+2) * (ny+2) * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_uh, uh, (nx+2) * (ny+2) * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_vh, vh, (nx+2) * (ny+2) * sizeof(float), cudaMemcpyHostToDevice);
+
+    // stop timer
+    auto end_time_dthd = std::chrono::steady_clock::now();
+    time_elapsed_dthd = time_elapsed_dthd + std::chrono::duration<double>(end_time_dthd - start_time_dthd).count();
 
     // stop timer
     auto end_time = std::chrono::steady_clock::now();

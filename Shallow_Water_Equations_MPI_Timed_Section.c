@@ -738,7 +738,7 @@ int main (int argc, char *argv[])
 
     if (rank == 0) 
     {
-      printf("Number of processors: %d, Problem size: %d, Time steps: %d, Iteration: %d, Elapsed time: %f s, Average elapsed time for compute fluxes: %f s, Average elapsed time for compute variables: %f s, Average elapsed time for update variables: %f s, Average elapsed time for apply boundary conditions: %f s, Average elapsed time for data transfer: %f s\n", numProcessors, nx_global, m, k, time_max, avg_time_cf, avg_time_cv, avg_time_uv, avg_time_bc, avg_time_dt);
+      printf("Problem size: %d, Number of processors: %d, Time steps: %d, Iteration: %d, Elapsed time: %f s, Average elapsed time for compute fluxes: %f s, Average elapsed time for compute variables: %f s, Average elapsed time for update variables: %f s, Average elapsed time for apply boundary conditions: %f s, Average elapsed time for data transfer: %f s\n", nx_global, numProcessors, m, k, time_max, avg_time_cf, avg_time_cv, avg_time_uv, avg_time_bc, avg_time_dt);
       fflush(stdout);
     }
   }

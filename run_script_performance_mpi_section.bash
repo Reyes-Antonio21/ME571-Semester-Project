@@ -17,7 +17,7 @@ CFL=0.5
 output_file="Shallow_Water_Equations_MPI_Section_Runtime_Performance.csv"
 
 # Write CSV header
-echo "Processors,Problem size,Time steps,Iterations,Elapsed time (s),Avg compute fluxes (s),Avg compute variables (s),Avg update variables (s),Avg apply boundary conditions (s),Avg data transfer (s)" > $output_file
+echo "Problem size,Number of processors,Time steps,Iteration,Elapsed time (s),Avg compute fluxes time (s),Avg compute variables time (s),Avg update variables time (s),Avg apply boundary conditions time (s),Avg data transfer time (s)" > $output_file
 
 # Problem sizes
 for nx in 200 300 400 500 600 700 800 900 1000 1100 1200 1300 1400 1500 1600 1700 1800 1900 2000 \
@@ -35,13 +35,13 @@ do
         output=$(mpirun -np $p ./swem_2d_ts $nx $nx $dt $xlen $ylen $t_final)
 
         # Extract data from one-liner
-        echo "$output" | grep "Number of processors" | while read -r line; do
+        echo "$output" | grep "Problem size" | while read -r line; do
 
             # Parse fields
-            processors=$(echo "$line" | awk -F'[:,]' '{print $2}' | tr -d ' ')
-            problem_size=$(echo "$line" | awk -F'[:,]' '{print $4}' | tr -d ' ')
+            problem_size=$(echo "$line" | awk -F'[:,]' '{print $2}' | tr -d ' ')
+            processors=$(echo "$line" | awk -F'[:,]' '{print $4}' | tr -d ' ')
             time_steps=$(echo "$line" | awk -F'[:,]' '{print $6}' | tr -d ' ')
-            iterations=$(echo "$line" | awk -F'[:,]' '{print $8}' | tr -d ' ')
+            iteration=$(echo "$line" | awk -F'[:,]' '{print $8}' | tr -d ' ')
             elapsed_time=$(echo "$line" | awk -F'[:,]' '{print $10}' | tr -d ' s')
             avg_cf=$(echo "$line" | awk -F'[:,]' '{print $12}' | tr -d ' s')
             avg_cv=$(echo "$line" | awk -F'[:,]' '{print $14}' | tr -d ' s')
@@ -50,7 +50,7 @@ do
             avg_dt=$(echo "$line" | awk -F'[:,]' '{print $20}' | tr -d ' s')
 
             # Append to CSV
-            echo "$processors,$problem_size,$time_steps,$iterations,$elapsed_time,$avg_cf,$avg_cv,$avg_uv,$avg_bc,$avg_dt" >> $output_file
+            echo "$problem_size,$processors,$time_steps,$iteration,$elapsed_time,$avg_cf,$avg_cv,$avg_uv,$avg_bc,$avg_dt" >> $output_file
         done
     done
 done

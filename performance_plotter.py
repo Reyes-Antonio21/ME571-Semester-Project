@@ -31,11 +31,11 @@ def fitFunc5(x, a, b):
 # -------------------------------------------------------------- CSV Data -------------------------------------------------------------- 
 # Path to the CSV files
 # Note: The path should be updated to the location of your CSV files
-path ='C:/Users/anton/OneDrive/Documents/ME 571 Parallel Scientific Computing/Shallow_Water_Equations_Performance_csv_Files/'
+path ='C:/Users/Antonio Reyes/OneDrive/Documents/ME 571 Parallel Scientific Computing/Shallow_Water_Equations_Performance_csv_Files/'
 cudaKernelPerformance = 'Shallow_Water_Equations_Cuda_Kernel_Runtime_Performance.csv'
 cudaTotalPerformance = 'Shallow_Water_Equations_Cuda_Total_Runtime_Performance.csv'
 mpiTotalPerformance = 'Shallow_Water_Equations_Mpi_Total_Runtime_Performance.csv'
-mpiKernelPerformance = 'Shallow_Water_Equations_Mpi_Kernel_Runtime_Performance.csv'
+mpiSectionPerformance = 'Shallow_Water_Equations_Mpi_Section_Runtime_Performance.csv'
 serialTotalPerformance = 'Shallow_Water_Equations_Serial_Total_Runtime_Performance.csv'
 serialSectionPerformance = 'Shallow_Water_Equations_Serial_Section_Runtime_Performance.csv'
 
@@ -401,9 +401,12 @@ plt.ylabel("Average Section Execution Time (ms)")
 plt.legend()
 plt.show()
 
-# -------------------------------------------------------------- MPI totoal performance --------------------------------------------------------------
+# -------------------------------------------------------------- MPI total performance --------------------------------------------------------------
 
 mTPData = pd.read_csv(path + mpiTotalPerformance, header = 0, names = ['Problem size','Number of processors','Iteration','Time steps','Elapsed time (s)'])
+
+x = np.linspace(0, 50, 50)
+y = np.ones_like(x)
 
 # Define the columns to average
 columns_to_avg = [
@@ -420,10 +423,6 @@ std_data.columns = [col + " (std dev)" for col in std_data.columns]
 
 mTPData = averaged_data.join(std_data, how='left').reset_index()
 
-print(mTPData)
-print(mTPData.columns)
-
-# Rename columns for clarity
 problemSizemT = mTPData['Problem size']
 numberOfProcessors = mTPData['Number of processors']
 avgParallelElapsedTimemT = mTPData['Elapsed time (s)']
@@ -431,28 +430,92 @@ avgParallelElapsedTimemT = mTPData['Elapsed time (s)']
 plt.figure(figsize=(16,9))
 
 for problem_size in problemSizemT.unique():
-    subset = mTPData[mTPData['Problem size'] == problem_size]
+    subset = mTPData[problemSizemT == problem_size]
     plt.plot(subset['Number of processors'], subset['Elapsed time (s)'], marker='.', label=f'Problem Size: {problem_size}')
 
 plt.xlabel("Number of Processors")
 plt.ylabel("Average Time to Solution (s)")  
 plt.title("Average Elapsed Time vs Number of Processors")
 plt.legend()
+plt.xscale('log')
+plt.yscale('log')
 plt.tight_layout()
 plt.show()
 
-plt.figure(figsize=(16,9))
+# Choose a fixed problem size for strong scaling
+problem_size_to_analyze = 1800  # Change this to whichever size you want
+subset = mTPData[problemSizemT == problem_size_to_analyze]
 
-for problem_size in problemSizemT.unique():
-    subset = mTPData[problemSizemT == problem_size]
-    plt.plot(subset['Number of processors'], subset['Elapsed time (s)']/subset['Elapsed time (s)'], marker='.', label=f'Problem Size: {problem_size}')
+# Sort by number of processors
+subset = subset.sort_values(by='Number of processors')
 
-plt.xlabel("Number of Processors")
-plt.ylabel("Efficiency")
-plt.title("Strong Scaling Efficiency vs Number of Processors")
-plt.legend()
-plt.tight_layout()
+# Compute speedup and efficiency
+T1 = subset[subset['Number of processors'] == 1]['Elapsed time (s)'].values[0]
+subset['Speedup'] = T1 / subset['Elapsed time (s)']
+subset['Efficiency'] = subset['Speedup'] / subset['Number of processors']
+
+# === 3-in-1 Plot ===
+fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+
+# Panel 1: Elapsed Time
+axes[0].plot(subset['Number of processors'], subset['Elapsed time (s)'], marker='.')
+axes[0].set_xlabel('Number of Processors')
+axes[0].set_ylabel('Elapsed Time (s)')
+axes[0].set_title(f'Elapsed Time\n(Problem size {problem_size_to_analyze})')
+axes[0].grid(True)
+axes[0].set_xscale('log', base=2)
+axes[0].set_yscale('log')
+
+# Panel 2: Speedup
+axes[1].plot(subset['Number of processors'], subset['Speedup'], marker='.', label='Measured Speedup')
+axes[1].plot(subset['Number of processors'], subset['Number of processors'], linestyle='--', color='gray', label='Ideal Speedup')
+axes[1].set_xlabel('Number of Processors')
+axes[1].set_ylabel('Speedup')
+axes[1].set_title('Speedup')
+axes[1].legend()
+axes[1].grid(True)
+axes[1].set_xscale('log', base=2)
+axes[1].set_yscale('log')
+
+# Panel 3: Parallel Efficiency
+axes[2].plot(subset['Number of processors'], subset['Efficiency'], marker='.')
+plt.plot(x, y, c = 'k', linestyle = '--', label = 'Ideal Efficiency')
+axes[2].set_xlabel('Number of Processors')
+axes[2].set_ylabel('Efficiency')
+axes[2].set_title('Parallel Efficiency')
+axes[2].grid(True)
+axes[2].set_xscale('log', base=2)
+axes[2].set_ylim(0, 1.1)  # Efficiency should be between 0 and 1
+
+# Final Layout
+plt.suptitle(f'Strong Scaling Analysis for Problem Size {problem_size_to_analyze}', fontsize=16)
+plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 plt.show()
+# -------------------------------------------------------------- MPI section performance --------------------------------------------------------------
+
+mSPData = pd.read_csv(path + mpiSectionPerformance, header = 0, names = ['Processors','Problem size','Time steps','Iterations','Elapsed time (s)','Avg compute fluxes (s)','Avg compute variables (s)','Avg update variables (s)', 'Avg apply boundary conditions (s)', 'Avg data transfer (s)'])
+
+# Define the columns to average
+columns_to_avg = [
+    "Elapsed time (s)",
+    "Avg compute fluxes (s)",
+    "Avg compute variables (s)",
+    "Avg update variables (s)",
+    "Avg apply boundary conditions (s)",
+    "Avg data transfer (s)"
+]
+
+# Group by 'Problem size' and calculate the mean and std deviation
+data_to_avg = mSPData.groupby(['Problem size', 'Processors'])[columns_to_avg]
+averaged_data = data_to_avg.mean()
+std_data = data_to_avg.std()
+
+# Rename std columns to distinguish them
+std_data.columns = [col + " (std dev)" for col in std_data.columns]
+
+mSPData = averaged_data.join(std_data, how='left').reset_index()
+
+
 
 # -------------------------------------------------------------- Parallel to serial SECTION performance comparison --------------------------------------------------------------
 # Find the minimum length

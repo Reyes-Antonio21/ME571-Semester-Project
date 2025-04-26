@@ -16,7 +16,7 @@ CFL=0.5
 output_file="Shallow_Water_Equations_Serial_Total_Runtime_Performance.csv"
 
 # Write header
-echo "Problem size,Iterations,Elapsed time (s)" > $output_file
+echo "Problem size,Time steps,Iteration,Elapsed time (s)" > $output_file
 
 # Loop over problem sizes
 for nx in 200 300 400 500 600 700 800 900 1000 1100 1200 1300 1400 1500 1600 1700 1800 1900 2000 \
@@ -35,10 +35,11 @@ do
     echo "$output" | grep "Problem size" | while read -r line; do
         # Extract values using awk
         problem_size=$(echo "$line" | awk -F'[:,]' '{print $2}' | tr -d ' ')
-        iterations=$(echo "$line" | awk -F'[:,]' '{print $4}' | tr -d ' ')
-        elapsed_time=$(echo "$line" | awk -F'[:,]' '{print $6}' | tr -d ' s')
+        time_steps=$(echo "$line" | awk -F'[:,]' '{print $4}' | tr -d ' ')
+        iteration=$(echo "$line" | awk -F'[:,]' '{print $6}' | tr -d ' ')
+        elapsed_time=$(echo "$line" | awk -F'[:,]' '{print $8}' | tr -d ' s')
 
         # Append to CSV
-        echo "$problem_size,$iterations,$elapsed_time" >> $output_file
+        echo "$problem_size,$time_steps,$iteration,$elapsed_time" >> $output_file
     done
 done

@@ -16,7 +16,7 @@ CFL=0.5
 output_file="Shallow_Water_Equations_Serial_Section_Runtime_Performance.csv"
 
 # Write CSV header (once)
-echo "Problem size,Time steps,Iterations,Elapsed time (s),Avg fluxes (s),Avg variables (s),Avg update (s),Avg boundary (s)" > $output_file
+echo "Problem size,Time steps,Iteration,Elapsed time (s),Avg compute fluxes time (s),Avg compute variables time (s),Avg update variables time (s),Avg apply boundary conditions time (s)" > $output_file
 
 # Problem size loop
 for nx in 200 300 400 500 600 700 800 900 1000 1100 1200 1300 1400 1500 1600 1700 1800 1900 2000 \
@@ -36,7 +36,7 @@ do
         # Extract values using awk
         problem_size=$(echo "$line" | awk -F'[:,]' '{print $2}' | tr -d ' ')
         time_steps=$(echo "$line" | awk -F'[:,]' '{print $4}' | tr -d ' ')
-        iterations=$(echo "$line" | awk -F'[:,]' '{print $6}' | tr -d ' ')
+        iteration=$(echo "$line" | awk -F'[:,]' '{print $6}' | tr -d ' ')
         elapsed_time=$(echo "$line" | awk -F'[:,]' '{print $8}' | tr -d ' s')
         avg_cf=$(echo "$line" | awk -F'[:,]' '{print $10}' | tr -d ' s')
         avg_cv=$(echo "$line" | awk -F'[:,]' '{print $12}' | tr -d ' s')
@@ -44,6 +44,6 @@ do
         avg_bc=$(echo "$line" | awk -F'[:,]' '{print $16}' | tr -d ' s')
 
         # Append to CSV
-        echo "$problem_size,$time_steps,$iterations,$elapsed_time,$avg_cf,$avg_cv,$avg_uv,$avg_bc" >> $output_file
+        echo "$problem_size,$time_steps,$iteration,$elapsed_time,$avg_cf,$avg_cv,$avg_uv,$avg_bc" >> $output_file
     done
 done

@@ -513,7 +513,7 @@ int main (int argc, char *argv[])
   }
 
   // **** INITIAL CONDITIONS ****
-  for (k = 1; k < 7; k++)
+  for (k = 1; k < 6; k++)
   {
     programRuntime = 0.0f;
     m = 0;
@@ -671,7 +671,7 @@ int main (int argc, char *argv[])
 
     if (rank == 0) 
     {
-      printf("Number of Processors: %d, Problem size: %d, iterations: %d, Time steps: %d, Elapsed time: %f s\n", numProcessors, nx_global, k, m, time_max);
+      printf("Problem size: %d, Number of Processors: %d, Time steps: %d, iteration: %d, Elapsed time: %f s\n", nx_global, numProcessors, m, k, time_max);
     }
   }
   /****************************************************************************** Post-Processing ******************************************************************************/
