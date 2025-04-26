@@ -27,7 +27,7 @@ do
     c=$(echo "sqrt($g * $h_max)" | bc -l)
     dt=$(echo "$CFL * $dx / $c" | bc -l)
 
-    for p in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 22 24 26 28 30 32 34 36 38 40 42 44 46 48
+    for p in 1 2 4 6 8 10 11 12 13 14 15 16 17 18 19 20 22 24 26 28 30 32 34 36 38 40 42 44 46 48
     do
         # Run and capture all output
         output=$(mpirun -np $p ./swem_2d_tt $nx $nx $dt $xlen $ylen $t_final)
