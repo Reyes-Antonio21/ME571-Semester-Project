@@ -2,11 +2,18 @@
 # include <stdio.h>
 # include <math.h>
 # include <string.h>
-# include <time.h>
+# include <windows.h>
 
 #define ID_2D(i,j,nx) ((i)*(nx+2)+(j))
 
-void initial_conditions ( int nx, int ny, float dx, float dy,  float x_length, float x[],float y[], float h[], float uh[] ,float vh[]){
+typedef struct {
+  LARGE_INTEGER start;
+  LARGE_INTEGER end;
+  LARGE_INTEGER frequency;
+} Timer;
+
+void initial_conditions (int nx, int ny, double dx, double dy, double x_length, float x[], float y[], float h[], float uh[] ,float vh[])
+{
   int i,j, id, id1;
 
   for ( i = 1; i < nx+1; i++ )
@@ -85,7 +92,7 @@ void initial_conditions ( int nx, int ny, float dx, float dy,  float x_length, f
 }
 /******************************************************************************/
 
-void getArgs(int *nx, float *dt, float *x_length, float *totalRuntime, int argc, char *argv[])
+void getArgs(int *nx, double *dt, double *x_length, double *totalRuntime, int argc, char *argv[])
 {
 
   /*
@@ -119,12 +126,33 @@ void getArgs(int *nx, float *dt, float *x_length, float *totalRuntime, int argc,
 }
 /******************************************************************************/
 
+void timer_start(Timer* t) 
+{
+  QueryPerformanceFrequency(&t->frequency);
+  QueryPerformanceCounter(&t->start);
+}
+
+void timer_stop(Timer* t) 
+{
+  QueryPerformanceCounter(&t->end);
+}
+
+double timer_elapsed(Timer* t) 
+{
+  return (double)(t->end.QuadPart - t->start.QuadPart) / (double)(t->frequency.QuadPart);
+}
+
 int main ( int argc, char *argv[] )
 {
   double dt;
   double programRuntime;
   double totalRuntime;
+
+  double x_length;
   
+  double dx;
+  double dy;
+
   int i, j, k, l;
 
   int id;   
@@ -136,15 +164,8 @@ int main ( int argc, char *argv[] )
   int nx;
   int ny; 
 
-  int x_start;
-  int y_start;
-
-  float dx;
-  float dy;
-
-  float x_length;
-
-  float g = 9.81f; 
+  float g = 9.81f;
+  float g_half = 0.5f * g;
 
   float *h;
   float *uh;
@@ -170,11 +191,11 @@ int main ( int argc, char *argv[] )
   ny = nx; // we assume the grid is square
 
   //Define the locations of the nodes and time steps and the spacing.
-  dx = x_length / ( float ) ( nx );
-  dy = x_length / ( float ) ( nx );
+  dx = x_length / ( double ) ( nx );
+  dy = x_length / ( double ) ( nx );
 
-  float lambda_x = 0.5*dt/dx;
-  float lambda_y = 0.5*dt/dy;
+  double lambda_x = 0.5 * dt/dx;
+  double lambda_y = 0.5 * dt/dy;
 
   printf ( "\n" );
   printf ( "SHALLOW_WATER_2D\n" );
@@ -212,10 +233,10 @@ int main ( int argc, char *argv[] )
     l = 0;
 
     // **** INITIAL CONDITIONS ****
-    initial_conditions ( nx, ny, dx, dy, x_length, x, y, h, uh, vh);
+    initial_conditions(nx, ny, dx, dy, x_length, x, y, h, uh, vh);
 
-    // start timer
-    clock_t time_start = clock();
+    Timer main_timer;
+    timer_start(&main_timer);
 
     while (programRuntime < totalRuntime)
     {
@@ -224,58 +245,98 @@ int main ( int argc, char *argv[] )
       l++;
         
       // **** COMPUTE FLUXES ****
-
-      // Start timing compute fluxes section
-      clock_t flux_start = clock();
         
       // Compute fluxes (including ghosts)
-      for ( i = 0; i < ny + 2; i++ )
-        for ( j = 0; j < nx + 2; j++)
+      for (int i = 0; i < ny + 2; i++)
+        for (int j = 0; j < nx + 2; j++) 
         {
-          id = ID_2D(i, j, nx);
+          int id = ID_2D(i, j, nx);
+      
+          float h_val = h[id];
 
-          fh[id] = uh[id]; //flux for the height equation: u*h
+          float uh_val = uh[id];
 
-          fuh[id] = uh[id] * uh[id] / h[id] + 0.5 * g * h[id] * h[id]; //flux for the momentum equation: u^2*h + 0.5*g*h^2
+          float vh_val = vh[id];
 
-          fvh[id] = uh[id] * vh[id] / h[id]; //flux for the momentum equation: u*v**h 
+          float inv_h = 1.0f / h_val;
 
-          gh[id] = vh[id]; //flux for the height equation: v*h
+          float h2 = h_val * h_val; 
+      
+          fh[id]  = uh_val;
 
-          guh[id] = uh[id] * vh[id] / h[id]; //flux for the momentum equation: u*v**h 
+          gh[id]  = vh_val;
+      
+          float uh2 = uh_val * uh_val; 
 
-          gvh[id] = vh[id] * vh[id] / h[id] + 0.5 * g * h[id] * h[id]; //flux for the momentum equation: v^2*h + 0.5*g*h^2
+          float vh2 = vh_val * vh_val; 
+
+          float uv  = uh_val * vh_val; 
+      
+          fuh[id] = uh2 * inv_h + g_half * h2;
+
+          fvh[id] = uv  * inv_h;
+
+          guh[id] = uv  * inv_h;
+
+          gvh[id] = vh2 * inv_h + g_half * h2;
         }
         
       // **** COMPUTE VARIABLES ****
 
       //Compute updated variables
-      for ( i = 1; i < ny + 1; i++ )
-        for ( j = 1; j < nx + 1; j++ )
+      for (int i = 1; i < ny + 1; i++)
+        for (int j = 1; j < nx + 1; j++) 
         {
-          id = ID_2D(i, j, nx);
-            
-          id_left = ID_2D(i, j - 1, nx);
-
-          id_right = ID_2D(i, j + 1, nx);
-
-          id_bottom = ID_2D(i - 1, j, nx);
-
-          id_top = ID_2D(i + 1, j, nx);
-
-          hm[id] = 0.25 * (h[id_left] + h[id_right] + h[id_bottom] + h[id_top]) 
-            - lambda_x * ( fh[id_right] - fh[id_left] ) 
-            - lambda_y * ( gh[id_top] - gh[id_bottom] );
-
-          uhm[id] = 0.25 * (uh[id_left] + uh[id_right] + uh[id_bottom] + uh[id_top]) 
-            - lambda_x * ( fuh[id_right] - fuh[id_left] ) 
-            - lambda_y * ( guh[id_top] - guh[id_bottom] );
-
-          vhm[id] = 0.25 * (vh[id_left] + vh[id_right] + vh[id_bottom] + vh[id_top]) 
-            - lambda_x * ( fvh[id_right] - fvh[id_left] ) 
-            - lambda_y * ( gvh[id_top] - gvh[id_bottom] );
+          int id = ID_2D(i, j, nx);
+          int id_left = ID_2D(i, j - 1, nx);
+          int id_right = ID_2D(i, j + 1, nx);
+          int id_bottom = ID_2D(i - 1, j, nx);
+          int id_top = ID_2D(i + 1, j, nx);
+      
+          // Load neighbor values into local registers
+          float h_l  = h[id_left];
+          float h_r  = h[id_right];
+          float h_b  = h[id_bottom];
+          float h_t  = h[id_top];
+      
+          float uh_l = uh[id_left];
+          float uh_r = uh[id_right];
+          float uh_b = uh[id_bottom];
+          float uh_t = uh[id_top];
+      
+          float vh_l = vh[id_left];
+          float vh_r = vh[id_right];
+          float vh_b = vh[id_bottom];
+          float vh_t = vh[id_top];
+      
+          float fh_l = fh[id_left];
+          float fh_r = fh[id_right];
+          float gh_b = gh[id_bottom];
+          float gh_t = gh[id_top];
+      
+          float fuh_l = fuh[id_left];
+          float fuh_r = fuh[id_right];
+          float guh_b = guh[id_bottom];
+          float guh_t = guh[id_top];
+      
+          float fvh_l = fvh[id_left];
+          float fvh_r = fvh[id_right];
+          float gvh_b = gvh[id_bottom];
+          float gvh_t = gvh[id_top];
+      
+          hm[id] = 0.25f * (h_l + h_r + h_b + h_t)
+                 - (float) lambda_x * (fh_r - fh_l)
+                 - (float) lambda_y * (gh_t - gh_b);
+      
+          uhm[id] = 0.25f * (uh_l + uh_r + uh_b + uh_t)
+                  - (float) lambda_x * (fuh_r - fuh_l)
+                  - (float) lambda_y * (guh_t - guh_b);
+      
+          vhm[id] = 0.25f * (vh_l + vh_r + vh_b + vh_t)
+                  - (float) lambda_x * (fvh_r - fvh_l)
+                  - (float) lambda_y * (gvh_t - gvh_b);
         }
-
+      
       // **** UPDATE VARIABLES ****
 
       //update interior state variables  
@@ -302,11 +363,13 @@ int main ( int argc, char *argv[] )
 
         id_left = ID_2D(i, j - 1, nx);
 
-        h[id_left]  = h[id];
+        float h_val = h[id];
+        float uh_val = uh[id];
+        float vh_val = vh[id];
 
-        uh[id_left] = - uh[id];
-
-        vh[id_left] = vh[id];
+        h[id_left]  = h_val;
+        uh[id_left] = -uh_val;
+        vh[id_left] = vh_val;
       }
 
       //right
@@ -317,11 +380,13 @@ int main ( int argc, char *argv[] )
 
         id_right = ID_2D(i, j + 1, nx);
 
-        h[id_right]  = h[id];
+        float h_val = h[id];
+        float uh_val = uh[id];
+        float vh_val = vh[id];
 
-        uh[id_right] = - uh[id];
-
-        vh[id_right] = vh[id];
+        h[id_right]  = h_val;
+        uh[id_right] = -uh_val;
+        vh[id_right] = vh_val;
       }
 
       //bottom
@@ -332,11 +397,13 @@ int main ( int argc, char *argv[] )
 
         id_bottom = ID_2D(i - 1, j, nx);
 
-        h[id_bottom]  = h[id];
+        float h_val = h[id];
+        float uh_val = uh[id];
+        float vh_val = vh[id];
 
-        uh[id_bottom] = uh[id];
-
-        vh[id_bottom] = - vh[id];
+        h[id_bottom]  = h_val;
+        uh[id_bottom] = uh_val;
+        vh[id_bottom] = -vh_val;
       }
 
       //top
@@ -347,18 +414,20 @@ int main ( int argc, char *argv[] )
 
         id_top = ID_2D(i + 1, j, nx);
 
-        h[id_top]  = h[id];
+        float h_val = h[id];
+        float uh_val = uh[id];
+        float vh_val = vh[id];
 
-        uh[id_top] = uh[id];
-
-        vh[id_top] = - vh[id];
+        h[id_top]  = h_val;
+        uh[id_top] = uh_val;
+        vh[id_top] = -vh_val;
       }
     }
 
-    clock_t time_end = clock();
-    double time_elapsed = (double)(time_end - time_start) / CLOCKS_PER_SEC;
+    timer_stop(&main_timer);
+    double time_elapsed = timer_elapsed(&main_timer);
 
-    printf("Problem size: %d, Time steps: %d, Iteration: %d, Elapsed Time: %f s \n", nx, l, k, time_elapsed);
+    printf("Problem size: %d, Time steps: %d, Iteration: %d, Elapsed Time: %f s\n", nx, l, k, time_elapsed);
   }
   
   // **** POSTPROCESSING ****

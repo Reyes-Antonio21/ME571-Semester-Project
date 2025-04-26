@@ -67,23 +67,38 @@ __global__ void computeFluxes(float *h, float *uh, float *vh, float *fh, float *
   
   unsigned int id = ((i) * (nx + 2) + (j));
 
-  float g = 9.81f; // Gravitational acceleration
-  float h_safe = fmaxf(h[id], 1e-6f); // Prevent division by zero
+  float g = 9.81f; 
+  float g_half = 0.5f * g; 
   
   if (i < ny + 2 && j < nx + 2)
   {
-    // Compute fluxes safely
-    fh[id] = uh[id];
+    float h_val = h[id];
 
-    fuh[id] = uh[id] * uh[id] / h_safe + 0.5f * g * h_safe * h_safe;
+    float uh_val = uh[id];
 
-    fvh[id] = uh[id] * vh[id] / h_safe;
+    float vh_val = vh[id];
 
-    gh[id] = vh[id];
+    float inv_h = 1.0f / h_val;
 
-    guh[id] = uh[id] * vh[id] / h_safe;
+    float h2 = h_val * h_val; 
 
-    gvh[id] = vh[id] * vh[id] / h_safe + 0.5f * g * h_safe * h_safe;
+    fh[id]  = uh_val;
+
+    gh[id]  = vh_val;
+
+    float uh2 = uh_val * uh_val; 
+
+    float vh2 = vh_val * vh_val; 
+
+    float uv  = uh_val * vh_val; 
+
+    fuh[id] = uh2 * inv_h + g_half * h2;
+
+    fvh[id] = uv  * inv_h;
+
+    guh[id] = uv  * inv_h;
+
+    gvh[id] = vh2 * inv_h + g_half * h2;
   }
 }
 // ****************************************************************************** //
@@ -98,22 +113,53 @@ __global__ void computeVariables(float *hm, float *uhm, float *vhm, float *fh, f
   {
     id = ((i) * (nx + 2) + (j));
 
-    id_left   = ((i) * (nx + 2) + (j - 1));
-    id_right  = ((i) * (nx + 2) + (j + 1));
+    id_left = ((i) * (nx + 2) + (j - 1));
+    id_right = ((i) * (nx + 2) + (j + 1));
     id_bottom = ((i - 1) * (nx + 2) + (j));
-    id_top    = ((i + 1) * (nx + 2) + (j));
+    id_top = ((i + 1) * (nx + 2) + (j));
 
-    hm[id] = 0.25 * (h[id_left] + h[id_right] + h[id_bottom] + h[id_top])
-          - lambda_x * (fh[id_right] - fh[id_left])
-          - lambda_y * (gh[id_top] - gh[id_bottom]);
+    // Load neighbor values into local registers
+    float h_l  = h[id_left];
+    float h_r  = h[id_right];
+    float h_b  = h[id_bottom];
+    float h_t  = h[id_top];
 
-    uhm[id] = 0.25 * (uh[id_left] + uh[id_right] + uh[id_bottom] + uh[id_top])
-            - lambda_x * (fuh[id_right] - fuh[id_left])
-            - lambda_y * (guh[id_top] - guh[id_bottom]);
+    float uh_l = uh[id_left];
+    float uh_r = uh[id_right];
+    float uh_b = uh[id_bottom];
+    float uh_t = uh[id_top];
 
-    vhm[id] = 0.25 * (vh[id_left] + vh[id_right] + vh[id_bottom] + vh[id_top])
-            - lambda_x * (fvh[id_right] - fvh[id_left])
-            - lambda_y * (gvh[id_top] - gvh[id_bottom]);
+    float vh_l = vh[id_left];
+    float vh_r = vh[id_right];
+    float vh_b = vh[id_bottom];
+    float vh_t = vh[id_top];
+
+    float fh_l = fh[id_left];
+    float fh_r = fh[id_right];
+    float gh_b = gh[id_bottom];
+    float gh_t = gh[id_top];
+
+    float fuh_l = fuh[id_left];
+    float fuh_r = fuh[id_right];
+    float guh_b = guh[id_bottom];
+    float guh_t = guh[id_top];
+
+    float fvh_l = fvh[id_left];
+    float fvh_r = fvh[id_right];
+    float gvh_b = gvh[id_bottom];
+    float gvh_t = gvh[id_top];
+
+    hm[id] = 0.25f * (h_l + h_r + h_b + h_t)
+           - lambda_x * (fh_r - fh_l)
+           - lambda_y * (gh_t - gh_b);
+
+    uhm[id] = 0.25f * (uh_l + uh_r + uh_b + uh_t)
+            - lambda_x * (fuh_r - fuh_l)
+            - lambda_y * (guh_t - guh_b);
+
+    vhm[id] = 0.25f * (vh_l + vh_r + vh_b + vh_t)
+            - lambda_x * (fvh_r - fvh_l)
+            - lambda_y * (gvh_t - gvh_b);
   }
 }
 // ****************************************************************************** //
@@ -143,9 +189,14 @@ __global__ void applyLeftBoundary(float *h, float *uh, float *vh, int nx, int ny
     int nx_ext = nx + 2;
     int id = i * nx_ext;
     int id_interior = i * nx_ext + 1;
-    h[id]  = h[id_interior];
-    uh[id] = -uh[id_interior];
-    vh[id] =  vh[id_interior];
+
+    float h_val = h[id_interior];
+    float uh_val = uh[id_interior];
+    float vh_val = vh[id_interior];
+
+    h[id]  = h_val;
+    uh[id] = -uh_val;
+    vh[id] =  vh_val;
   }
 }
 // ****************************************************************************** //
@@ -158,9 +209,14 @@ __global__ void applyRightBoundary(float *h, float *uh, float *vh, int nx, int n
     int nx_ext = nx + 2;
     int id = i * nx_ext + (nx + 1);
     int id_interior = i * nx_ext + nx;
-    h[id]  = h[id_interior];
-    uh[id] = -uh[id_interior];
-    vh[id] =  vh[id_interior];
+
+    float h_val = h[id_interior];
+    float uh_val = uh[id_interior];
+    float vh_val = vh[id_interior];
+
+    h[id]  = h_val;
+    uh[id] = -uh_val;
+    vh[id] =  vh_val;
   }
 }
 // ****************************************************************************** //
@@ -173,9 +229,14 @@ __global__ void applyBottomBoundary(float *h, float *uh, float *vh, int nx, int 
     int nx_ext = nx + 2;
     int id = j;
     int id_interior = 1 * nx_ext + j;
-    h[id]  = h[id_interior];
-    uh[id] =  uh[id_interior];
-    vh[id] = -vh[id_interior];
+
+    float h_val = h[id_interior];
+    float uh_val = uh[id_interior];
+    float vh_val = vh[id_interior];
+
+    h[id]  = h_val;
+    uh[id] =  uh_val;
+    vh[id] = -vh_val;
   }
 }
 // ****************************************************************************** //
@@ -188,9 +249,14 @@ __global__ void applyTopBoundary(float *h, float *uh, float *vh, int nx, int ny)
     int nx_ext = nx + 2;
     int id = (ny + 1) * nx_ext + j;
     int id_interior = ny * nx_ext + j;
-    h[id]  = h[id_interior];
-    uh[id] =  uh[id_interior];
-    vh[id] = -vh[id_interior];
+
+    float h_val = h[id_interior];
+    float uh_val = uh[id_interior];
+    float vh_val = vh[id_interior];
+
+    h[id]  = h_val;
+    uh[id] =  uh_val;
+    vh[id] = -vh_val;
   }
 }
 // ****************************************************************************** //

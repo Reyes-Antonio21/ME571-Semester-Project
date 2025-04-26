@@ -33,7 +33,7 @@ int computeGlobalStart(int coord, int global_size, int divisions)
 }
 /******************************************************************************/
 
-void getArgs(int *nx_global, int *ny_global, double *dt, float *x_length, float *y_length, double *totalRuntime, int argc, char *argv[])
+void getArgs(int *nx_global, int *ny_global, double *dt, double *x_length, double *y_length, double *totalRuntime, int argc, char *argv[])
 {
   if (argc <= 1)
   {
@@ -91,7 +91,7 @@ void getArgs(int *nx_global, int *ny_global, double *dt, float *x_length, float 
 }
 /******************************************************************************/
 
-void initialConditions(int nx_local, int ny_local, int x_start, int y_start, float dx, float dy, int px, int py, int px_size, int py_size, float x_length, float y_length, float *x, float *y, float *h, float *uh, float *vh)
+void initialConditions(int nx_local, int ny_local, int x_start, int y_start, double dx, double dy, int px, int py, int px_size, int py_size, double x_length, double y_length, float *x, float *y, float *h, float *uh, float *vh)
 {
   int i, j, id, id_ghost;
 
@@ -367,6 +367,12 @@ int main (int argc, char *argv[])
   double programRuntime;
   double totalRuntime;
 
+  double x_length;
+  double y_length;
+
+  double dx;
+  double dy;
+
   double time_start;
   double time_start_dt;
   double time_start_cf;
@@ -398,13 +404,8 @@ int main (int argc, char *argv[])
   int x_start;
   int y_start;
 
-  float dx;
-  float dy;
-
-  float x_length;
-  float y_length;
-
   float g = 9.81f; 
+  float g_half = 0.5f * g;
 
   float *h;
   float *uh;
@@ -435,12 +436,12 @@ int main (int argc, char *argv[])
   getArgs(&nx_global, &ny_global, &dt, &x_length, &y_length, &totalRuntime, argc, argv);
 
   // Define the locations of the nodes, time steps, and spacing
-  dx = x_length / ( float ) ( nx_global );
-  dy = y_length / ( float ) ( ny_global );
+  dx = x_length / ( double ) ( nx_global );
+  dy = y_length / ( double ) ( ny_global );
 
   // Define the time step and the grid spacing
-  float lambda_x = 0.5f * (float) dt/dx;
-  float lambda_y = 0.5f * (float) dt/dy;
+  double lambda_x = 0.5f *  dt/dx;
+  double lambda_y = 0.5f *  dt/dy;
 
   // Create a Cartesian topology
   MPI_Dims_create(numProcessors, 2, dims);
@@ -557,6 +558,7 @@ int main (int argc, char *argv[])
     while (programRuntime < totalRuntime) 
     {
       programRuntime += dt;
+      m++;
 
       MPI_Barrier(cart_comm);
       time_start_dt = MPI_Wtime();
@@ -581,17 +583,33 @@ int main (int argc, char *argv[])
         {
           id = ID_2D(i, j, nx_local);
 
-          fh[id] = uh[id];
+          float h_val = h[id];
 
-          fuh[id] = uh[id] * uh[id] / h[id] + 0.5f * g * h[id] * h[id];
+          float uh_val = uh[id];
 
-          fvh[id] = uh[id] * vh[id] / h[id];
+          float vh_val = vh[id];
 
-          gh[id] = vh[id];
+          float inv_h = 1.0f / h_val;
 
-          guh[id] = uh[id] * vh[id] / h[id];
+          float h2 = h_val * h_val; 
+      
+          fh[id]  = uh_val;
 
-          gvh[id] = vh[id] * vh[id] / h[id] + 0.5f * g * h[id] * h[id];
+          gh[id]  = vh_val;
+      
+          float uh2 = uh_val * uh_val; 
+
+          float vh2 = vh_val * vh_val; 
+
+          float uv  = uh_val * vh_val; 
+      
+          fuh[id] = uh2 * inv_h + g_half * h2;
+
+          fvh[id] = uv  * inv_h;
+
+          guh[id] = uv  * inv_h;
+
+          gvh[id] = vh2 * inv_h + g_half * h2;
         }
 
       time_end_cf = MPI_Wtime();
@@ -609,17 +627,48 @@ int main (int argc, char *argv[])
           id_bottom = ID_2D(i - 1, j, nx_local);
           id_top = ID_2D(i + 1, j, nx_local);
 
-          hm[id] = 0.25f * (h[id_left] + h[id_right] + h[id_bottom] + h[id_top])
-                - lambda_x * (fh[id_right] - fh[id_left])
-                - lambda_y * (gh[id_top] - gh[id_bottom]);
-
-          uhm[id] = 0.25f * (uh[id_left] + uh[id_right] + uh[id_bottom] + uh[id_top])
-                - lambda_x * (fuh[id_right] - fuh[id_left])
-                - lambda_y * (guh[id_top] - guh[id_bottom]);
-
-          vhm[id] = 0.25f * (vh[id_left] + vh[id_right] + vh[id_bottom] + vh[id_top])
-                - lambda_x * (fvh[id_right] - fvh[id_left])
-                - lambda_y * (gvh[id_top] - gvh[id_bottom]);
+          // Load neighbor values into local registers
+          float h_l  = h[id_left];
+          float h_r  = h[id_right];
+          float h_b  = h[id_bottom];
+          float h_t  = h[id_top];
+      
+          float uh_l = uh[id_left];
+          float uh_r = uh[id_right];
+          float uh_b = uh[id_bottom];
+          float uh_t = uh[id_top];
+      
+          float vh_l = vh[id_left];
+          float vh_r = vh[id_right];
+          float vh_b = vh[id_bottom];
+          float vh_t = vh[id_top];
+      
+          float fh_l = fh[id_left];
+          float fh_r = fh[id_right];
+          float gh_b = gh[id_bottom];
+          float gh_t = gh[id_top];
+      
+          float fuh_l = fuh[id_left];
+          float fuh_r = fuh[id_right];
+          float guh_b = guh[id_bottom];
+          float guh_t = guh[id_top];
+      
+          float fvh_l = fvh[id_left];
+          float fvh_r = fvh[id_right];
+          float gvh_b = gvh[id_bottom];
+          float gvh_t = gvh[id_top];
+      
+          hm[id] = 0.25f * (h_l + h_r + h_b + h_t)
+                 - (float) lambda_x * (fh_r - fh_l)
+                 - (float) lambda_y * (gh_t - gh_b);
+      
+          uhm[id] = 0.25f * (uh_l + uh_r + uh_b + uh_t)
+                  - (float) lambda_x * (fuh_r - fuh_l)
+                  - (float) lambda_y * (guh_t - guh_b);
+      
+          vhm[id] = 0.25f * (vh_l + vh_r + vh_b + vh_t)
+                  - (float) lambda_x * (fvh_r - fvh_l)
+                  - (float) lambda_y * (gvh_t - gvh_b);
         }
 
       time_end_cv = MPI_Wtime();
@@ -655,11 +704,13 @@ int main (int argc, char *argv[])
           id = ID_2D(i, j, nx_local);
           id_left = ID_2D(i, j - 1, nx_local);
 
-          h[id_left] = h[id];
+          float h_val = h[id];
+          float uh_val = uh[id];
+          float vh_val = vh[id];
 
-          uh[id_left] = -uh[id];   // reverse x-momentum
-
-          vh[id_left] = vh[id];
+          h[id_left]  = h_val;
+          uh[id_left] = -uh_val;
+          vh[id_left] = vh_val;
         }
       }
 
@@ -672,11 +723,13 @@ int main (int argc, char *argv[])
           id = ID_2D(i, j, nx_local);
           id_right = ID_2D(i, j + 1, nx_local);
 
-          h[id_right] = h[id];
+          float h_val = h[id];
+          float uh_val = uh[id];
+          float vh_val = vh[id];
 
-          uh[id_right] = -uh[id];
-
-          vh[id_right] = vh[id];
+          h[id_right]  = h_val;
+          uh[id_right] = -uh_val;
+          vh[id_right] = vh_val;
         }
       }
 
@@ -689,11 +742,13 @@ int main (int argc, char *argv[])
           id = ID_2D(i, j, nx_local);
           id_bottom = ID_2D(i - 1, j, nx_local);
 
-          h[id_bottom] = h[id];
+          float h_val = h[id];
+          float uh_val = uh[id];
+          float vh_val = vh[id];
 
-          uh[id_bottom] = uh[id];
-
-          vh[id_bottom] = -vh[id];  // reverse y-momentum
+          h[id_bottom]  = h_val;
+          uh[id_bottom] = uh_val;
+          vh[id_bottom] = -vh_val;
         }
       }
 
@@ -706,17 +761,17 @@ int main (int argc, char *argv[])
           id = ID_2D(i, j, nx_local);
           id_top = ID_2D(i + 1, j, nx_local);
 
-          h[id_top] = h[id];
+          float h_val = h[id];
+          float uh_val = uh[id];
+          float vh_val = vh[id];
 
-          uh[id_top] = uh[id];
-
-          vh[id_top] = -vh[id];
+          h[id_top]  = h_val;
+          uh[id_top] = uh_val;
+          vh[id_top] = -vh_val;
         }
       }
       time_end_bc = MPI_Wtime();
       time_elapsed_bc += time_end_bc - time_start_bc;
-
-      m++;
     }
 
     // Stop timing the program
