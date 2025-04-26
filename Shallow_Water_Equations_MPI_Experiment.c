@@ -736,7 +736,7 @@ int main (int argc, char *argv[])
       printf("Problem size: %d, Number of Processors: %d, Time steps: %d, iteration: %d, Elapsed time: %f s\n", nx_global, numProcessors, m, k, time_max);
     }
 
-    if (k == 0 && nx_global == 200 && numProcessors == 48)
+    if (k == 1 && nx_global == 200 && numProcessors == 48)
     {
       writeResultsMPI(x, y, h, uh, vh, nx_local, ny_local, x_start, y_start, nx_global, ny_global, programRuntime, rank, numProcessors, cart_comm);
     }
