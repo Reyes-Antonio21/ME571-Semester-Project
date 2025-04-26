@@ -8,7 +8,7 @@
 
 # define ID_2D(i,j,nx) ((i)*(nx+2)+(j))
 
-//************************************************ UTILITIES ************************************************//
+// ************************************************ UTILITIES ************************************************ //
 
 void getArgs(int *nx, double *dt, float *x_length, double *finalRuntime, int argc, char *argv[])
 {
@@ -40,76 +40,6 @@ void getArgs(int *nx, double *dt, float *x_length, double *finalRuntime, int arg
 }
 // ****************************************************************************** //
 
-void writeResults(float h[], float uh[], float vh[], float x[], float y[], float time, int nx, int ny)
-{
-  char filename[50];
-
-  int i, j, id;
-
-  //Create the filename based on the time step.
-  sprintf(filename, "tc2d_%08.6f.dat", time);
-
-  //Open the file.
-  FILE *file = fopen (filename, "wt" );
-    
-  if (!file)
-  {
-    fprintf (stderr, "\n" );
-
-    fprintf (stderr, "WRITE_RESULTS - Fatal error!\n");
-
-    fprintf (stderr, "  Could not open the output file.\n");
-
-    exit (1);
-  }
-
-  else
-  {  
-    //Write the data.
-    for ( i = 0; i < ny; i++ ) 
-      for ( j = 0; j < nx; j++ )
-      {
-        id = ID_2D(i + 1, j + 1, nx);
-        fprintf ( file, "%24.16g\t%24.16g\t%24.16g\t %24.16g\t %24.16g\n", x[j], y[i], h[id], uh[id], vh[id]);
-      }
-    
-    //Close the file.
-    fclose (file);
-  }
-
-  return;
-}
-// ****************************************************************************** //
-
-void generateDrops( int nx, int ny, float x_length, float x[], float y[], float h[])
-{
-  int i, j, id;
-
-  float xx_perturbation, yy_perturbation;
-
-  // Boundary offset
-  float margin = 0.08 * x_length; // 10% buffer on each side
-  float min = -x_length / 2 + margin;
-  float max =  x_length / 2 - margin;
-
-  // Generate random perturbation coordinates
-  // Offset added to restrict drop formation on boundary
-  xx_perturbation = ((float) rand() / RAND_MAX) * (max - min) + min;
-  yy_perturbation = ((float) rand() / RAND_MAX) * (max - min) + min;
-
-  for ( i = 1; i < ny+1; i++ )
-    for( j = 1; j < nx+1; j++)
-    {
-      id = ID_2D(i, j, nx);
-
-      float xx = x[j-1];
-      float yy = y[i-1];
-
-      h[id] += ( 0.15 * expf( -25 * (((xx - xx_perturbation) * (xx - xx_perturbation)) + ((yy - yy_perturbation) * (yy - yy_perturbation)))));
-    }
-}
-// ****************************************************************************** //
-
 __global__ void initializeInterior(float *x, float *y, float *h, float *uh, float *vh, int nx, int ny, float dx, float dy, float x_length)
 {
   unsigned int i = blockIdx.y * blockDim.y + threadIdx.y + 1;  // skip ghost
@@ -125,7 +55,7 @@ __global__ void initializeInterior(float *x, float *y, float *h, float *uh, floa
     x[j - 1] = xx;
     y[i - 1] = yy;
 
-    h[id] += 1.0f + 0.15f * expf(-25.0f * (xx * xx + yy * yy));
+    h[id] += 1.0f + 0.40f * expf(-5.0f * (xx * xx + yy * yy));
   }
 }
 // ****************************************************************************** //
@@ -137,23 +67,38 @@ __global__ void computeFluxes(float *h, float *uh, float *vh, float *fh, float *
   
   unsigned int id = ((i) * (nx + 2) + (j));
 
-  float g = 9.81f; // Gravitational acceleration
-  float h_safe = fmaxf(h[id], 1e-6f); // Prevent division by zero
+  float g = 9.81f; 
+  float g_half = 0.5f * g; 
   
   if (i < ny + 2 && j < nx + 2)
   {
-    // Compute fluxes safely
-    fh[id] = uh[id];
+    float h_val = h[id];
 
-    fuh[id] = uh[id] * uh[id] / h_safe + 0.5f * g * h_safe * h_safe;
+    float uh_val = uh[id];
 
-    fvh[id] = uh[id] * vh[id] / h_safe;
+    float vh_val = vh[id];
 
-    gh[id] = vh[id];
+    float inv_h = 1.0f / h_val;
 
-    guh[id] = uh[id] * vh[id] / h_safe;
+    float h2 = h_val * h_val; 
 
-    gvh[id] = vh[id] * vh[id] / h_safe + 0.5f * g * h_safe * h_safe;
+    fh[id]  = uh_val;
+
+    gh[id]  = vh_val;
+
+    float uh2 = uh_val * uh_val; 
+
+    float vh2 = vh_val * vh_val; 
+
+    float uv  = uh_val * vh_val; 
+
+    fuh[id] = uh2 * inv_h + g_half * h2;
+
+    fvh[id] = uv  * inv_h;
+
+    guh[id] = uv  * inv_h;
+
+    gvh[id] = vh2 * inv_h + g_half * h2;
   }
 }
 // ****************************************************************************** //
@@ -168,22 +113,53 @@ __global__ void computeVariables(float *hm, float *uhm, float *vhm, float *fh, f
   {
     id = ((i) * (nx + 2) + (j));
 
-    id_left   = ((i) * (nx + 2) + (j - 1));
-    id_right  = ((i) * (nx + 2) + (j + 1));
+    id_left = ((i) * (nx + 2) + (j - 1));
+    id_right = ((i) * (nx + 2) + (j + 1));
     id_bottom = ((i - 1) * (nx + 2) + (j));
-    id_top    = ((i + 1) * (nx + 2) + (j));
+    id_top = ((i + 1) * (nx + 2) + (j));
 
-    hm[id] = 0.25 * (h[id_left] + h[id_right] + h[id_bottom] + h[id_top])
-          - lambda_x * (fh[id_right] - fh[id_left])
-          - lambda_y * (gh[id_top] - gh[id_bottom]);
+    // Load neighbor values into local registers
+    float h_l  = h[id_left];
+    float h_r  = h[id_right];
+    float h_b  = h[id_bottom];
+    float h_t  = h[id_top];
 
-    uhm[id] = 0.25 * (uh[id_left] + uh[id_right] + uh[id_bottom] + uh[id_top])
-            - lambda_x * (fuh[id_right] - fuh[id_left])
-            - lambda_y * (guh[id_top] - guh[id_bottom]);
+    float uh_l = uh[id_left];
+    float uh_r = uh[id_right];
+    float uh_b = uh[id_bottom];
+    float uh_t = uh[id_top];
 
-    vhm[id] = 0.25 * (vh[id_left] + vh[id_right] + vh[id_bottom] + vh[id_top])
-            - lambda_x * (fvh[id_right] - fvh[id_left])
-            - lambda_y * (gvh[id_top] - gvh[id_bottom]);
+    float vh_l = vh[id_left];
+    float vh_r = vh[id_right];
+    float vh_b = vh[id_bottom];
+    float vh_t = vh[id_top];
+
+    float fh_l = fh[id_left];
+    float fh_r = fh[id_right];
+    float gh_b = gh[id_bottom];
+    float gh_t = gh[id_top];
+
+    float fuh_l = fuh[id_left];
+    float fuh_r = fuh[id_right];
+    float guh_b = guh[id_bottom];
+    float guh_t = guh[id_top];
+
+    float fvh_l = fvh[id_left];
+    float fvh_r = fvh[id_right];
+    float gvh_b = gvh[id_bottom];
+    float gvh_t = gvh[id_top];
+
+    hm[id] = 0.25f * (h_l + h_r + h_b + h_t)
+           - lambda_x * (fh_r - fh_l)
+           - lambda_y * (gh_t - gh_b);
+
+    uhm[id] = 0.25f * (uh_l + uh_r + uh_b + uh_t)
+            - lambda_x * (fuh_r - fuh_l)
+            - lambda_y * (guh_t - guh_b);
+
+    vhm[id] = 0.25f * (vh_l + vh_r + vh_b + vh_t)
+            - lambda_x * (fvh_r - fvh_l)
+            - lambda_y * (gvh_t - gvh_b);
   }
 }
 // ****************************************************************************** //
@@ -213,9 +189,14 @@ __global__ void applyLeftBoundary(float *h, float *uh, float *vh, int nx, int ny
     int nx_ext = nx + 2;
     int id = i * nx_ext;
     int id_interior = i * nx_ext + 1;
-    h[id]  = h[id_interior];
-    uh[id] = -uh[id_interior];
-    vh[id] =  vh[id_interior];
+
+    float h_val = h[id_interior];
+    float uh_val = uh[id_interior];
+    float vh_val = vh[id_interior];
+
+    h[id]  = h_val;
+    uh[id] = -uh_val;
+    vh[id] =  vh_val;
   }
 }
 // ****************************************************************************** //
@@ -228,9 +209,14 @@ __global__ void applyRightBoundary(float *h, float *uh, float *vh, int nx, int n
     int nx_ext = nx + 2;
     int id = i * nx_ext + (nx + 1);
     int id_interior = i * nx_ext + nx;
-    h[id]  = h[id_interior];
-    uh[id] = -uh[id_interior];
-    vh[id] =  vh[id_interior];
+
+    float h_val = h[id_interior];
+    float uh_val = uh[id_interior];
+    float vh_val = vh[id_interior];
+
+    h[id]  = h_val;
+    uh[id] = -uh_val;
+    vh[id] =  vh_val;
   }
 }
 // ****************************************************************************** //
@@ -243,9 +229,14 @@ __global__ void applyBottomBoundary(float *h, float *uh, float *vh, int nx, int 
     int nx_ext = nx + 2;
     int id = j;
     int id_interior = 1 * nx_ext + j;
-    h[id]  = h[id_interior];
-    uh[id] =  uh[id_interior];
-    vh[id] = -vh[id_interior];
+
+    float h_val = h[id_interior];
+    float uh_val = uh[id_interior];
+    float vh_val = vh[id_interior];
+
+    h[id]  = h_val;
+    uh[id] =  uh_val;
+    vh[id] = -vh_val;
   }
 }
 // ****************************************************************************** //
@@ -258,9 +249,14 @@ __global__ void applyTopBoundary(float *h, float *uh, float *vh, int nx, int ny)
     int nx_ext = nx + 2;
     int id = (ny + 1) * nx_ext + j;
     int id_interior = ny * nx_ext + j;
-    h[id]  = h[id_interior];
-    uh[id] =  uh[id_interior];
-    vh[id] = -vh[id_interior];
+
+    float h_val = h[id_interior];
+    float uh_val = uh[id_interior];
+    float vh_val = vh[id_interior];
+
+    h[id]  = h_val;
+    uh[id] =  uh_val;
+    vh[id] = -vh_val;
   }
 }
 // ****************************************************************************** //
@@ -269,24 +265,20 @@ __global__ void applyTopBoundary(float *h, float *uh, float *vh, int nx, int ny)
 int main ( int argc, char *argv[] )
 { 
   // ************************************************** INSTANTIATION ************************************************* //
-  unsigned int timeSeed;
-  unsigned int dropTrigger;
-  unsigned int dropDelay;
-  unsigned int randNumber;
+  int k, l;
 
-  int k;
   int nx; 
   int ny; 
 
   float dx;
   float dy;
-
+  
   float x_length;
 
   double dt;
   double programRuntime; 
   double finalRuntime;
-
+  
   // pointers to host, device memory 
   float *h, *d_h;
   float *uh, *d_uh;
@@ -315,8 +307,8 @@ int main ( int argc, char *argv[] )
   dx = x_length / ( float ) ( nx );
   dy = x_length / ( float ) ( nx );
 
-  float lambda_x = 0.5  * (float) dt/dx;
-  float lambda_y = 0.5 * (float) dt/dy;
+  float lambda_x = 0.5  * (float) dt / dx;
+  float lambda_y = 0.5 * (float) dt / dy;
 
   // Define the block and grid sizes
   int dimx = 32;
@@ -328,30 +320,27 @@ int main ( int argc, char *argv[] )
   int gridSizeY = (ny + boundaryBlockSize - 1) / boundaryBlockSize; 
   int gridSizeX = (nx + boundaryBlockSize - 1) / boundaryBlockSize;  
 
-  timeSeed = time(NULL);
-  srand(timeSeed);
-
   // ************************************************ MEMORY ALLOCATIONS ************************************************ //
 
   // **** Allocate memory on host ****
   // Allocate space (nx+2)((nx+2) long, to account for ghosts
   // height array
-  h  = ( float * ) malloc ( (nx+2) * (ny+2) * sizeof ( float ) );
-  hm = ( float * ) malloc ( (nx+2) * (ny+2) * sizeof ( float ) );
-  fh = ( float * ) malloc ( (nx+2) * (ny+2) * sizeof ( float ) );
-  gh = ( float * ) malloc ( (nx+2) * (ny+2) * sizeof ( float ) );
+  h  = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
+  hm = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
+  fh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
+  gh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
 
   // x momentum array
-  uh  = ( float * ) malloc ( (nx+2) * (ny+2) * sizeof ( float ) );
-  uhm = ( float * ) malloc ( (nx+2) * (ny+2) * sizeof ( float ) );
-  fuh = ( float * ) malloc ( (nx+2) * (ny+2) * sizeof ( float ) );
-  guh = ( float * ) malloc ( (nx+2) * (ny+2) * sizeof ( float ) );
+  uh  = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
+  uhm = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
+  fuh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
+  guh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
 
   // y momentum array
-  vh  = ( float * ) malloc ( (nx+2) * (ny+2) * sizeof ( float ) );
-  vhm = ( float * ) malloc ( (nx+2) * (ny+2) * sizeof ( float ) );
-  fvh = ( float * ) malloc ( (nx+2) * (ny+2) * sizeof ( float ) );
-  gvh = ( float * ) malloc ( (nx+2) * (ny+2) * sizeof ( float ) );
+  vh  = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
+  vhm = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
+  fvh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
+  gvh = ( float * ) malloc ( (nx+2)*(ny+2) * sizeof ( float ) );
 
   // location arrays
   x = ( float * ) malloc ( nx * sizeof ( float ) );
@@ -382,64 +371,28 @@ int main ( int argc, char *argv[] )
   cudaMemset(d_h, 0, (nx+2) * (ny+2) * sizeof ( float ));
   cudaMemset(d_uh, 0, (nx+2) * (ny+2) * sizeof ( float ));
   cudaMemset(d_vh, 0, (nx+2) * (ny+2) * sizeof ( float ));
-
-  // ************************************************ INITIAL CONDITIONS ************************************************ //
+  
+  // *********************************************************************** INITIAL CONDITIONS ********************************************************************** //
 
   printf ( "\n" );
   printf ( "SHALLOW_WATER_2D\n" );
   printf ( "\n" );
-
-  // set initial time & step counter
-  programRuntime = 0.0f;
-  k = 0;
-
-  dropTrigger = 40;
-  dropDelay = 55;
-
-  double time_elapsed_bc = 0.0;
-
-  // Apply the initial conditions.
-  initializeInterior<<<gridSize, blockSize>>>(d_x, d_y, d_h, d_uh, d_vh, nx, ny, dx, dy, x_length);
-
-  applyLeftBoundary<<<gridSizeY, boundaryBlockSize>>>(d_h, d_uh, d_vh, nx, ny);
-
-  applyRightBoundary<<<gridSizeY, boundaryBlockSize>>>(d_h, d_uh, d_vh, nx, ny); 
-
-  applyBottomBoundary<<<gridSizeX, boundaryBlockSize>>>(d_h, d_uh, d_vh, nx, ny);
-
-  applyTopBoundary<<<gridSizeX, boundaryBlockSize>>>(d_h, d_uh, d_vh, nx, ny);
-
-  cudaMemcpy(h, d_h, (nx+2) * (ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost);
-  cudaMemcpy(uh, d_uh, (nx+2) * (ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost);
-  cudaMemcpy(vh, d_vh, (nx+2) * (ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost);
-
-  cudaMemcpy(x, d_x, nx * sizeof ( float ), cudaMemcpyDeviceToHost);
-  cudaMemcpy(y, d_y, ny * sizeof ( float ), cudaMemcpyDeviceToHost);
-
-  // Write initial condition to a file
-  writeResults(h, uh, vh, x, y, programRuntime, nx, ny);
-
-  // ******************************************************************** COMPUTATION SECTION ******************************************************************** //
-
-  while (programRuntime < finalRuntime)
+  
+  for(k = 1; k < 11; k++)
   {
-    // Take a time step and increase step counter
-    programRuntime += dt;
-    k++;
-
-    // **** COMPUTE FLUXES ****
-    computeFluxes<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, nx, ny);
+    // set initial time & step counter
+    programRuntime = 0.0f;
+    l = 0;
     
-    // **** COMPUTE VARIABLES ****
-    computeVariables<<<gridSize, blockSize>>>(d_hm, d_uhm, d_vhm, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, d_h, d_uh, d_vh, lambda_x, lambda_y, nx, ny);
+    // instantiate section timing variables
+    double time_elapsed_cf = 0.0;
+    double time_elapsed_cv = 0.0;
+    double time_elapsed_uv = 0.0;
+    double time_elapsed_bc = 0.0;
 
-    // **** UPDATE VARIABLES ****
-    updateVariables<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_hm, d_uhm, d_vhm, nx, ny);
+    // Apply the initial conditions.
+    initializeInterior<<<gridSize, blockSize>>>(d_x, d_y, d_h, d_uh, d_vh, nx, ny, dx, dy, x_length);
 
-    // Start timing apply boundary condition calculations
-    auto start_time_bc = std::chrono::steady_clock::now();
-
-    // **** APPLY BOUNDARY CONDITIONS ****
     applyLeftBoundary<<<gridSizeY, boundaryBlockSize>>>(d_h, d_uh, d_vh, nx, ny);
 
     applyRightBoundary<<<gridSizeY, boundaryBlockSize>>>(d_h, d_uh, d_vh, nx, ny);
@@ -448,43 +401,92 @@ int main ( int argc, char *argv[] )
 
     applyTopBoundary<<<gridSizeX, boundaryBlockSize>>>(d_h, d_uh, d_vh, nx, ny);
 
-    // Stop timing apply boundary condition calculations
-    auto end_time_bc = std::chrono::steady_clock::now();
+    // ******************************************************************** COMPUTATION SECTION ******************************************************************** //
 
-    // calculate time elapsed for apply boundary conditions
-    time_elapsed_bc = time_elapsed_bc + std::chrono::duration<double>(end_time_bc - start_time_bc).count();
+    // start program timer
+    auto start_time = std::chrono::steady_clock::now();
 
-    if (k == dropTrigger)
+    while (programRuntime < finalRuntime) // time loop begins
     {
-      // Randomly decide whether to generate a drop
-      randNumber = rand() % 10;
+      // Take a time step and increase step counter
+      programRuntime += dt;
+      l++;
 
-      if (randNumber % 2 == 0) // Even numbers (0, 2, 4, 6, 8)
-      {
-        // Copy water height from device to host
-        cudaMemcpy(h, d_h, (nx+2) * (ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost);
+      // *********************************************************************************************************************************************************** //
 
-        generateDrops(nx, ny, x_length, x, y, h);
+      // Start timing compute fluxes calculations
+      auto start_time_cf = std::chrono::steady_clock::now();
 
-        // Copy updated water height back to device
-        cudaMemcpy(d_h, h, (nx+2) * (ny+2) * sizeof (float), cudaMemcpyHostToDevice);
-      }
+      // **** COMPUTE FLUXES ****
+      computeFluxes<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, nx, ny);
 
-      dropTrigger += dropDelay; 
-    }
+      // Stop timing compute fluxes calculations
+      auto end_time_cf = std::chrono::steady_clock::now();
+
+      // calculate time elapsed for compute fluxes
+      time_elapsed_cf = time_elapsed_cf + std::chrono::duration<double>(end_time_cf - start_time_cf).count();
+
+      // *********************************************************************************************************************************************************** //
+
+      // Start timing compute variable calculations
+      auto start_time_cv = std::chrono::steady_clock::now();
+      
+      // **** COMPUTE VARIABLES ****
+      computeVariables<<<gridSize, blockSize>>>(d_hm, d_uhm, d_vhm, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, d_h, d_uh, d_vh, lambda_x, lambda_y, nx, ny);
+    
+      // Stop timing compute variable calculations
+      auto end_time_cv = std::chrono::steady_clock::now();
+
+      // calculate time elapsed for compute variables
+      time_elapsed_cv = time_elapsed_cv + std::chrono::duration<double>(end_time_cv - start_time_cv).count();
+
+      // *********************************************************************************************************************************************************** //
+
+      // Start timing update variables calculations
+      auto start_time_uv = std::chrono::steady_clock::now();
+
+      // **** UPDATE VARIABLES ****
+      updateVariables<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_hm, d_uhm, d_vhm, nx, ny);
+
+      // Stop timing update variables calculations
+      auto end_time_uv = std::chrono::steady_clock::now();
+
+      // calculate time elapsed for update variables
+      time_elapsed_uv = time_elapsed_uv + std::chrono::duration<double>(end_time_uv - start_time_uv).count();
+
+      // *********************************************************************************************************************************************************** //
+
+      // Start timing apply boundary condition calculations
+      auto start_time_bc = std::chrono::steady_clock::now();
+
+      // **** APPLY BOUNDARY CONDITIONS ****
+      applyLeftBoundary<<<gridSizeY, boundaryBlockSize>>>(d_h, d_uh, d_vh, nx, ny);
+
+      applyRightBoundary<<<gridSizeY, boundaryBlockSize>>>(d_h, d_uh, d_vh, nx, ny);
+
+      applyBottomBoundary<<<gridSizeX, boundaryBlockSize>>>(d_h, d_uh, d_vh, nx, ny);
+
+      applyTopBoundary<<<gridSizeX, boundaryBlockSize>>>(d_h, d_uh, d_vh, nx, ny); 
+
+      // Stop timing apply boundary condition calculations
+      auto end_time_bc = std::chrono::steady_clock::now();
+
+      // calculate time elapsed for apply boundary conditions
+      time_elapsed_bc = time_elapsed_bc + std::chrono::duration<double>(end_time_bc - start_time_bc).count();
+    } 
+
+    // stop timer
+    auto end_time = std::chrono::steady_clock::now();
+    std::chrono::duration<double> time_elapsed = end_time - start_time;
+    
+    double avg_time_elapsed_cf = time_elapsed_cf / (double) l;
+    double avg_time_elapsed_cv = time_elapsed_cv / (double) l;
+    double avg_time_elapsed_uv = time_elapsed_uv / (double) l;
+    double avg_time_elapsed_bc = time_elapsed_bc / (double) l;
+
+    // Print out the results
+    printf("Problem size: %d, Time steps: %d, Iteration: %d, Elapsed time: %f s, Average elapsed time for compute fluxes: %f s, Average elapsed time for compute variables: %f s, Average elapsed time for update variables: %f s, Average elapsed time for apply boundary conditions: %f s\n", nx, l, k, time_elapsed, avg_time_elapsed_cf, avg_time_elapsed_cv, avg_time_elapsed_uv, avg_time_elapsed_bc);
   }
-
-  // ******************************************************************** POSTPROCESSING ******************************************************************** //
-
-  double avg_time_elapsed_bc = time_elapsed_bc / (double) k;
-  printf("Average time elapsed for apply boundary conditions: %f seconds\n", avg_time_elapsed_bc);
-
-  // Move data back to the host
-  cudaMemcpy(h, d_h, (nx+2)* (ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost);
-  cudaMemcpy(uh, d_uh, (nx+2) * (ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost);
-  cudaMemcpy(vh, d_vh, (nx+2) * (ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost);
-
-  writeResults(h, uh, vh, x, y, programRuntime, nx, ny);
 
   // ******************************************************************** DEALLOCATE MEMORY ******************************************************************** //
 
@@ -527,7 +529,7 @@ int main ( int argc, char *argv[] )
   // Terminate.
   printf ( "\n" );
   printf ( "SHALLOW_WATER_2D:\n" );
-  printf ( "  Normal end of execution.\n" );
+  printf ( "Normal end of execution.\n" );
   printf ( "\n" );
 
   return 0;
