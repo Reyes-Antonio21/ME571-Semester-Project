@@ -1,10 +1,10 @@
 #!/bin/bash
-#SBATCH -J swem_2d_tt
-#SBATCH -o swem_2d_tt.%j
+#SBATCH -J swem_2d_ex
+#SBATCH -o swem_2d_ex.%j
 #SBATCH -N 1
 #SBATCH -n 48
 #SBATCH -p bsudfq
-#SBATCH -t 168:00:00
+#SBATCH -t 1:00:00
 #SBATCH --exclusive
 
 # Fixed values
@@ -25,7 +25,7 @@ do
     for p in 1 2 4 6 8 10 11 12 13 14 15 16 17 18 19 20 22 24 26 28 30 32 34 36 38 40 42 44 46 48
     do
         # Run and capture all output
-        mpirun -np $p ./swem_2d_tt $nx $nx $dt $xlen $ylen $t_final
+        mpirun -np $p ./swem_2d_ex $nx $nx $dt $xlen $ylen $t_final
 
     done
 done
