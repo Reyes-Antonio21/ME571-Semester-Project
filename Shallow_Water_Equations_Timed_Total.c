@@ -1,3 +1,5 @@
+# define _POSIX_C_SOURCE 199309L
+# include <time.h>
 # include <stdlib.h>
 # include <stdio.h>
 # include <math.h>
@@ -7,9 +9,8 @@
 #define ID_2D(i,j,nx) ((i)*(nx+2)+(j))
 
 typedef struct {
-  LARGE_INTEGER start;
-  LARGE_INTEGER end;
-  LARGE_INTEGER frequency;
+  struct timespec start;
+  struct timespec end;
 } Timer;
 
 void initial_conditions (int nx, int ny, double dx, double dy, double x_length, float x[], float y[], float h[], float uh[] ,float vh[])
@@ -128,18 +129,19 @@ void getArgs(int *nx, double *dt, double *x_length, double *totalRuntime, int ar
 
 void timer_start(Timer* t) 
 {
-  QueryPerformanceFrequency(&t->frequency);
-  QueryPerformanceCounter(&t->start);
+  clock_gettime(CLOCK_MONOTONIC, &(t->start));
 }
 
 void timer_stop(Timer* t) 
 {
-  QueryPerformanceCounter(&t->end);
+  clock_gettime(CLOCK_MONOTONIC, &(t->end));
 }
 
 double timer_elapsed(Timer* t) 
 {
-  return (double)(t->end.QuadPart - t->start.QuadPart) / (double)(t->frequency.QuadPart);
+  double start_sec = (double)t->start.tv_sec + (double)t->start.tv_nsec / 1e9;
+  double end_sec   = (double)t->end.tv_sec   + (double)t->end.tv_nsec / 1e9;
+  return end_sec - start_sec;
 }
 
 int main ( int argc, char *argv[] )
