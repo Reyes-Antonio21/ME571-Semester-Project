@@ -440,6 +440,10 @@ int main ( int argc, char *argv[] )
       applyTopBoundary<<<gridSizeX, boundaryBlockSize>>>(d_h, d_uh, d_vh, nx, ny); 
     } 
 
+    // stop timer
+    auto end_time = std::chrono::steady_clock::now();
+    std::chrono::duration<double> time_elapsed = end_time - start_time;
+
     auto start_time_dthd = std::chrono::steady_clock::now();
 
     cudaMemcpy(d_h, h, (nx+2) * (ny+2) * sizeof(float), cudaMemcpyHostToDevice);
@@ -449,10 +453,6 @@ int main ( int argc, char *argv[] )
     // stop timer
     auto end_time_dthd = std::chrono::steady_clock::now();
     time_elapsed_dthd = time_elapsed_dthd + std::chrono::duration<double>(end_time_dthd - start_time_dthd).count();
-
-    // stop timer
-    auto end_time = std::chrono::steady_clock::now();
-    std::chrono::duration<double> time_elapsed = end_time - start_time;
 
     double avg_time_elapsed_dthd = time_elapsed_dthd / (double) k;
     double avg_time_elapsed_dtdh = time_elapsed_dtdh / (double) k;
