@@ -10,10 +10,10 @@ swe_2d_tt: Shallow_Water_Equations_Timed_Total.c
 	$(CC) -O3 -march=native -funroll-loops -ffast-math -o swe_2d_tt Shallow_Water_Equations_Timed_Total.c -lm
 
 swem_2d_ts: Shallow_Water_Equations_MPI_Timed_Section.c
-	$(MPICC) -O3 -march=native -funroll-loops -ffast-math -o swem_2d_ts Shallow_Water_Equations_MPI_Timed_Section.c -lm
+	$(MPICC) -O3 -march=native -funroll-loops -ffast-math -fopenmp -o swem_2d_ts Shallow_Water_Equations_MPI_Timed_Section.c -lm
 
 swem_2d_tt: Shallow_Water_Equations_MPI_Timed_Total.c
-	$(MPICC) -O3 -march=native -funroll-loops -ffast-math -o swem_2d_tt Shallow_Water_Equations_MPI_Timed_Total.c -lm
+	$(MPICC) -O3 -march=native -funroll-loops -ffast-math -fopenmp -o swem_2d_tt Shallow_Water_Equations_MPI_Timed_Total.c -lm
 
 swep_2d_tk: Shallow_Water_Equations_Timed_Kernel.cu
 	$(CUDACC) -O3 -ffast-math -Xcompiler "-march=native -funroll-loops" -o swep_2d_tk Shallow_Water_Equations_Timed_Kernel.cu
