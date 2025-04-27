@@ -257,6 +257,7 @@ __global__ void persistentFusedKernel(float *__restrict__ h, float *__restrict__
   unsigned int local_j = threadIdx.x + 1;
 
   unsigned int id, local_id;
+  unsigned int local_id_left, local_id_right, local_id_bottom, local_id_top;
 
   // Allocate shared memory
   extern __shared__ float sharedmemory[];
