@@ -189,6 +189,8 @@ __global__ void persistentFusedKernel(float *__restrict__ h, float *__restrict__
   unsigned int local_i = threadIdx.y + 1;
   unsigned int local_j = threadIdx.x + 1;
 
+  unsigned int id;
+
   // Allocate shared memory
   extern __shared__ float sharedmemory[];
 
@@ -281,36 +283,40 @@ __global__ void persistentFusedKernel(float *__restrict__ h, float *__restrict__
 
     __syncthreads();
 
-    // Apply boundary conditions (reflective)
-    if (i == 0 && j > 0 && j < nx+1) 
-    {
-      sh_uhm[SH_ID(local_i, local_j)] = -sh_uhm[SH_ID(local_i+1, local_j)];
-      sh_vhm[SH_ID(local_i, local_j)] =  sh_vhm[SH_ID(local_i+1, local_j)];
-    }
-    if (i == ny+1 && j > 0 && j < nx+1) 
-    {
-      sh_uhm[SH_ID(local_i, local_j)] = -sh_uhm[SH_ID(local_i-1, local_j)];
-      sh_vhm[SH_ID(local_i, local_j)] =  sh_vhm[SH_ID(local_i-1, local_j)];
-    }
-    if (j == 0 && i > 0 && i < ny+1) 
-    {
-      sh_uhm[SH_ID(local_i, local_j)] =  sh_uhm[SH_ID(local_i, local_j+1)];
-      sh_vhm[SH_ID(local_i, local_j)] = -sh_vhm[SH_ID(local_i, local_j+1)];
-    }
-    if (j == nx+1 && i > 0 && i < ny+1) 
-    {
-      sh_uhm[SH_ID(local_i, local_j)] =  sh_uhm[SH_ID(local_i, local_j-1)];
-      sh_vhm[SH_ID(local_i, local_j)] = -sh_vhm[SH_ID(local_i, local_j-1)];
-    }
-
-    __syncthreads();
-
-    // Swap updated variables into original fields for next iteration
+    // === Swap updated values into original fields ===
     if (i > 0 && i < ny+1 && j > 0 && j < nx+1) 
     {
       sh_h [SH_ID(local_i, local_j)] = sh_hm [SH_ID(local_i, local_j)];
       sh_uh[SH_ID(local_i, local_j)] = sh_uhm[SH_ID(local_i, local_j)];
       sh_vh[SH_ID(local_i, local_j)] = sh_vhm[SH_ID(local_i, local_j)];
+    }
+
+    __syncthreads();
+
+    // === Apply boundary conditions after swapping ===
+    if (i == 0 && j > 0 && j < nx+1) 
+    {
+      sh_h[SH_ID(local_i, local_j)] =  sh_h[SH_ID(local_i+1, local_j)];
+      sh_uh[SH_ID(local_i, local_j)] = -sh_uh[SH_ID(local_i+1, local_j)];
+      sh_vh[SH_ID(local_i, local_j)] =  sh_vh[SH_ID(local_i+1, local_j)];
+    }
+    if (i == ny+1 && j > 0 && j < nx+1) 
+    {
+      sh_h[SH_ID(local_i, local_j)] =  sh_h[SH_ID(local_i-1, local_j)];
+      sh_uh[SH_ID(local_i, local_j)] = -sh_uh[SH_ID(local_i-1, local_j)];
+      sh_vh[SH_ID(local_i, local_j)] =  sh_vh[SH_ID(local_i-1, local_j)];
+    }
+    if (j == 0 && i > 0 && i < ny+1) 
+    {
+      sh_h[SH_ID(local_i, local_j)] =  sh_h[SH_ID(local_i, local_j+1)];
+      sh_uh[SH_ID(local_i, local_j)] =  sh_uh[SH_ID(local_i, local_j+1)];
+      sh_vh[SH_ID(local_i, local_j)] = -sh_vh[SH_ID(local_i, local_j+1)];
+    }
+    if (j == nx+1 && i > 0 && i < ny+1) 
+    {
+      sh_h[SH_ID(local_i, local_j)] =  sh_h[SH_ID(local_i, local_j-1)];
+      sh_uh[SH_ID(local_i, local_j)] =  sh_uh[SH_ID(local_i, local_j-1)];
+      sh_vh[SH_ID(local_i, local_j)] = -sh_vh[SH_ID(local_i, local_j-1)];
     }
 
     __syncthreads();
