@@ -385,7 +385,7 @@ int main ( int argc, char *argv[] )
   dim3 gridSize((nx + 2 + blockSize.x - 1) / blockSize.x, (ny + 2 + blockSize.y - 1) / blockSize.y);
 
   // Calculate shared memory size
-  size_t sharedMemSize = 12 * (blockSize.x + 2) * (blockSize.y + 2) * sizeof(float);
+  size_t sharedMemSize = ((12 * (blockSize.x+2) * (blockSize.y+2) * sizeof(float)) + 127) & ~127;
 
   int boundaryBlockSize = 1024;
   int gridSizeY = (ny + boundaryBlockSize - 1) / boundaryBlockSize; 
