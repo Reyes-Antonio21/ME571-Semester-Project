@@ -474,7 +474,7 @@ int main ( int argc, char *argv[] )
       cudaMemcpy(y, d_y, ny * sizeof ( float ), cudaMemcpyDeviceToHost);
 
       // Write initial condition to a file
-      writeResults(h, uh, vh, x, y, programRuntime, nx, ny);
+      writeResults(h, uh, vh, x, y, 0.000000, nx, ny);
     }
 
     // ******************************************************************** COMPUTATION SECTION ******************************************************************** //
@@ -506,7 +506,7 @@ int main ( int argc, char *argv[] )
       cudaMemcpy(vh, d_vh, (nx+2) * (ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost);
 
       // Write initial condition to a file
-      writeResults(h, uh, vh, x, y, programRuntime, nx, ny);
+      writeResults(h, uh, vh, x, y, 0.500000, nx, ny);
     }
   }
 
