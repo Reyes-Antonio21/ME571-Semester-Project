@@ -415,7 +415,6 @@ int main ( int argc, char *argv[] )
 
       // *********************************************************************************************************************************************************** //
 
-      cudaDeviceSynchronize();
       // Start timing compute fluxes calculations
       auto start_time_cf = std::chrono::steady_clock::now();
 
@@ -430,7 +429,6 @@ int main ( int argc, char *argv[] )
 
       // *********************************************************************************************************************************************************** //
 
-      cudaDeviceSynchronize();
       // Start timing compute variable calculations
       auto start_time_cv = std::chrono::steady_clock::now();
       
@@ -445,7 +443,6 @@ int main ( int argc, char *argv[] )
 
       // *********************************************************************************************************************************************************** //
 
-      cudaDeviceSynchronize();
       // Start timing update variables calculations
       auto start_time_uv = std::chrono::steady_clock::now();
 
@@ -460,7 +457,6 @@ int main ( int argc, char *argv[] )
 
       // *********************************************************************************************************************************************************** //
 
-      cudaDeviceSynchronize();
       // Start timing apply boundary condition calculations
       auto start_time_bc = std::chrono::steady_clock::now();
 
