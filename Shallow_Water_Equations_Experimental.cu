@@ -6,8 +6,6 @@
 # include <chrono>
 # include <cuda_runtime.h>
 
-# define ID_2D(i,j,nx) ((i)*(nx+2)+(j))
-
 // ************************************************ UTILITIES ************************************************ //
 
 void getArgs(int *nx, float *dt, float *x_length, float *finalRuntime, int argc, char *argv[])
@@ -69,7 +67,7 @@ void writeResults(float h[], float uh[], float vh[], float x[], float y[], float
     for ( i = 0; i < ny; i++ ) 
       for ( j = 0; j < nx; j++ )
       {
-        id = ID_2D(i + 1, j + 1, nx);
+        id = ((i + 1)*(nx + 2)+(j + 1));
         fprintf ( file, "%24.16g\t%24.16g\t%24.16g\t %24.16g\t %24.16g\n", x[j], y[i], h[id], uh[id], vh[id]);
       }
     
@@ -377,8 +375,8 @@ int main ( int argc, char *argv[] )
   dx = x_length / ( float ) ( nx );
   dy = x_length / ( float ) ( nx );
 
-  float lambda_x = 0.5  * (float) dt / dx;
-  float lambda_y = 0.5 * (float) dt / dy;
+  float lambda_x = 0.5f * dt / dx;
+  float lambda_y = 0.5f * dt / dy;
 
   // Define the block and grid sizes
   int dimx = 32;
