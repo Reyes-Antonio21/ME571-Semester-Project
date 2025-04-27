@@ -413,7 +413,7 @@ int main ( int argc, char *argv[] )
 
     // ******************************************************************** COMPUTATION SECTION ******************************************************************** //
     
-    cudadeviceSynchronize();
+    cudaDeviceSynchronize();
     // start program timer
     auto start_time = std::chrono::steady_clock::now();
 
@@ -446,7 +446,7 @@ int main ( int argc, char *argv[] )
     auto end_time = std::chrono::steady_clock::now();
     std::chrono::duration<double> time_elapsed = end_time - start_time;
 
-    cudadeviceSynchronize();
+    cudaDeviceSynchronize();
     auto start_time_dthd = std::chrono::steady_clock::now();
 
     cudaMemcpy(d_h, h, (nx+2) * (ny+2) * sizeof(float), cudaMemcpyHostToDevice);
