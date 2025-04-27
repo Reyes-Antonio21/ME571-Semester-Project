@@ -3,9 +3,9 @@
 #SBATCH -o swep_2d_tk.%j
 #SBATCH -c 1
 #SBATCH -N 1
-#SBATCH -p gpu
+#SBATCH -p gpu-v100
 #SBATCH -t 05:00:00
-#SBATCH --gres=gpu:L40:1
+#SBATCH --gres=gpu:1
 #SBATCH --exclusive
 
 # Fixed simulation constants
