@@ -321,30 +321,26 @@ __global__ void persistentFusedKernel(float *__restrict__ h, float *__restrict__
 
     __syncthreads();
 
-    // === Apply boundary conditions after swapping ===
-    if (i == 0 && j > 0 && j < nx+1) 
-    {
-      sh_h[SH_ID(local_i, local_j)] =  sh_h[SH_ID(local_i+1, local_j)];
-      sh_uh[SH_ID(local_i, local_j)] = -sh_uh[SH_ID(local_i+1, local_j)];
-      sh_vh[SH_ID(local_i, local_j)] =  sh_vh[SH_ID(local_i+1, local_j)];
+    // Refresh shared memory halos manually for internal block boundaries
+    if (threadIdx.x == 0 && j > 0) {
+      sh_h[SH_ID(local_i, 0)] = sh_h[SH_ID(local_i, 1)];
+      sh_uh[SH_ID(local_i, 0)] = sh_uh[SH_ID(local_i, 1)];
+      sh_vh[SH_ID(local_i, 0)] = sh_vh[SH_ID(local_i, 1)];
     }
-    if (i == ny+1 && j > 0 && j < nx+1) 
-    {
-      sh_h[SH_ID(local_i, local_j)] =  sh_h[SH_ID(local_i-1, local_j)];
-      sh_uh[SH_ID(local_i, local_j)] = -sh_uh[SH_ID(local_i-1, local_j)];
-      sh_vh[SH_ID(local_i, local_j)] =  sh_vh[SH_ID(local_i-1, local_j)];
+    if (threadIdx.x == blockDim.x-1 && j < nx+1) {
+        sh_h[SH_ID(local_i, blockDim.x+1)] = sh_h[SH_ID(local_i, blockDim.x)];
+        sh_uh[SH_ID(local_i, blockDim.x+1)] = sh_uh[SH_ID(local_i, blockDim.x)];
+        sh_vh[SH_ID(local_i, blockDim.x+1)] = sh_vh[SH_ID(local_i, blockDim.x)];
     }
-    if (j == 0 && i > 0 && i < ny+1) 
-    {
-      sh_h[SH_ID(local_i, local_j)] =  sh_h[SH_ID(local_i, local_j+1)];
-      sh_uh[SH_ID(local_i, local_j)] =  sh_uh[SH_ID(local_i, local_j+1)];
-      sh_vh[SH_ID(local_i, local_j)] = -sh_vh[SH_ID(local_i, local_j+1)];
+    if (threadIdx.y == 0 && i > 0) {
+        sh_h[SH_ID(0, local_j)] = sh_h[SH_ID(1, local_j)];
+        sh_uh[SH_ID(0, local_j)] = sh_uh[SH_ID(1, local_j)];
+        sh_vh[SH_ID(0, local_j)] = sh_vh[SH_ID(1, local_j)];
     }
-    if (j == nx+1 && i > 0 && i < ny+1) 
-    {
-      sh_h[SH_ID(local_i, local_j)] =  sh_h[SH_ID(local_i, local_j-1)];
-      sh_uh[SH_ID(local_i, local_j)] =  sh_uh[SH_ID(local_i, local_j-1)];
-      sh_vh[SH_ID(local_i, local_j)] = -sh_vh[SH_ID(local_i, local_j-1)];
+    if (threadIdx.y == blockDim.y-1 && i < ny+1) {
+        sh_h[SH_ID(blockDim.y+1, local_j)] = sh_h[SH_ID(blockDim.y, local_j)];
+        sh_uh[SH_ID(blockDim.y+1, local_j)] = sh_uh[SH_ID(blockDim.y, local_j)];
+        sh_vh[SH_ID(blockDim.y+1, local_j)] = sh_vh[SH_ID(blockDim.y, local_j)];
     }
 
     __syncthreads();
