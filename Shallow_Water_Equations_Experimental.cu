@@ -179,6 +179,73 @@ __global__ void applyTopBoundary(float *h, float *uh, float *vh, int nx, int ny)
 }
 // ****************************************************************************** //
 
+__device__ void applyDomainBoundaryConditionsShared(float *__restrict__ sh_h, float *__restrict__ sh_uh, float *__restrict__ sh_vh, int local_i, int local_j, int i, int j, int nx, int ny, int blockDim_x, int blockDim_y)
+{
+  #define SH_ID(i,j) ((i)*(blockDim_x+2)+(j))
+
+  local_id = SH_ID(local_i, local_j);
+
+  if (i == 0 && j > 0 && j < nx+1) {  // Bottom wall
+  sh_h [local_id] = sh_h [SH_ID(local_i+1, local_j)];
+  sh_uh[local_id] = -sh_uh[SH_ID(local_i+1, local_j)];
+  sh_vh[local_id] =  sh_vh[SH_ID(local_i+1, local_j)];
+  }
+  if (i == ny+1 && j > 0 && j < nx+1) { // Top wall
+  sh_h [local_id] = sh_h [SH_ID(local_i-1, local_j)];
+  sh_uh[local_id] = -sh_uh[SH_ID(local_i-1, local_j)];
+  sh_vh[local_id] =  sh_vh[SH_ID(local_i-1, local_j)];
+  }
+  if (j == 0 && i > 0 && i < ny+1) { // Left wall
+  sh_h [local_id] = sh_h [SH_ID(local_i, local_j+1)];
+  sh_uh[local_id] =  sh_uh[SH_ID(local_i, local_j+1)];
+  sh_vh[local_id] = -sh_vh[SH_ID(local_i, local_j+1)];
+  }
+  if (j == nx+1 && i > 0 && i < ny+1) { // Right wall
+  sh_h [local_id] = sh_h [SH_ID(local_i, local_j-1)];
+  sh_uh[local_id] =  sh_uh[SH_ID(local_i, local_j-1)];
+  sh_vh[local_id] = -sh_vh[SH_ID(local_i, local_j-1)];
+  }
+
+  #undef SH_ID
+}
+// ****************************************************************************** //
+
+__device__ void refreshInternalHalosShared(float *__restrict__ sh_h, float *__restrict__ sh_uh, float *__restrict__ sh_vh, int local_i, int local_j, int i, int j, int nx, int ny, int blockDim_x, int blockDim_y)
+{
+  #define SH_ID(i,j) ((i) * (blockDim_x + 2) + (j))
+
+  // Left halo (copy first interior column)
+  if (threadIdx.x == 0 && j > 0) {
+  sh_h [SH_ID(local_i, 0)] = sh_h [SH_ID(local_i, 1)];
+  sh_uh[SH_ID(local_i, 0)] = sh_uh[SH_ID(local_i, 1)];
+  sh_vh[SH_ID(local_i, 0)] = sh_vh[SH_ID(local_i, 1)];
+  }
+
+  // Right halo (copy last interior column)
+  if (threadIdx.x == blockDim_x-1 && j < nx+1) {
+  sh_h [SH_ID(local_i, blockDim_x+1)] = sh_h [SH_ID(local_i, blockDim_x)];
+  sh_uh[SH_ID(local_i, blockDim_x+1)] = sh_uh[SH_ID(local_i, blockDim_x)];
+  sh_vh[SH_ID(local_i, blockDim_x+1)] = sh_vh[SH_ID(local_i, blockDim_x)];
+  }
+
+  // Bottom halo (copy first interior row)
+  if (threadIdx.y == 0 && i > 0) {
+  sh_h [SH_ID(0, local_j)] = sh_h [SH_ID(1, local_j)];
+  sh_uh[SH_ID(0, local_j)] = sh_uh[SH_ID(1, local_j)];
+  sh_vh[SH_ID(0, local_j)] = sh_vh[SH_ID(1, local_j)];
+  }
+
+  // Top halo (copy last interior row)
+  if (threadIdx.y == blockDim_y-1 && i < ny+1) {
+  sh_h [SH_ID(blockDim_y+1, local_j)] = sh_h [SH_ID(blockDim_y, local_j)];
+  sh_uh[SH_ID(blockDim_y+1, local_j)] = sh_uh[SH_ID(blockDim_y, local_j)];
+  sh_vh[SH_ID(blockDim_y+1, local_j)] = sh_vh[SH_ID(blockDim_y, local_j)];
+  }
+
+  #undef SH_ID
+}
+// ****************************************************************************** //
+
 __global__ void persistentFusedKernel(float *__restrict__ h, float *__restrict__ uh, float *__restrict__ vh, float lambda_x, float lambda_y, int nx, int ny, float dt, float finalRuntime)
 {
   // Thread and block indices
@@ -188,6 +255,8 @@ __global__ void persistentFusedKernel(float *__restrict__ h, float *__restrict__
   // Local shared memory indices (with halo)
   unsigned int local_i = threadIdx.y + 1;
   unsigned int local_j = threadIdx.x + 1;
+
+  unsigned int id, local_id;
 
   // Allocate shared memory
   extern __shared__ float sharedmemory[];
@@ -207,104 +276,89 @@ __global__ void persistentFusedKernel(float *__restrict__ h, float *__restrict__
   float *sh_uhm = sh_hm  + (blockDim.y + 2) * (blockDim.x + 2);
   float *sh_vhm = sh_uhm + (blockDim.y + 2) * (blockDim.x + 2);
 
-  # define SH_ID(i,j) ((i)*(blockDim.x+2)+(j))
-  # define ID_2D(i,j,nx) ((i)*(nx+2)+(j))
+  # define SH_ID(i,j) ((i) * (blockDim.x + 2) + (j))
+  # define ID_2D(i,j,nx) ((i) * (nx + 2) + (j))
 
   // Load initial data into shared memory
-  if (i < ny+2 && j < nx+2) 
+  if (i < ny + 2 && j < nx + 2) 
   {
-    sh_h [SH_ID(local_i, local_j)] = h [ID_2D(i,j,nx)];
-    sh_uh[SH_ID(local_i, local_j)] = uh[ID_2D(i,j,nx)];
-    sh_vh[SH_ID(local_i, local_j)] = vh[ID_2D(i,j,nx)];
+    id = ID_2D(i,j,nx);
+    local_id = SH_ID(local_i,local_j);
+
+    sh_h[local_id] = h[id];
+    sh_uh[local_id] = uh[id];
+    sh_vh[local_id] = vh[id];
   }
 
   __syncthreads();
 
-  // Bottom boundary (i == 0)
-  if (i == 0 && j > 0 && j < nx+1) {
-    sh_h [SH_ID(local_i, local_j)] = sh_h [SH_ID(local_i+1, local_j)];
-    sh_uh[SH_ID(local_i, local_j)] = -sh_uh[SH_ID(local_i+1, local_j)];
-    sh_vh[SH_ID(local_i, local_j)] =  sh_vh[SH_ID(local_i+1, local_j)];
-  }
-
-  // Top boundary (i == ny+1)
-  if (i == ny+1 && j > 0 && j < nx+1) {
-    sh_h [SH_ID(local_i, local_j)] = sh_h [SH_ID(local_i-1, local_j)];
-    sh_uh[SH_ID(local_i, local_j)] = -sh_uh[SH_ID(local_i-1, local_j)];
-    sh_vh[SH_ID(local_i, local_j)] =  sh_vh[SH_ID(local_i-1, local_j)];
-  }
-
-  // Left boundary (j == 0)
-  if (j == 0 && i > 0 && i < ny+1) {
-    sh_h [SH_ID(local_i, local_j)] = sh_h [SH_ID(local_i, local_j+1)];
-    sh_uh[SH_ID(local_i, local_j)] =  sh_uh[SH_ID(local_i, local_j+1)];
-    sh_vh[SH_ID(local_i, local_j)] = -sh_vh[SH_ID(local_i, local_j+1)];
-  }
-
-  // Right boundary (j == nx+1)
-  if (j == nx+1 && i > 0 && i < ny+1) {
-    sh_h [SH_ID(local_i, local_j)] = sh_h [SH_ID(local_i, local_j-1)];
-    sh_uh[SH_ID(local_i, local_j)] =  sh_uh[SH_ID(local_i, local_j-1)];
-    sh_vh[SH_ID(local_i, local_j)] = -sh_vh[SH_ID(local_i, local_j-1)];
-  }
+  applyDomainBoundaryConditionsShared(sh_h, sh_uh, sh_vh, local_i, local_j, i, j, nx, ny, blockDim.x, blockDim.y);
 
   __syncthreads();
 
-  float localTime = 0.0f;
+  float programRuntime = 0.0f;
   float g = 9.81f;
   float g_half = 0.5f * g;
 
-  while (localTime < finalRuntime)
+  while (programRuntime < finalRuntime)
   {
     // Compute fluxes
-    if (i < ny+2 && j < nx+2) 
+    if (i < ny + 2 && j < nx + 2) 
     {
-      float h_val  = sh_h [SH_ID(local_i, local_j)];
-      float uh_val = sh_uh[SH_ID(local_i, local_j)];
-      float vh_val = sh_vh[SH_ID(local_i, local_j)];
+      local_id = SH_ID(local_i,local_j);
 
-      float inv_h = (h_val > 1e-6f) ? (1.0f / h_val) : 0.0f;
+      float h_val  = sh_h [local_id];
+      float uh_val = sh_uh[local_id];
+      float vh_val = sh_vh[local_id];
+
+      float inv_h = 1.0f / h_val;
       float h2 = h_val * h_val;
 
-      sh_fh [SH_ID(local_i, local_j)] = uh_val;
-      sh_gh [SH_ID(local_i, local_j)] = vh_val;
+      sh_fh [local_id] = uh_val;
+      sh_gh [local_id] = vh_val;
 
-      sh_fuh[SH_ID(local_i, local_j)] = uh_val * uh_val * inv_h + g_half * h2;
-      sh_fvh[SH_ID(local_i, local_j)] = uh_val * vh_val * inv_h;
+      sh_fuh[local_id] = uh_val * uh_val * inv_h + g_half * h2;
+      sh_fvh[local_id] = uh_val * vh_val * inv_h;
 
-      sh_guh[SH_ID(local_i, local_j)] = uh_val * vh_val * inv_h;
-      sh_gvh[SH_ID(local_i, local_j)] = vh_val * vh_val * inv_h + g_half * h2;
+      sh_guh[local_id] = uh_val * vh_val * inv_h;
+      sh_gvh[local_id] = vh_val * vh_val * inv_h + g_half * h2;
     }
 
     __syncthreads();
 
     // Compute updated variables using stencil
-    if (i > 0 && i < ny+1 && j > 0 && j < nx+1) 
+    if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1) 
     {
-      float fh_left   = sh_fh [SH_ID(local_i, local_j-1)];
-      float fh_right  = sh_fh [SH_ID(local_i, local_j+1)];
-      float gh_bottom = sh_gh [SH_ID(local_i+1, local_j)];
-      float gh_top    = sh_gh [SH_ID(local_i-1, local_j)];
+      local_id = SH_ID(local_i,local_j);
+      local_id_left = SH_ID(local_i, local_j-1);
+      local_id_right = SH_ID(local_i, local_j+1);
+      local_id_bottom = SH_ID(local_i+1, local_j);
+      local_id_top = SH_ID(local_i-1, local_j);
 
-      float fuh_left   = sh_fuh[SH_ID(local_i, local_j-1)];
-      float fuh_right  = sh_fuh[SH_ID(local_i, local_j+1)];
-      float guh_bottom = sh_guh[SH_ID(local_i+1, local_j)];
-      float guh_top    = sh_guh[SH_ID(local_i-1, local_j)];
+      float fh_left   = sh_fh [local_id_left];
+      float fh_right  = sh_fh [local_id_right];
+      float gh_bottom = sh_gh [local_id_bottom];
+      float gh_top    = sh_gh [local_id_top];
 
-      float fvh_left   = sh_fvh[SH_ID(local_i, local_j-1)];
-      float fvh_right  = sh_fvh[SH_ID(local_i, local_j+1)];
-      float gvh_bottom = sh_gvh[SH_ID(local_i+1, local_j)];
-      float gvh_top    = sh_gvh[SH_ID(local_i-1, local_j)];
+      float fuh_left   = sh_fuh[local_id_left];
+      float fuh_right  = sh_fuh[local_id_right];
+      float guh_bottom = sh_guh[local_id_bottom];
+      float guh_top    = sh_guh[local_id_top];
 
-      sh_hm [SH_ID(local_i, local_j)] = 0.25f * (sh_h[SH_ID(local_i, local_j-1)] + sh_h[SH_ID(local_i, local_j+1)] + sh_h[SH_ID(local_i-1, local_j)] + sh_h[SH_ID(local_i+1, local_j)])
+      float fvh_left   = sh_fvh[local_id_left];
+      float fvh_right  = sh_fvh[local_id_right];
+      float gvh_bottom = sh_gvh[local_id_bottom];
+      float gvh_top    = sh_gvh[local_id_top];
+
+      sh_hm [local_id] = 0.25f * (sh_h[local_id_left] + sh_h[local_id_right] + sh_h[local_id_top] + sh_h[local_id_bottom])
                       - lambda_x * (fh_right - fh_left)
                       - lambda_y * (gh_top - gh_bottom);
 
-      sh_uhm[SH_ID(local_i, local_j)] = 0.25f * (sh_uh[SH_ID(local_i, local_j-1)] + sh_uh[SH_ID(local_i, local_j+1)] + sh_uh[SH_ID(local_i-1, local_j)] + sh_uh[SH_ID(local_i+1, local_j)])
+      sh_uhm[local_id] = 0.25f * (sh_uh[local_id_left] + sh_uh[local_id_right] + sh_uh[local_id_top] + sh_uh[local_id_bottom])
                       - lambda_x * (fuh_right - fuh_left)
                       - lambda_y * (guh_top - guh_bottom);
 
-      sh_vhm[SH_ID(local_i, local_j)] = 0.25f * (sh_vh[SH_ID(local_i, local_j-1)] + sh_vh[SH_ID(local_i, local_j+1)] + sh_vh[SH_ID(local_i-1, local_j)] + sh_vh[SH_ID(local_i+1, local_j)])
+      sh_vhm[local_id] = 0.25f * (sh_vh[local_id_left] + sh_vh[local_id_right] + sh_vh[local_id_top] + sh_vh[local_id_bottom])
                       - lambda_x * (fvh_right - fvh_left)
                       - lambda_y * (gvh_top - gvh_bottom);
     }
@@ -314,51 +368,35 @@ __global__ void persistentFusedKernel(float *__restrict__ h, float *__restrict__
     // === Swap updated values into original fields ===
     if (i > 0 && i < ny+1 && j > 0 && j < nx+1) 
     {
-      sh_h [SH_ID(local_i, local_j)] = sh_hm [SH_ID(local_i, local_j)];
-      sh_uh[SH_ID(local_i, local_j)] = sh_uhm[SH_ID(local_i, local_j)];
-      sh_vh[SH_ID(local_i, local_j)] = sh_vhm[SH_ID(local_i, local_j)];
+      local_id = SH_ID(local_i, local_j);
+
+      sh_h [local_id] = sh_hm [local_id];
+      sh_uh[local_id] = sh_uhm[local_id];
+      sh_vh[local_id] = sh_vhm[local_id];
     }
 
     __syncthreads();
 
     // Refresh shared memory halos manually for internal block boundaries
-    if (threadIdx.x == 0 && j > 0) {
-      sh_h[SH_ID(local_i, 0)] = sh_h[SH_ID(local_i, 1)];
-      sh_uh[SH_ID(local_i, 0)] = sh_uh[SH_ID(local_i, 1)];
-      sh_vh[SH_ID(local_i, 0)] = sh_vh[SH_ID(local_i, 1)];
-    }
-    if (threadIdx.x == blockDim.x-1 && j < nx+1) {
-        sh_h[SH_ID(local_i, blockDim.x+1)] = sh_h[SH_ID(local_i, blockDim.x)];
-        sh_uh[SH_ID(local_i, blockDim.x+1)] = sh_uh[SH_ID(local_i, blockDim.x)];
-        sh_vh[SH_ID(local_i, blockDim.x+1)] = sh_vh[SH_ID(local_i, blockDim.x)];
-    }
-    if (threadIdx.y == 0 && i > 0) {
-        sh_h[SH_ID(0, local_j)] = sh_h[SH_ID(1, local_j)];
-        sh_uh[SH_ID(0, local_j)] = sh_uh[SH_ID(1, local_j)];
-        sh_vh[SH_ID(0, local_j)] = sh_vh[SH_ID(1, local_j)];
-    }
-    if (threadIdx.y == blockDim.y-1 && i < ny+1) {
-        sh_h[SH_ID(blockDim.y+1, local_j)] = sh_h[SH_ID(blockDim.y, local_j)];
-        sh_uh[SH_ID(blockDim.y+1, local_j)] = sh_uh[SH_ID(blockDim.y, local_j)];
-        sh_vh[SH_ID(blockDim.y+1, local_j)] = sh_vh[SH_ID(blockDim.y, local_j)];
-    }
-
+    refreshInternalHalosShared(sh_h, sh_uh, sh_vh, local_i, local_j, i, j, nx, ny, blockDim.x, blockDim.y);
+    
     __syncthreads();
 
-    localTime += dt;
+    programRuntime += dt;
   }
 
   // Final write back to global memory
   if (i > 0 && i < ny+1 && j > 0 && j < nx+1) 
   {
-    h [ID_2D(i,j,nx)] = sh_h [SH_ID(local_i, local_j)];
-    uh[ID_2D(i,j,nx)] = sh_uh[SH_ID(local_i, local_j)];
-    vh[ID_2D(i,j,nx)] = sh_vh[SH_ID(local_i, local_j)];
+    h [ID_2D(i,j,nx)] = sh_h [local_id];
+    uh[ID_2D(i,j,nx)] = sh_uh[local_id];
+    vh[ID_2D(i,j,nx)] = sh_vh[local_id];
   }
 
   # undef SH_ID
   # undef ID_2D
 }
+// ****************************************************************************** //
 
 // ****************************************************** MAIN ****************************************************** //
 int main ( int argc, char *argv[] )
