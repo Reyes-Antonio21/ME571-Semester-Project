@@ -31,7 +31,7 @@ def fitFunc5(x, a, b):
 # -------------------------------------------------------------- CSV Data -------------------------------------------------------------- 
 # Path to the CSV files
 # Note: The path should be updated to the location of your CSV files
-path ='C:/Users/Antonio Reyes/OneDrive/Documents/ME 571 Parallel Scientific Computing/Shallow_Water_Equations_Performance_csv_Files/'
+path ='C:/Users/anton/OneDrive/Documents/ME 571 Parallel Scientific Computing/Shallow_Water_Equations_Performance_csv_Files/'
 cudaKernelPerformance = 'Shallow_Water_Equations_Cuda_Kernel_Runtime_Performance.csv'
 cudaTotalPerformance = 'Shallow_Water_Equations_Cuda_Total_Runtime_Performance.csv'
 mpiTotalPerformance = 'Shallow_Water_Equations_Mpi_Total_Runtime_Performance.csv'
@@ -41,7 +41,7 @@ serialSectionPerformance = 'Shallow_Water_Equations_Serial_Section_Runtime_Perfo
 
 # -------------------------------------------------------------- parallel total performance --------------------------------------------------------------
 # Read the CSV file
-pTPData = pd.read_csv(path + cudaTotalPerformance, header = 0, names = ['Problem size','Time steps','Iterations','Elapsed time (s)','Host-device transfer time (s)','Device-Host transfer time (s)'])
+pTPData = pd.read_csv(path + cudaTotalPerformance, header = 0, names = ['Problem size', 'Time steps','Iteration', 'Elapsed time (s)', 'Host-device transfer time (s)', 'Device-Host transfer time (s)'])
 
 # Define the columns to average
 columns_to_avg = [
@@ -78,7 +78,7 @@ ss_respt = np.sum((avgParallelElapsedTime - y_predpt)**2)
 ss_totpt = np.sum((avgParallelElapsedTime - np.mean(avgParallelElapsedTime))**2)
 r_squaredpt = 1 - (ss_respt / ss_totpt)
 
-print(f"R\u00B2: {r_squaredpt:.4f}")
+print(f"R\u00B2 Parallel Elapsed Time: {r_squaredpt:.4f}")
 
 plt.figure(figsize=(10,6))
 plt.plot(problemSizept, y_predpt, color = 'pink', label = f'Elapsed Time Curve Fit, a = {apt:.4e}, b = {bpt:.4e}, c = {cpt:.4e}, d = {dpt:.4e}')
@@ -93,20 +93,20 @@ poptdthd, pcovdthd = curve_fit(fitFunc2, problemSizept, avgHostDeviceTransfer)
 adthd, bdthd, cdthd = poptdthd[0], poptdthd[1], poptdthd[2]
 
 # Predict y values
-y_preddt = fitFunc2(problemSizept, adthd, bdthd, cdthd)
+y_preddthd = fitFunc2(problemSizept, adthd, bdthd, cdthd)
 
 # Compute R\u00B2
-ss_resdt = np.sum((avgHostDeviceTransfer - y_preddt)**2)
-ss_totdt = np.sum((avgHostDeviceTransfer - np.mean(avgHostDeviceTransfer))**2)
-r_squareddt = 1 - (ss_resdt / ss_totdt)
+ss_resdthd = np.sum((avgHostDeviceTransfer - y_preddthd)**2)
+ss_totdthd = np.sum((avgHostDeviceTransfer - np.mean(avgHostDeviceTransfer))**2)
+r_squareddthd = 1 - (ss_resdthd / ss_totdthd)
 
-print(f"R\u00B2: {r_squareddt:.4f}")
+print(f"R\u00B2 Host-Device Transfer Time: {r_squareddthd:.4f}")
 
 plt.figure(figsize=(10,6))
-plt.plot(problemSizept, y_preddt * 1000, color = 'green', label= f'Host-Device Data Transfer Curve Fit, a = {adthd:.4e}, b = {bdthd:.4e}, c = {cdthd:.4e}')
+plt.plot(problemSizept, y_preddthd * 1000, color = 'green', label= f'Host-Device Data Transfer Curve Fit, a = {adthd:.4e}, b = {bdthd:.4e}, c = {cdthd:.4e}')
 plt.scatter(problemSizept, avgHostDeviceTransfer * 1000, color = 'blue', marker = '.', label = 'Average Host-Device Data Transfer Time')
 plt.xlabel("Problem Size")
-plt.ylabel("Device-Host Data Transfer Time (ms)")
+plt.ylabel("Host-Device Data Transfer Time (ms)")
 plt.legend()
 plt.show()
 
@@ -115,34 +115,34 @@ poptdtdh, pcovdtdh = curve_fit(fitFunc2, problemSizept, avgDeviceHostTransfer)
 adtdh, bdtdh, cdtdh = poptdtdh[0], poptdtdh[1], poptdtdh[2]
 
 # Predict y values
-y_preddt = fitFunc2(problemSizept, adtdh, bdtdh, cdtdh)
+y_preddtdh = fitFunc2(problemSizept, adtdh, bdtdh, cdtdh)
 
 # Compute R\u00B2
-ss_resdt = np.sum((avgDeviceHostTransfer - y_preddt)**2)
-ss_totdt = np.sum((avgDeviceHostTransfer - np.mean(avgDeviceHostTransfer))**2)
-r_squareddt = 1 - (ss_resdt / ss_totdt)
+ss_resdtdh = np.sum((avgDeviceHostTransfer - y_preddtdh)**2)
+ss_totdtdh = np.sum((avgDeviceHostTransfer - np.mean(avgDeviceHostTransfer))**2)
+r_squareddtdh = 1 - (ss_resdtdh / ss_totdtdh)
 
-print(f"R\u00B2: {r_squareddt:.4f}")
+print(f"R\u00B2 Device-Host Transfer Time: {r_squareddtdh:.4f}")
 
 plt.figure(figsize=(10,6))
-plt.plot(problemSizept, y_preddt * 1000, color = 'green', label= f'Host-Device Data Transfer Curve Fit, a = {adtdh:.4e}, b = {bdtdh:.4e}, c = {cdtdh:.4e}')
+plt.plot(problemSizept, y_preddtdh * 1000, color = 'green', label= f'Device Data Transfer Curve Fit, a = {adtdh:.4e}, b = {bdtdh:.4e}, c = {cdtdh:.4e}')
 plt.scatter(problemSizept, avgDeviceHostTransfer * 1000, color = 'blue', marker = '.', label = 'Average Host-Device Data Transfer Time')
 plt.xlabel("Problem Size")
-plt.ylabel("Host-Device Data Transfer Time (ms)")
+plt.ylabel("Device-Host Data Transfer Time (ms)")
 plt.legend()
 plt.show()
 
 # -------------------------------------------------------------- parallel kernel performance --------------------------------------------------------------
 # Read the CSV file
-pKPData = pd.read_csv(path + cudaKernelPerformance, header = 0, names = ['Problem size','Time steps','Iterations','Elapsed time (s)','Avg fluxes (s)','Avg variables (s)','Avg update (s)', 'Avg boundary (s)'])
+pKPData = pd.read_csv(path + cudaKernelPerformance, header = 0, names = ['Problem size', 'Time steps', 'Iteration', 'Elapsed time (s)', 'Avg compute fluxes time (s)', 'Avg compute variables time (s)', 'Avg update variables time (s)', 'Avg apply boundary conditions time (s)'])
 
 # Define the columns to average
 columns_to_avg = [
     "Elapsed time (s)",
-    "Avg fluxes (s)",
-    "Avg variables (s)",
-    "Avg update (s)",
-    "Avg boundary (s)"
+    "Avg compute fluxes time (s)",
+    "Avg compute variables time (s)",
+    "Avg update variables time (s)",
+    "Avg apply boundary conditions time (s)"
 ]
 
 # Group by 'Problem size' and calculate the mean and std deviation
@@ -156,12 +156,12 @@ std_data.columns = [col + " (std dev)" for col in std_data.columns]
 pKPData = averaged_data.join(std_data, how='left').reset_index()
 
 # Rename columns for clarity
-pKPData.columns = ['Problem size', 'Avg elapsed time (s)', 'Avg compute fluxes (s)', 'Avg compute variables (s)', 'Avg update variables (s)', 'Avg apply boundary conditions (s)', 'Std elapsed time (s)', 'Std compute fluxes (s)', 'Std compute variables (s)', 'Std update variables (s)', 'Std apply boundary conditions (s)']
+pKPData.columns = ['Problem size', 'Avg elapsed time (s)', 'Avg compute fluxes time (s)', 'Avg compute variables time (s)', 'Avg update variables time (s)', 'Avg apply boundary conditions time (s)', 'Std elapsed time (s)', 'Std compute fluxes (s)', 'Std compute variables (s)', 'Std update variables (s)', 'Std apply boundary conditions (s)']
 problemSizepk = pKPData['Problem size']
-avgComputeFluxpk = pKPData['Avg compute fluxes (s)']
-avgComputeVariablespk = pKPData['Avg compute variables (s)']
-avgUpdateVariablespk = pKPData['Avg update variables (s)']
-avgApplyBoundaryConditionspk = pKPData['Avg apply boundary conditions (s)']
+avgComputeFluxpk = pKPData['Avg compute fluxes time (s)']
+avgComputeVariablespk = pKPData['Avg compute variables time (s)']
+avgUpdateVariablespk = pKPData['Avg update variables time (s)']
+avgApplyBoundaryConditionspk = pKPData['Avg apply boundary conditions time (s)']
 
 # Fit the model to the data
 poptpk1, pcovpk1 = curve_fit(fitFunc2, problemSizepk, avgComputeFluxpk)
@@ -235,7 +235,7 @@ plt.show()
 
 # -------------------------------------------------------------- serial total performance -------------------------------------------------------------- 
 # Read the CSV file
-sTPData = pd.read_csv(path + serialTotalPerformance, header = 0, names = ['Problem size','Iterations','Elapsed time (s)'])
+sTPData = pd.read_csv(path + serialTotalPerformance, header = 0, names = ['Problem size', 'Time steps', 'Iteration', 'Elapsed time (s)'])
 
 # Define the columns to average
 columns_to_avg = [
@@ -302,15 +302,15 @@ plt.show()
 
 # -------------------------------------------------------------- serial section performance --------------------------------------------------------------
 # Read the CSV file
-sSPData = pd.read_csv(path + serialSectionPerformance, header = 0, names = ['Problem size','Time steps','Iterations','Elapsed time (s)','Avg fluxes (s)','Avg variables (s)','Avg update (s)', 'Avg boundary (s)'])
+sSPData = pd.read_csv(path + serialSectionPerformance, header = 0, names = ['Problem size', 'Time steps', 'Iteration', 'Elapsed time (s)', 'Avg compute fluxes time (s)', 'Avg compute variables time (s)', 'Avg update variables time (s)', 'Avg apply boundary conditions time (s)'])
 
 # Define the columns to average
 columns_to_avg = [
     "Elapsed time (s)",
-    "Avg fluxes (s)",
-    "Avg variables (s)",
-    "Avg update (s)",
-    "Avg boundary (s)"
+    "Avg compute fluxes time (s)",
+    "Avg compute variables time (s)",
+    "Avg update variables time (s)",
+    "Avg apply boundary conditions time (s)"
 ]
 
 # Group by 'Problem size' and calculate the mean and std deviation
@@ -324,12 +324,12 @@ std_data.columns = [col + " (std dev)" for col in std_data.columns]
 sSPData = averaged_data.join(std_data, how='left').reset_index()
 
 # Rename columns for clarity
-sSPData.columns = ['Problem size', 'Avg elapsed time (s)', 'Avg compute fluxes (s)', 'Avg compute variables (s)', 'Avg update variables (s)', 'Avg apply boundary conditions (s)', 'Std elapsed time (s)', 'Std compute fluxes (s)', 'Std compute variables (s)', 'Std update variables (s)', 'Std apply boundary conditions (s)']
+sSPData.columns = ['Problem size', 'Avg elapsed time (s)', 'Avg compute fluxes time (s)', 'Avg compute variables time (s)', 'Avg update variables time (s)', 'Avg apply boundary conditions time (s)', 'Std elapsed time (s)', 'Std compute fluxes (s)', 'Std compute variables (s)', 'Std update variables (s)', 'Std apply boundary conditions (s)']
 problemSizess = sSPData['Problem size']
-avgComputeFluxss = sSPData['Avg compute fluxes (s)']
-avgComputeVariablesss = sSPData['Avg compute variables (s)']
-avgUpdateVariablesss = sSPData['Avg update variables (s)']
-avgApplyBoundaryConditionsss = sSPData['Avg apply boundary conditions (s)']
+avgComputeFluxss = sSPData['Avg compute fluxes time (s)']
+avgComputeVariablesss = sSPData['Avg compute variables time (s)']
+avgUpdateVariablesss = sSPData['Avg update variables time (s)']
+avgApplyBoundaryConditionsss = sSPData['Avg apply boundary conditions time (s)']
 
 # Fit the model to the data
 poptss1, pcovss1 = curve_fit(fitFunc2, problemSizess, avgComputeFluxss)
@@ -403,7 +403,7 @@ plt.show()
 
 # -------------------------------------------------------------- MPI total performance --------------------------------------------------------------
 
-mTPData = pd.read_csv(path + mpiTotalPerformance, header = 0, names = ['Problem size','Number of processors','Iteration','Time steps','Elapsed time (s)'])
+mTPData = pd.read_csv(path + mpiTotalPerformance, header = 0, names = ['Problem size', 'Number of processors', 'Time steps', 'Iteration', 'Elapsed time (s)'])
 
 x = np.linspace(0, 50, 50)
 y = np.ones_like(x)
@@ -423,15 +423,16 @@ std_data.columns = [col + " (std dev)" for col in std_data.columns]
 
 mTPData = averaged_data.join(std_data, how='left').reset_index()
 
+mTPData.columns = ['Problem size', 'Number of processors', 'Avg elapsed time (s)', 'Std elapsed time (s)']
 problemSizemT = mTPData['Problem size']
 numberOfProcessors = mTPData['Number of processors']
-avgParallelElapsedTimemT = mTPData['Elapsed time (s)']
+avgParallelElapsedTimemT = mTPData['Avg elapsed time (s)']
 
 plt.figure(figsize=(16,9))
 
 for problem_size in problemSizemT.unique():
     subset = mTPData[problemSizemT == problem_size]
-    plt.plot(subset['Number of processors'], subset['Elapsed time (s)'], marker='.', label=f'Problem Size: {problem_size}')
+    plt.plot(subset['Number of processors'], subset['Avg elapsed time (s)'], marker='.', label=f'Problem Size: {problem_size}')
 
 plt.xlabel("Number of Processors")
 plt.ylabel("Average Time to Solution (s)")  
@@ -443,24 +444,24 @@ plt.tight_layout()
 plt.show()
 
 # Choose a fixed problem size for strong scaling
-problem_size_to_analyze = 1800  # Change this to whichever size you want
+problem_size_to_analyze = 3400  # Change this to whichever size you want
 subset = mTPData[problemSizemT == problem_size_to_analyze]
 
 # Sort by number of processors
 subset = subset.sort_values(by='Number of processors')
 
 # Compute speedup and efficiency
-T1 = subset[subset['Number of processors'] == 1]['Elapsed time (s)'].values[0]
-subset['Speedup'] = T1 / subset['Elapsed time (s)']
+T1 = subset[subset['Number of processors'] == 1]['Avg elapsed time (s)'].values[0]
+subset['Speedup'] = T1 / subset['Avg elapsed time (s)']
 subset['Efficiency'] = subset['Speedup'] / subset['Number of processors']
 
 # === 3-in-1 Plot ===
 fig, axes = plt.subplots(1, 3, figsize=(18, 5))
 
 # Panel 1: Elapsed Time
-axes[0].plot(subset['Number of processors'], subset['Elapsed time (s)'], marker='.')
+axes[0].plot(subset['Number of processors'], subset['Avg elapsed time (s)'], marker='.')
 axes[0].set_xlabel('Number of Processors')
-axes[0].set_ylabel('Elapsed Time (s)')
+axes[0].set_ylabel('Avg Elapsed Time (s)')
 axes[0].set_title(f'Elapsed Time\n(Problem size {problem_size_to_analyze})')
 axes[0].grid(True)
 axes[0].set_xscale('log', base=2)
@@ -493,20 +494,20 @@ plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 plt.show()
 # -------------------------------------------------------------- MPI section performance --------------------------------------------------------------
 
-mSPData = pd.read_csv(path + mpiSectionPerformance, header = 0, names = ['Processors','Problem size','Time steps','Iterations','Elapsed time (s)','Avg compute fluxes (s)','Avg compute variables (s)','Avg update variables (s)', 'Avg apply boundary conditions (s)', 'Avg data transfer (s)'])
+mSPData = pd.read_csv(path + mpiSectionPerformance, header = 0, names = ['Problem size', 'Number of processors', 'Time steps', 'Iteration','Elapsed time (s)','Avg compute fluxes time (s)','Avg compute variables time (s)','Avg update variables time (s)', 'Avg apply boundary conditions time (s)', 'Avg data transfer time (s)'])
 
 # Define the columns to average
 columns_to_avg = [
     "Elapsed time (s)",
-    "Avg compute fluxes (s)",
-    "Avg compute variables (s)",
-    "Avg update variables (s)",
-    "Avg apply boundary conditions (s)",
-    "Avg data transfer (s)"
+    "Avg compute fluxes time (s)",
+    "Avg compute variables time (s)",
+    "Avg update variables time (s)",
+    "Avg apply boundary conditions time (s)",
+    "Avg data transfer time (s)"
 ]
 
 # Group by 'Problem size' and calculate the mean and std deviation
-data_to_avg = mSPData.groupby(['Problem size', 'Processors'])[columns_to_avg]
+data_to_avg = mSPData.groupby(['Problem size', 'Number of processors'])[columns_to_avg]
 averaged_data = data_to_avg.mean()
 std_data = data_to_avg.std()
 
@@ -515,7 +516,14 @@ std_data.columns = [col + " (std dev)" for col in std_data.columns]
 
 mSPData = averaged_data.join(std_data, how='left').reset_index()
 
-
+mSPData.columns = ['Problem size', 'Number of processors', 'Avg elapsed time (s)', 'Avg compute fluxes time (s)', 'Avg compute variables time (s)', 'Avg update variables time (s)', 'Avg apply boundary conditions time (s)', 'Avg data transfer time (s)', 'Std elapsed time (s)', 'Std compute fluxes (s)', 'Std compute variables (s)', 'Std update variables (s)', 'Std apply boundary conditions (s)', 'Std data transfer (s)']
+problemSizemS = mSPData['Problem size']
+numberOfProcessorsmS = mSPData['Number of processors']
+avgComputeFluxesmS = mSPData['Avg compute fluxes time (s)']
+avgComputeVariablesmS = mSPData['Avg compute variables time (s)']
+avgUpdateVariablesmS = mSPData['Avg update variables time (s)']
+avgApplyBoundaryConditionsmS = mSPData['Avg apply boundary conditions time (s)']
+avgDataTransfermS = mSPData['Avg data transfer time (s)']
 
 # -------------------------------------------------------------- Parallel to serial SECTION performance comparison --------------------------------------------------------------
 # Find the minimum length

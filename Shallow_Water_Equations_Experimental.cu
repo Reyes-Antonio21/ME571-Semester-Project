@@ -101,127 +101,6 @@ __global__ void initializeInterior(float *x, float *y, float *h, float *uh, floa
 }
 // ****************************************************************************** //
 
-__global__ void computeFluxes(float *h, float *uh, float *vh, float *fh, float *fuh, float *fvh, float *gh, float *guh, float *gvh, int nx, int ny) 
-{
-  unsigned int i = threadIdx.y + blockIdx.y * blockDim.y;
-  unsigned int j = threadIdx.x + blockIdx.x * blockDim.x;
-  
-  unsigned int id = ((i) * (nx + 2) + (j));
-
-  float g = 9.81f; 
-  float g_half = 0.5f * g; 
-  
-  if (i < ny + 2 && j < nx + 2)
-  {
-    float h_val = h[id];
-
-    float uh_val = uh[id];
-
-    float vh_val = vh[id];
-
-    float inv_h = 1.0f / h_val;
-
-    float h2 = h_val * h_val; 
-
-    fh[id]  = uh_val;
-
-    gh[id]  = vh_val;
-
-    float uh2 = uh_val * uh_val; 
-
-    float vh2 = vh_val * vh_val; 
-
-    float uv  = uh_val * vh_val; 
-
-    fuh[id] = uh2 * inv_h + g_half * h2;
-
-    fvh[id] = uv  * inv_h;
-
-    guh[id] = uv  * inv_h;
-
-    gvh[id] = vh2 * inv_h + g_half * h2;
-  }
-}
-// ****************************************************************************** //
-
-__global__ void computeVariables(float *hm, float *uhm, float *vhm, float *fh, float *fuh, float *fvh, float *gh, float *guh, float *gvh, float *h, float *uh, float *vh, float lambda_x, float lambda_y, int nx, int ny)
-{
-  unsigned int i = threadIdx.y + blockIdx.y * blockDim.y;
-  unsigned int j = threadIdx.x + blockIdx.x * blockDim.x;
-  unsigned int id, id_left, id_right, id_bottom, id_top;
-
-  if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)  // Ensure proper bounds
-  {
-    id = ((i) * (nx + 2) + (j));
-
-    id_left = ((i) * (nx + 2) + (j - 1));
-    id_right = ((i) * (nx + 2) + (j + 1));
-    id_bottom = ((i - 1) * (nx + 2) + (j));
-    id_top = ((i + 1) * (nx + 2) + (j));
-
-    // Load neighbor values into local registers
-    float h_l  = h[id_left];
-    float h_r  = h[id_right];
-    float h_b  = h[id_bottom];
-    float h_t  = h[id_top];
-
-    float uh_l = uh[id_left];
-    float uh_r = uh[id_right];
-    float uh_b = uh[id_bottom];
-    float uh_t = uh[id_top];
-
-    float vh_l = vh[id_left];
-    float vh_r = vh[id_right];
-    float vh_b = vh[id_bottom];
-    float vh_t = vh[id_top];
-
-    float fh_l = fh[id_left];
-    float fh_r = fh[id_right];
-    float gh_b = gh[id_bottom];
-    float gh_t = gh[id_top];
-
-    float fuh_l = fuh[id_left];
-    float fuh_r = fuh[id_right];
-    float guh_b = guh[id_bottom];
-    float guh_t = guh[id_top];
-
-    float fvh_l = fvh[id_left];
-    float fvh_r = fvh[id_right];
-    float gvh_b = gvh[id_bottom];
-    float gvh_t = gvh[id_top];
-
-    hm[id] = 0.25f * (h_l + h_r + h_b + h_t)
-           - lambda_x * (fh_r - fh_l)
-           - lambda_y * (gh_t - gh_b);
-
-    uhm[id] = 0.25f * (uh_l + uh_r + uh_b + uh_t)
-            - lambda_x * (fuh_r - fuh_l)
-            - lambda_y * (guh_t - guh_b);
-
-    vhm[id] = 0.25f * (vh_l + vh_r + vh_b + vh_t)
-            - lambda_x * (fvh_r - fvh_l)
-            - lambda_y * (gvh_t - gvh_b);
-  }
-}
-// ****************************************************************************** //
-
-__global__ void updateVariables(float *h, float *uh, float *vh, float *hm, float *uhm, float *vhm, int nx, int ny)
-{
-  unsigned int i = threadIdx.y + blockIdx.y * blockDim.y;
-  unsigned int j = threadIdx.x + blockIdx.x * blockDim.x;
-  unsigned int id;
-
-  if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)  // Ensure proper bounds
-  {
-    id = ((i) * (nx + 2) + (j));
-
-    h[id] = hm[id];
-    uh[id] = uhm[id];
-    vh[id] = vhm[id];
-  }
-}
-// ****************************************************************************** //
-
 __global__ void applyLeftBoundary(float *h, float *uh, float *vh, int nx, int ny)
 {
   int i = threadIdx.x + blockIdx.x * blockDim.x;
@@ -302,6 +181,157 @@ __global__ void applyTopBoundary(float *h, float *uh, float *vh, int nx, int ny)
 }
 // ****************************************************************************** //
 
+__global__ void persistentFusedKernel(float __restrict__ *h, float __restrict__ *uh, float __restrict__ *vh, float lambda_x, float lambda_y, int nx, int ny, float dt, float finalRuntime)
+{
+  // Thread and block indices
+  unsigned int i = blockIdx.y * blockDim.y + threadIdx.y;
+  unsigned int j = blockIdx.x * blockDim.x + threadIdx.x;
+
+  // Local shared memory indices (with halo)
+  unsigned int local_i = threadIdx.y + 1;
+  unsigned int local_j = threadIdx.x + 1;
+
+  // Allocate shared memory
+  extern __shared__ float sharedmemory[];
+
+  float *sh_h   = sharedmemory;
+  float *sh_uh  = sh_h   + (blockDim.y + 2) * (blockDim.x + 2);
+  float *sh_vh  = sh_uh  + (blockDim.y + 2) * (blockDim.x + 2);
+
+  float *sh_fh  = sh_vh  + (blockDim.y + 2) * (blockDim.x + 2);
+  float *sh_gh  = sh_fh  + (blockDim.y + 2) * (blockDim.x + 2);
+  float *sh_fuh = sh_gh  + (blockDim.y + 2) * (blockDim.x + 2);
+  float *sh_guh = sh_fuh + (blockDim.y + 2) * (blockDim.x + 2);
+  float *sh_fvh = sh_guh + (blockDim.y + 2) * (blockDim.x + 2);
+  float *sh_gvh = sh_fvh + (blockDim.y + 2) * (blockDim.x + 2);
+
+  float *sh_hm  = sh_gvh + (blockDim.y + 2) * (blockDim.x + 2);
+  float *sh_uhm = sh_hm  + (blockDim.y + 2) * (blockDim.x + 2);
+  float *sh_vhm = sh_uhm + (blockDim.y + 2) * (blockDim.x + 2);
+
+  # define SH_ID(i,j) ((i)*(blockDim.x+2)+(j))
+  # define ID_2D(i,j,nx) ((i)*(nx+2)+(j))
+
+  // Load initial data into shared memory
+  if (i < ny+2 && j < nx+2) 
+  {
+    sh_h [SH_ID(local_i, local_j)] = h [ID_2D(i,j,nx)];
+    sh_uh[SH_ID(local_i, local_j)] = uh[ID_2D(i,j,nx)];
+    sh_vh[SH_ID(local_i, local_j)] = vh[ID_2D(i,j,nx)];
+  }
+
+  __syncthreads();
+
+  float localTime = 0.0f;
+  float g = 9.81f;
+  float g_half = 0.5f * g;
+
+  while (localTime < finalRuntime)
+  {
+    // Compute fluxes
+    if (i < ny+2 && j < nx+2) 
+    {
+      float h_val  = sh_h [SH_ID(local_i, local_j)];
+      float uh_val = sh_uh[SH_ID(local_i, local_j)];
+      float vh_val = sh_vh[SH_ID(local_i, local_j)];
+
+      float inv_h = 1.0f / h_val;
+      float h2 = h_val * h_val;
+
+      sh_fh [SH_ID(local_i, local_j)] = uh_val;
+      sh_gh [SH_ID(local_i, local_j)] = vh_val;
+
+      sh_fuh[SH_ID(local_i, local_j)] = uh_val * uh_val * inv_h + g_half * h2;
+      sh_fvh[SH_ID(local_i, local_j)] = uh_val * vh_val * inv_h;
+
+      sh_guh[SH_ID(local_i, local_j)] = uh_val * vh_val * inv_h;
+      sh_gvh[SH_ID(local_i, local_j)] = vh_val * vh_val * inv_h + g_half * h2;
+    }
+
+    __syncthreads();
+
+    // Compute updated variables using stencil
+    if (i > 0 && i < ny+1 && j > 0 && j < nx+1) 
+    {
+      float fh_left   = sh_fh [SH_ID(local_i, local_j-1)];
+      float fh_right  = sh_fh [SH_ID(local_i, local_j+1)];
+      float gh_bottom = sh_gh [SH_ID(local_i+1, local_j)];
+      float gh_top    = sh_gh [SH_ID(local_i-1, local_j)];
+
+      float fuh_left   = sh_fuh[SH_ID(local_i, local_j-1)];
+      float fuh_right  = sh_fuh[SH_ID(local_i, local_j+1)];
+      float guh_bottom = sh_guh[SH_ID(local_i+1, local_j)];
+      float guh_top    = sh_guh[SH_ID(local_i-1, local_j)];
+
+      float fvh_left   = sh_fvh[SH_ID(local_i, local_j-1)];
+      float fvh_right  = sh_fvh[SH_ID(local_i, local_j+1)];
+      float gvh_bottom = sh_gvh[SH_ID(local_i+1, local_j)];
+      float gvh_top    = sh_gvh[SH_ID(local_i-1, local_j)];
+
+      sh_hm [SH_ID(local_i, local_j)] = 0.25f * (sh_h[SH_ID(local_i, local_j-1)] + sh_h[SH_ID(local_i, local_j+1)] + sh_h[SH_ID(local_i-1, local_j)] + sh_h[SH_ID(local_i+1, local_j)])
+                      - lambda_x * (fh_right - fh_left)
+                      - lambda_y * (gh_top - gh_bottom);
+
+      sh_uhm[SH_ID(local_i, local_j)] = 0.25f * (sh_uh[SH_ID(local_i, local_j-1)] + sh_uh[SH_ID(local_i, local_j+1)] + sh_uh[SH_ID(local_i-1, local_j)] + sh_uh[SH_ID(local_i+1, local_j)])
+                      - lambda_x * (fuh_right - fuh_left)
+                      - lambda_y * (guh_top - guh_bottom);
+
+      sh_vhm[SH_ID(local_i, local_j)] = 0.25f * (sh_vh[SH_ID(local_i, local_j-1)] + sh_vh[SH_ID(local_i, local_j+1)] + sh_vh[SH_ID(local_i-1, local_j)] + sh_vh[SH_ID(local_i+1, local_j)])
+                      - lambda_x * (fvh_right - fvh_left)
+                      - lambda_y * (gvh_top - gvh_bottom);
+    }
+
+    __syncthreads();
+
+    // Apply boundary conditions (reflective)
+    if (i == 0 && j > 0 && j < nx+1) 
+    {
+      sh_uhm[SH_ID(local_i, local_j)] = -sh_uhm[SH_ID(local_i+1, local_j)];
+      sh_vhm[SH_ID(local_i, local_j)] =  sh_vhm[SH_ID(local_i+1, local_j)];
+    }
+    if (i == ny+1 && j > 0 && j < nx+1) 
+    {
+      sh_uhm[SH_ID(local_i, local_j)] = -sh_uhm[SH_ID(local_i-1, local_j)];
+      sh_vhm[SH_ID(local_i, local_j)] =  sh_vhm[SH_ID(local_i-1, local_j)];
+    }
+    if (j == 0 && i > 0 && i < ny+1) 
+    {
+      sh_uhm[SH_ID(local_i, local_j)] =  sh_uhm[SH_ID(local_i, local_j+1)];
+      sh_vhm[SH_ID(local_i, local_j)] = -sh_vhm[SH_ID(local_i, local_j+1)];
+    }
+    if (j == nx+1 && i > 0 && i < ny+1) 
+    {
+      sh_uhm[SH_ID(local_i, local_j)] =  sh_uhm[SH_ID(local_i, local_j-1)];
+      sh_vhm[SH_ID(local_i, local_j)] = -sh_vhm[SH_ID(local_i, local_j-1)];
+    }
+
+    __syncthreads();
+
+    // Swap updated variables into original fields for next iteration
+    if (i > 0 && i < ny+1 && j > 0 && j < nx+1) 
+    {
+      sh_h [SH_ID(local_i, local_j)] = sh_hm [SH_ID(local_i, local_j)];
+      sh_uh[SH_ID(local_i, local_j)] = sh_uhm[SH_ID(local_i, local_j)];
+      sh_vh[SH_ID(local_i, local_j)] = sh_vhm[SH_ID(local_i, local_j)];
+    }
+
+    __syncthreads();
+
+    localTime += dt;
+  }
+
+  // Final write back to global memory
+  if (i > 0 && i < ny+1 && j > 0 && j < nx+1) 
+  {
+    h [ID_2D(i,j,nx)] = sh_h [SH_ID(local_i, local_j)];
+    uh[ID_2D(i,j,nx)] = sh_uh[SH_ID(local_i, local_j)];
+    vh[ID_2D(i,j,nx)] = sh_vh[SH_ID(local_i, local_j)];
+  }
+
+  # undef SH_ID
+  # undef ID_2D
+}
+
 // ****************************************************** MAIN ****************************************************** //
 int main ( int argc, char *argv[] )
 { 
@@ -317,7 +347,6 @@ int main ( int argc, char *argv[] )
   float x_length;
 
   double dt;
-  double programRuntime; 
   double finalRuntime;
   
   // pointers to host, device memory 
@@ -357,9 +386,8 @@ int main ( int argc, char *argv[] )
   dim3 blockSize(dimx, dimy);
   dim3 gridSize((nx + 2 + blockSize.x - 1) / blockSize.x, (ny + 2 + blockSize.y - 1) / blockSize.y);
 
-  int boundaryBlockSize = 1024;
-  int gridSizeY = (ny + boundaryBlockSize - 1) / boundaryBlockSize; 
-  int gridSizeX = (nx + boundaryBlockSize - 1) / boundaryBlockSize;  
+  // Calculate shared memory size
+  size_t sharedMemSize = 12 * (blockDim.x + 2) * (blockDim.y + 2) * sizeof(float); 
 
   // ************************************************ MEMORY ALLOCATIONS ************************************************ //
 
@@ -421,16 +449,6 @@ int main ( int argc, char *argv[] )
   
   for(k = 1; k < 6; k++)
   {
-    // set initial time & step counter
-    programRuntime = 0.0f;
-    l = 0;
-    
-    // instantiate section timing variables
-    double time_elapsed_cf = 0.0;
-    double time_elapsed_cv = 0.0;
-    double time_elapsed_uv = 0.0;
-    double time_elapsed_bc = 0.0;
-
     // Apply the initial conditions.
     initializeInterior<<<gridSize, blockSize>>>(d_x, d_y, d_h, d_uh, d_vh, nx, ny, dx, dy, x_length);
 
@@ -460,86 +478,22 @@ int main ( int argc, char *argv[] )
     // start program timer
     auto start_time = std::chrono::steady_clock::now();
 
-    while (programRuntime < finalRuntime) // time loop begins
+    persistentFusedKernel<<<gridSize, blockSize, sharedMemSize>>>(d_h, d_uh, d_vh, lambda_x, lambda_y, nx, ny, dt, finalRuntime);
+
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) 
     {
-      // Take a time step and increase step counter
-      programRuntime += dt;
-      l++;
+      printf("CUDA Error launching persistentFusedKernel: %s\n", cudaGetErrorString(err));
+    }
 
-      // *********************************************************************************************************************************************************** //
-
-      // Start timing compute fluxes calculations
-      auto start_time_cf = std::chrono::steady_clock::now();
-
-      // **** COMPUTE FLUXES ****
-      computeFluxes<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, nx, ny);
-
-      // Stop timing compute fluxes calculations
-      auto end_time_cf = std::chrono::steady_clock::now();
-
-      // calculate time elapsed for compute fluxes
-      time_elapsed_cf = time_elapsed_cf + std::chrono::duration<double>(end_time_cf - start_time_cf).count();
-
-      // *********************************************************************************************************************************************************** //
-
-      // Start timing compute variable calculations
-      auto start_time_cv = std::chrono::steady_clock::now();
-      
-      // **** COMPUTE VARIABLES ****
-      computeVariables<<<gridSize, blockSize>>>(d_hm, d_uhm, d_vhm, d_fh, d_fuh, d_fvh, d_gh, d_guh, d_gvh, d_h, d_uh, d_vh, lambda_x, lambda_y, nx, ny);
-    
-      // Stop timing compute variable calculations
-      auto end_time_cv = std::chrono::steady_clock::now();
-
-      // calculate time elapsed for compute variables
-      time_elapsed_cv = time_elapsed_cv + std::chrono::duration<double>(end_time_cv - start_time_cv).count();
-
-      // *********************************************************************************************************************************************************** //
-
-      // Start timing update variables calculations
-      auto start_time_uv = std::chrono::steady_clock::now();
-
-      // **** UPDATE VARIABLES ****
-      updateVariables<<<gridSize, blockSize>>>(d_h, d_uh, d_vh, d_hm, d_uhm, d_vhm, nx, ny);
-
-      // Stop timing update variables calculations
-      auto end_time_uv = std::chrono::steady_clock::now();
-
-      // calculate time elapsed for update variables
-      time_elapsed_uv = time_elapsed_uv + std::chrono::duration<double>(end_time_uv - start_time_uv).count();
-
-      // *********************************************************************************************************************************************************** //
-
-      // Start timing apply boundary condition calculations
-      auto start_time_bc = std::chrono::steady_clock::now();
-
-      // **** APPLY BOUNDARY CONDITIONS ****
-      applyLeftBoundary<<<gridSizeY, boundaryBlockSize>>>(d_h, d_uh, d_vh, nx, ny);
-
-      applyRightBoundary<<<gridSizeY, boundaryBlockSize>>>(d_h, d_uh, d_vh, nx, ny);
-
-      applyBottomBoundary<<<gridSizeX, boundaryBlockSize>>>(d_h, d_uh, d_vh, nx, ny);
-
-      applyTopBoundary<<<gridSizeX, boundaryBlockSize>>>(d_h, d_uh, d_vh, nx, ny); 
-
-      // Stop timing apply boundary condition calculations
-      auto end_time_bc = std::chrono::steady_clock::now();
-
-      // calculate time elapsed for apply boundary conditions
-      time_elapsed_bc = time_elapsed_bc + std::chrono::duration<double>(end_time_bc - start_time_bc).count();
-    } 
+    cudaDeviceSynchronize();  // Wait for kernel to finish
 
     // stop timer
     auto end_time = std::chrono::steady_clock::now();
     std::chrono::duration<double> time_elapsed = end_time - start_time;
-    
-    double avg_time_elapsed_cf = time_elapsed_cf / (double) l;
-    double avg_time_elapsed_cv = time_elapsed_cv / (double) l;
-    double avg_time_elapsed_uv = time_elapsed_uv / (double) l;
-    double avg_time_elapsed_bc = time_elapsed_bc / (double) l;
 
     // Print out the results
-    printf("Problem size: %d, Time steps: %d, Iteration: %d, Elapsed time: %f s, Average elapsed time for compute fluxes: %f s, Average elapsed time for compute variables: %f s, Average elapsed time for update variables: %f s, Average elapsed time for apply boundary conditions: %f s\n", nx, l, k, time_elapsed, avg_time_elapsed_cf, avg_time_elapsed_cv, avg_time_elapsed_uv, avg_time_elapsed_bc);
+    printf("Problem size: %d, Iteration: %d, Elapsed time: %f s\n", nx, k, time_elapsed);
 
     if(k == 1 && nx == 200)
     {
@@ -551,7 +505,6 @@ int main ( int argc, char *argv[] )
       writeResults(h, uh, vh, x, y, programRuntime, nx, ny);
     }
   }
-
 
   // ******************************************************************** DEALLOCATE MEMORY ******************************************************************** //
 
