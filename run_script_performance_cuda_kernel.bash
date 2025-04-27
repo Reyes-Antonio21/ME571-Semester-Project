@@ -5,7 +5,7 @@
 #SBATCH -N 1
 #SBATCH -p gpu
 #SBATCH -t 05:00:00
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:L40:1
 #SBATCH --exclusive
 
 # Fixed simulation constants
