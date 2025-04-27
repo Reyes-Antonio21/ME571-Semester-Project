@@ -189,8 +189,6 @@ __global__ void persistentFusedKernel(float *__restrict__ h, float *__restrict__
   unsigned int local_i = threadIdx.y + 1;
   unsigned int local_j = threadIdx.x + 1;
 
-  unsigned int id;
-
   // Allocate shared memory
   extern __shared__ float sharedmemory[];
 
@@ -340,7 +338,7 @@ __global__ void persistentFusedKernel(float *__restrict__ h, float *__restrict__
 int main ( int argc, char *argv[] )
 { 
   // ************************************************** INSTANTIATION ************************************************* //
-  int k, l;
+  int k;
 
   int nx; 
   int ny; 
