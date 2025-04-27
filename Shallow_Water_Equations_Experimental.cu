@@ -10,7 +10,7 @@
 
 // ************************************************ UTILITIES ************************************************ //
 
-void getArgs(int *nx, double *dt, float *x_length, double *finalRuntime, int argc, char *argv[])
+void getArgs(int *nx, float *dt, float *x_length, float *finalRuntime, int argc, char *argv[])
 {
   // Get the quadrature file root name:
 
@@ -346,8 +346,8 @@ int main ( int argc, char *argv[] )
   
   float x_length;
 
-  double dt;
-  double finalRuntime;
+  float dt;
+  float finalRuntime;
   
   // pointers to host, device memory 
   float *h, *d_h;
