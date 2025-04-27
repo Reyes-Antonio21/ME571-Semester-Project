@@ -183,6 +183,8 @@ __device__ void applyDomainBoundaryConditionsShared(float *__restrict__ sh_h, fl
 {
   #define SH_ID(i,j) ((i)*(blockDim_x+2)+(j))
 
+  unsigned int local_id;
+
   local_id = SH_ID(local_i, local_j);
 
   if (i == 0 && j > 0 && j < nx+1) {  // Bottom wall
