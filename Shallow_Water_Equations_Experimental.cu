@@ -181,7 +181,7 @@ __global__ void applyTopBoundary(float *h, float *uh, float *vh, int nx, int ny)
 }
 // ****************************************************************************** //
 
-__global__ void persistentFusedKernel(float __restrict__ *h, float __restrict__ *uh, float __restrict__ *vh, float lambda_x, float lambda_y, int nx, int ny, float dt, float finalRuntime)
+__global__ void persistentFusedKernel(float *__restrict__ h, float *__restrict__ uh, float *__restrict__ vh, float lambda_x, float lambda_y, int nx, int ny, float dt, float finalRuntime)
 {
   // Thread and block indices
   unsigned int i = blockIdx.y * blockDim.y + threadIdx.y;
@@ -388,6 +388,10 @@ int main ( int argc, char *argv[] )
 
   // Calculate shared memory size
   size_t sharedMemSize = 12 * (blockDim.x + 2) * (blockDim.y + 2) * sizeof(float); 
+
+  int boundaryBlockSize = 1024;
+  int gridSizeY = (ny + boundaryBlockSize - 1) / boundaryBlockSize; 
+  int gridSizeX = (nx + boundaryBlockSize - 1) / boundaryBlockSize;  
 
   // ************************************************ MEMORY ALLOCATIONS ************************************************ //
 
