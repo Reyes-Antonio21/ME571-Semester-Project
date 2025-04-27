@@ -220,6 +220,36 @@ __global__ void persistentFusedKernel(float *__restrict__ h, float *__restrict__
 
   __syncthreads();
 
+  // Bottom boundary (i == 0)
+  if (i == 0 && j > 0 && j < nx+1) {
+    sh_h [SH_ID(local_i, local_j)] = sh_h [SH_ID(local_i+1, local_j)];
+    sh_uh[SH_ID(local_i, local_j)] = -sh_uh[SH_ID(local_i+1, local_j)];
+    sh_vh[SH_ID(local_i, local_j)] =  sh_vh[SH_ID(local_i+1, local_j)];
+  }
+
+  // Top boundary (i == ny+1)
+  if (i == ny+1 && j > 0 && j < nx+1) {
+    sh_h [SH_ID(local_i, local_j)] = sh_h [SH_ID(local_i-1, local_j)];
+    sh_uh[SH_ID(local_i, local_j)] = -sh_uh[SH_ID(local_i-1, local_j)];
+    sh_vh[SH_ID(local_i, local_j)] =  sh_vh[SH_ID(local_i-1, local_j)];
+  }
+
+  // Left boundary (j == 0)
+  if (j == 0 && i > 0 && i < ny+1) {
+    sh_h [SH_ID(local_i, local_j)] = sh_h [SH_ID(local_i, local_j+1)];
+    sh_uh[SH_ID(local_i, local_j)] =  sh_uh[SH_ID(local_i, local_j+1)];
+    sh_vh[SH_ID(local_i, local_j)] = -sh_vh[SH_ID(local_i, local_j+1)];
+  }
+
+  // Right boundary (j == nx+1)
+  if (j == nx+1 && i > 0 && i < ny+1) {
+    sh_h [SH_ID(local_i, local_j)] = sh_h [SH_ID(local_i, local_j-1)];
+    sh_uh[SH_ID(local_i, local_j)] =  sh_uh[SH_ID(local_i, local_j-1)];
+    sh_vh[SH_ID(local_i, local_j)] = -sh_vh[SH_ID(local_i, local_j-1)];
+  }
+
+  __syncthreads();
+
   float localTime = 0.0f;
   float g = 9.81f;
   float g_half = 0.5f * g;
