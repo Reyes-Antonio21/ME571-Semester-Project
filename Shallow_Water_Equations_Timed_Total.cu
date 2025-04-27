@@ -399,6 +399,7 @@ int main ( int argc, char *argv[] )
 
     applyTopBoundary<<<gridSizeX, boundaryBlockSize>>>(d_h, d_uh, d_vh, nx, ny);
 
+    cudaDeviceSynchronize();
     auto start_time_dtdh = std::chrono::steady_clock::now();
 
     // Move data to the device for calculations
@@ -411,7 +412,8 @@ int main ( int argc, char *argv[] )
     time_elapsed_dtdh = time_elapsed_dtdh + std::chrono::duration<double>(end_time_dtdh - start_time_dtdh).count();
 
     // ******************************************************************** COMPUTATION SECTION ******************************************************************** //
-
+    
+    cudadeviceSynchronize();
     // start program timer
     auto start_time = std::chrono::steady_clock::now();
 
@@ -444,6 +446,7 @@ int main ( int argc, char *argv[] )
     auto end_time = std::chrono::steady_clock::now();
     std::chrono::duration<double> time_elapsed = end_time - start_time;
 
+    cudadeviceSynchronize();
     auto start_time_dthd = std::chrono::steady_clock::now();
 
     cudaMemcpy(d_h, h, (nx+2) * (ny+2) * sizeof(float), cudaMemcpyHostToDevice);
