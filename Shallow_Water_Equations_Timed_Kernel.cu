@@ -403,7 +403,6 @@ int main ( int argc, char *argv[] )
 
     // ******************************************************************** COMPUTATION SECTION ******************************************************************** //
     
-    cudaDeviceSynchronize();
     // start program timer
     auto start_time = std::chrono::steady_clock::now();
 
