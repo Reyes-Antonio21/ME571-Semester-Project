@@ -387,6 +387,8 @@ int main ( int argc, char *argv[] )
   // Calculate shared memory size
   size_t sharedMemSize = ((12 * (blockSize.x+2) * (blockSize.y+2) * sizeof(float)) + 127) & ~127;
 
+  cudaFuncSetAttribute(persistentFusedKernel, cudaFuncAttributeMaxDynamicSharedMemorySize, 98304);
+
   int boundaryBlockSize = 1024;
   int gridSizeY = (ny + boundaryBlockSize - 1) / boundaryBlockSize; 
   int gridSizeX = (nx + boundaryBlockSize - 1) / boundaryBlockSize;  
