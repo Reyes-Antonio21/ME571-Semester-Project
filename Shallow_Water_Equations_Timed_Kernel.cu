@@ -415,7 +415,7 @@ int main ( int argc, char *argv[] )
 
       // *********************************************************************************************************************************************************** //
 
-      cudadeviceSynchronize();
+      cudaDeviceSynchronize();
       // Start timing compute fluxes calculations
       auto start_time_cf = std::chrono::steady_clock::now();
 
