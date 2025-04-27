@@ -263,7 +263,7 @@ __global__ void persistentFusedKernel(float *__restrict__ h, float *__restrict__
       float uh_val = sh_uh[SH_ID(local_i, local_j)];
       float vh_val = sh_vh[SH_ID(local_i, local_j)];
 
-      float inv_h = 1.0f / h_val;
+      float inv_h = (h_val > 1e-6f) ? (1.0f / h_val) : 0.0f;
       float h2 = h_val * h_val;
 
       sh_fh [SH_ID(local_i, local_j)] = uh_val;
