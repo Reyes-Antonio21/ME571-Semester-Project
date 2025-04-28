@@ -217,7 +217,7 @@ __device__ void refreshInternalHalosShared(float *__restrict__ sh_h, float *__re
   #define SH_ID(i,j) ((i) * (blockDim_x + 2) + (j))
 
   // Left halo (copy first interior column)
-  if (threadIdx.x == 1 && j > 0) {
+  if (threadIdx.x == 0 && j > 0) {
   sh_h [SH_ID(local_i, 0)] = sh_h [SH_ID(local_i, 1)];
   sh_uh[SH_ID(local_i, 0)] = sh_uh[SH_ID(local_i, 1)];
   sh_vh[SH_ID(local_i, 0)] = sh_vh[SH_ID(local_i, 1)];
@@ -231,7 +231,7 @@ __device__ void refreshInternalHalosShared(float *__restrict__ sh_h, float *__re
   }
 
   // Bottom halo (copy first interior row)
-  if (threadIdx.y == 1 && i > 0) {
+  if (threadIdx.y == 0 && i > 0) {
   sh_h [SH_ID(0, local_j)] = sh_h [SH_ID(1, local_j)];
   sh_uh[SH_ID(0, local_j)] = sh_uh[SH_ID(1, local_j)];
   sh_vh[SH_ID(0, local_j)] = sh_vh[SH_ID(1, local_j)];
@@ -255,8 +255,8 @@ __global__ void persistentFusedKernel(float *__restrict__ h, float *__restrict__
   unsigned int j = blockIdx.x * blockDim.x + threadIdx.x;
 
   // Local shared memory indices (with halo)
-  unsigned int local_i = threadIdx.y;
-  unsigned int local_j = threadIdx.x;
+  unsigned int local_i = threadIdx.y + 1;
+  unsigned int local_j = threadIdx.x + 1;
 
   unsigned int id, local_id;
   unsigned int local_id_left, local_id_right, local_id_bottom, local_id_top;
