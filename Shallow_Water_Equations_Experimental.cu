@@ -336,7 +336,7 @@ __global__ __launch_bounds__(1024,1) void shallowWaterSolver(float *__restrict__
     __syncthreads();
 
     // === Compute fluxes ===
-    if (i < ny + 2 && j < nx + 2)
+    if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
     {
       local_id = SH_ID(local_i, local_j, blockDim.x);
 
