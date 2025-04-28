@@ -279,7 +279,7 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const floa
   #undef SH_ID
 }
 
-__global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh, float *__restrict__ vh, float lambda_x, float lambda_y, int nx, int ny, float dt, float finalRuntime)
+__global__ __launch_bounds__(1024,1) void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh, float *__restrict__ vh, float lambda_x, float lambda_y, int nx, int ny, float dt, float finalRuntime)
 {
   unsigned int i = blockIdx.y * blockDim.y + threadIdx.y;
   unsigned int j = blockIdx.x * blockDim.x + threadIdx.x;
@@ -287,7 +287,7 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
   unsigned int local_i = threadIdx.y + 1;
   unsigned int local_j = threadIdx.x + 1;
 
-  unsigned int id, id_left, id_right, id_bottom, id_top;
+  unsigned int id;
   unsigned int local_id, local_id_left, local_id_right, local_id_bottom, local_id_top;
 
   extern __shared__ float sharedmemory[];
