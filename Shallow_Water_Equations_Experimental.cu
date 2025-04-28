@@ -244,6 +244,33 @@ __device__ void refreshInternalHalosShared(float *__restrict__ sh_h, float *__re
   sh_vh[SH_ID(blockDim_y+1, local_j)] = sh_vh[SH_ID(blockDim_y, local_j)];
   }
 
+  // Corner halos
+  if (threadIdx.x == 0 && threadIdx.y == 0 && i > 0 && j > 0) 
+  {
+    sh_h[SH_ID(0, 0)] = sh_h[SH_ID(1, 1)];
+    sh_uh[SH_ID(0, 0)] = sh_uh[SH_ID(1, 1)];
+    sh_vh[SH_ID(0, 0)] = sh_vh[SH_ID(1, 1)];
+  }
+
+  if (threadIdx.x == blockDim_x-1 && threadIdx.y == 0 && i > 0 && j < nx+1) 
+  {
+      sh_h[SH_ID(0, blockDim_x+1)] = sh_h[SH_ID(1, blockDim_x)];
+      sh_uh[SH_ID(0, blockDim_x+1)] = sh_uh[SH_ID(1, blockDim_x)];
+      sh_vh[SH_ID(0, blockDim_x+1)] = sh_vh[SH_ID(1, blockDim_x)];
+  }
+
+  if (threadIdx.x == 0 && threadIdx.y == blockDim_y-1 && i < ny+1 && j > 0) {
+      sh_h[SH_ID(blockDim_y+1, 0)] = sh_h[SH_ID(blockDim_y, 1)];
+      sh_uh[SH_ID(blockDim_y+1, 0)] = sh_uh[SH_ID(blockDim_y, 1)];
+      sh_vh[SH_ID(blockDim_y+1, 0)] = sh_vh[SH_ID(blockDim_y, 1)];
+  }
+
+  if (threadIdx.x == blockDim_x-1 && threadIdx.y == blockDim_y-1 && i < ny+1 && j < nx+1) {
+      sh_h[SH_ID(blockDim_y+1, blockDim_x+1)] = sh_h[SH_ID(blockDim_y, blockDim_x)];
+      sh_uh[SH_ID(blockDim_y+1, blockDim_x+1)] = sh_uh[SH_ID(blockDim_y, blockDim_x)];
+      sh_vh[SH_ID(blockDim_y+1, blockDim_x+1)] = sh_vh[SH_ID(blockDim_y, blockDim_x)];
+  }
+  
   #undef SH_ID
 }
 // ****************************************************************************** //
@@ -462,7 +489,7 @@ int main ( int argc, char *argv[] )
 
   int boundaryBlockSize = 1024;
   int gridSizeY = (ny + boundaryBlockSize - 1) / boundaryBlockSize; 
-  int gridSizeX = (nx + boundaryBlockSize - 1) / boundaryBlockSize; 
+  int gridSizeX = (nx + boundaryBlockSize - 1) / boundaryBlockSize;  
 
   // ************************************************ MEMORY ALLOCATIONS ************************************************ //
 
@@ -527,6 +554,14 @@ int main ( int argc, char *argv[] )
     // Apply the initial conditions.
     initializeInterior<<<gridSize, blockSize>>>(d_x, d_y, d_h, d_uh, d_vh, nx, ny, dx, dy, x_length);
 
+    applyLeftBoundary<<<gridSizeY, boundaryBlockSize>>>(d_h, d_uh, d_vh, nx, ny);
+
+    applyRightBoundary<<<gridSizeY, boundaryBlockSize>>>(d_h, d_uh, d_vh, nx, ny);
+
+    applyBottomBoundary<<<gridSizeX, boundaryBlockSize>>>(d_h, d_uh, d_vh, nx, ny);
+
+    applyTopBoundary<<<gridSizeX, boundaryBlockSize>>>(d_h, d_uh, d_vh, nx, ny);
+
     if(k == 1 && nx == 200)
     {
       cudaMemcpy(h, d_h, (nx+2) * (ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost);
@@ -536,7 +571,7 @@ int main ( int argc, char *argv[] )
       cudaMemcpy(x, d_x, nx * sizeof ( float ), cudaMemcpyDeviceToHost);
       cudaMemcpy(y, d_y, ny * sizeof ( float ), cudaMemcpyDeviceToHost);
 
-      // Write initial condition to a files
+      // Write initial condition to a file
       writeResults(h, uh, vh, x, y, 0.000000, nx, ny);
     }
 
