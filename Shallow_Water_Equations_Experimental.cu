@@ -217,7 +217,7 @@ __device__ void refreshInternalHalosShared(float *__restrict__ sh_h, float *__re
   #define SH_ID(i,j) ((i) * (blockDim_x + 2) + (j))
 
   // Left halo (copy first interior column)
-  if (threadIdx.x == 0 && j > 0) {
+  if (threadIdx.x == 1 && j > 0) {
   sh_h [SH_ID(local_i, 0)] = sh_h [SH_ID(local_i, 1)];
   sh_uh[SH_ID(local_i, 0)] = sh_uh[SH_ID(local_i, 1)];
   sh_vh[SH_ID(local_i, 0)] = sh_vh[SH_ID(local_i, 1)];
@@ -231,7 +231,7 @@ __device__ void refreshInternalHalosShared(float *__restrict__ sh_h, float *__re
   }
 
   // Bottom halo (copy first interior row)
-  if (threadIdx.y == 0 && i > 0) {
+  if (threadIdx.y == 1 && i > 0) {
   sh_h [SH_ID(0, local_j)] = sh_h [SH_ID(1, local_j)];
   sh_uh[SH_ID(0, local_j)] = sh_uh[SH_ID(1, local_j)];
   sh_vh[SH_ID(0, local_j)] = sh_vh[SH_ID(1, local_j)];
