@@ -215,7 +215,7 @@ __device__ void haloExchange(
       }
 
       // Right halo loading
-      if (j_left == blockDim_x-1 && global_j_left < nx)
+      if (j_left == blockDim.x-1 && global_j_left < nx)
       {
         id_right = ID_2D(i, j + 1, nx);
         local_id_right = SH_ID(local_i, local_j + 1, blockDim_x);
@@ -243,7 +243,7 @@ __device__ void haloExchange(
         sh_vh[local_id_bottom] = -vh[id_bottom]; // Reflective for vh
       }
 
-      if (i_bottom == blockDim_y-1 && global_i_bottom < ny)
+      if (i_bottom == blockDim.y-1 && global_i_bottom < ny)
       {
         id_top = ID_2D(i + 1, j, nx);
         local_id_top = SH_ID(local_i + 1, local_j, blockDim_x);
