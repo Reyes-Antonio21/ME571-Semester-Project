@@ -303,7 +303,7 @@ __global__ void persistentFusedKernel(float *__restrict__ h, float *__restrict__
   while (programRuntime < finalRuntime)
   {
     // === Refresh halos first
-    refreshInternalHalosShared(sh_h, sh_uh, sh_vh, local_i, local_j, i, j, nx, ny);
+    refreshInternalHalosShared(sh_h, sh_uh, sh_vh, local_i, local_j, i, j, nx, ny, blockDim.x, blockDim.y);
     
     __syncthreads();
 
