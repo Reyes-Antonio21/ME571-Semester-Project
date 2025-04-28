@@ -180,11 +180,13 @@ __global__ void applyTopBoundary(float *h, float *uh, float *vh, int nx, int ny)
 
 __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const float* h, const float* uh, const float* vh, int i, int j, int local_i, int local_j, int nx, int ny, int blockDim_x)
 {
+  # define SH_ID(i, j, blockDim_x) ((i) * (blockDim_x + 2) + (j))
+  # define ID_2D(i, j, nx) ((i) * (nx + 2) + (j))
+  
   int id, id_left, id_right, id_bottom, id_top;
   int local_id_left, local_id_right, local_id_bottom, local_id_top;
 
   // === Load Halo points from global memory ===
-
   // Left
   if (threadIdx.x == 0)
   {
@@ -272,6 +274,9 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const floa
       sh_vh[local_id_top] = -vh[id];
     }
   }
+
+  #undef ID_2D
+  #undef SH_ID
 }
 
 __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh, float *__restrict__ vh, float lambda_x, float lambda_y, int nx, int ny, float dt, float finalRuntime)
