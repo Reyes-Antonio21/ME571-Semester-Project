@@ -462,7 +462,7 @@ int main ( int argc, char *argv[] )
 
   int boundaryBlockSize = 1024;
   int gridSizeY = (ny + boundaryBlockSize - 1) / boundaryBlockSize; 
-  int gridSizeX = (nx + boundaryBlockSize - 1) / boundaryBlockSize;  
+  int gridSizeX = (nx + boundaryBlockSize - 1) / boundaryBlockSize; 
 
   // ************************************************ MEMORY ALLOCATIONS ************************************************ //
 
@@ -527,14 +527,6 @@ int main ( int argc, char *argv[] )
     // Apply the initial conditions.
     initializeInterior<<<gridSize, blockSize>>>(d_x, d_y, d_h, d_uh, d_vh, nx, ny, dx, dy, x_length);
 
-    applyLeftBoundary<<<gridSizeY, boundaryBlockSize>>>(d_h, d_uh, d_vh, nx, ny);
-
-    applyRightBoundary<<<gridSizeY, boundaryBlockSize>>>(d_h, d_uh, d_vh, nx, ny);
-
-    applyBottomBoundary<<<gridSizeX, boundaryBlockSize>>>(d_h, d_uh, d_vh, nx, ny);
-
-    applyTopBoundary<<<gridSizeX, boundaryBlockSize>>>(d_h, d_uh, d_vh, nx, ny);
-
     if(k == 1 && nx == 200)
     {
       cudaMemcpy(h, d_h, (nx+2) * (ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost);
@@ -544,7 +536,7 @@ int main ( int argc, char *argv[] )
       cudaMemcpy(x, d_x, nx * sizeof ( float ), cudaMemcpyDeviceToHost);
       cudaMemcpy(y, d_y, ny * sizeof ( float ), cudaMemcpyDeviceToHost);
 
-      // Write initial condition to a file
+      // Write initial condition to a files
       writeResults(h, uh, vh, x, y, 0.000000, nx, ny);
     }
 
