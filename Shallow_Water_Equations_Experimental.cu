@@ -179,7 +179,7 @@ __global__ void applyTopBoundary(float *h, float *uh, float *vh, int nx, int ny)
 }
 // ****************************************************************************** //
 
-__global__ void shallowWaterSolverHaloExchange(float *h, float *uh, float *vh,
+__global__ void shallowWaterSolver(float *h, float *uh, float *vh,
   float lambda_x, float lambda_y,
   int nx, int ny,
   float dt, float finalRuntime)
@@ -476,7 +476,7 @@ int main ( int argc, char *argv[] )
     // start program timer
     auto start_time = std::chrono::steady_clock::now();
 
-    persistentFusedKernel<<<gridSize, blockSize, sharedMemSize>>>(d_h, d_uh, d_vh, lambda_x, lambda_y, nx, ny, dt, finalRuntime);
+    shallowWaterSolver<<<gridSize, blockSize, sharedMemSize>>>(d_h, d_uh, d_vh, lambda_x, lambda_y, nx, ny, dt, finalRuntime);
 
     cudaError_t err = cudaGetLastError();
     if (err != cudaSuccess) 
