@@ -255,8 +255,8 @@ __global__ void persistentFusedKernel(float *__restrict__ h, float *__restrict__
   unsigned int j = blockIdx.x * blockDim.x + threadIdx.x;
 
   // Local shared memory indices (with halo)
-  unsigned int local_i = threadIdx.y + 1;
-  unsigned int local_j = threadIdx.x + 1;
+  unsigned int local_i = threadIdx.y;
+  unsigned int local_j = threadIdx.x;
 
   unsigned int id, local_id;
   unsigned int local_id_left, local_id_right, local_id_bottom, local_id_top;
