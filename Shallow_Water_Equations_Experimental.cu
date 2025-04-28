@@ -178,85 +178,101 @@ __global__ void applyTopBoundary(float *h, float *uh, float *vh, int nx, int ny)
 }
 // ****************************************************************************** //
 
-__device__ void haloExchange(
-  float* sh_h, float* sh_uh, float* sh_vh,
-  const float* h, const float* uh, const float* vh,
-  int i, int j,
-  int local_i, int local_j,
-  int nx, int ny,
-  int blockDim_x)
+__device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const float* h, const float* uh, const float* vh, int i, int j, int local_i, int local_j, int nx, int ny, int blockDim_x)
 {
-  # define SH_ID(i, j, blockDim_x) ((i) * (blockDim_x + 2) + (j))
-  # define ID_2D(i, j, nx) ((i) * (nx + 2) + (j)) 
-  
-  unsigned int tid = threadIdx.y * blockDim.x + threadIdx.x;
-  unsigned int warp_id = tid / 32;
-  unsigned int lane_id = tid % 32;
-
   int id, id_left, id_right, id_bottom, id_top;
   int local_id_left, local_id_right, local_id_bottom, local_id_top;
 
-  // === Left-Right halo loading by Warp 0 ===
-  if (warp_id == 0)
+  // === Load Halo points from global memory ===
+
+  // Left
+  if (threadIdx.x == 0)
   {
-      // Left halo loading
-      int j_left = lane_id;
-      int global_j_left = blockIdx.x * blockDim.x + j_left;
-      int global_i = blockIdx.y * blockDim.y + threadIdx.y;
+    id_left = ID_2D(i, j - 1, nx);
+    local_id_left = SH_ID(local_i, local_j - 1, blockDim_x);
 
-      if (j_left == 0 && global_j_left > 0)
-      {
-        id_left = ID_2D(i, j - 1, nx);
-        local_id_left = SH_ID(local_i, local_j - 1, blockDim_x);
+    if (j > 0)
+    {
+      sh_h[local_id_left] = h[id_left];
+      sh_uh[local_id_left] = uh[id_left];
+      sh_vh[local_id_left] = vh[id_left];
+    }
+    else
+    {
+      id = ID_2D(i, j, nx);
 
-        sh_h[local_id_left]  = h[id_left];
-        sh_uh[local_id_left] = -uh[id_left]; // Reflective for uh
-        sh_vh[local_id_left] = vh[id_left];
-      }
-
-      // Right halo loading
-      if (j_left == blockDim.x-1 && global_j_left < nx)
-      {
-        id_right = ID_2D(i, j + 1, nx);
-        local_id_right = SH_ID(local_i, local_j + 1, blockDim_x);
-
-        sh_h[local_id_right]  = h[id_right];
-        sh_uh[local_id_right] = -uh[id_right];
-        sh_vh[local_id_right] = vh[id_right];
-      }
+      sh_h[local_id_left]  = h[id];
+      sh_uh[local_id_left] = -uh[id];
+      sh_vh[local_id_left] = vh[id];
+    }
   }
 
-  // === Top-Bottom halo loading by Warp 1 ===
-  else if (warp_id == 1)
+  // Right
+  if (threadIdx.x == blockDim.x - 1)
   {
-      int i_bottom = lane_id;
-      int global_i_bottom = blockIdx.y * blockDim.y + i_bottom;
-      int global_j = blockIdx.x * blockDim.x + threadIdx.x;
+    id_right = ID_2D(i, j + 1, nx);
+    local_id_right = SH_ID(local_i, local_j + 1, blockDim_x);
 
-      if (i_bottom == 0 && global_i_bottom > 0)
-      {
-        id_bottom = ID_2D(i - 1, j, nx);
-        local_id_bottom = SH_ID(local_i - 1, local_j, blockDim_x);
+    if (j < nx)
+    {
+      sh_h[local_id_right] = h[id_right];
+      sh_uh[local_id_right] = uh[id_right];
+      sh_vh[local_id_right] = vh[id_right];
+    }
+    else
+    {
+      id = ID_2D(i, j, nx);
 
-        sh_h[local_id_bottom]  = h[id_bottom];
-        sh_uh[local_id_bottom] = uh[id_bottom];
-        sh_vh[local_id_bottom] = -vh[id_bottom]; // Reflective for vh
-      }
-
-      if (i_bottom == blockDim.y-1 && global_i_bottom < ny)
-      {
-        id_top = ID_2D(i + 1, j, nx);
-        local_id_top = SH_ID(local_i + 1, local_j, blockDim_x);
-
-        sh_h[local_id_top]  = h[id_top];
-        sh_uh[local_id_top] = uh[id_top];
-        sh_vh[local_id_top] = -vh[id_top];
-      }
+      sh_h[local_id_right]  = h[id];
+      sh_uh[local_id_right] = -uh[id];
+      sh_vh[local_id_right] = vh[id];
+    }
   }
-  # undef ID_2D
-  # undef SH_ID
+
+  // Bottom
+  if (threadIdx.y == 0)
+  {
+    id_bottom = ID_2D(i - 1, j, nx);
+    local_id_bottom = SH_ID(local_i - 1, local_j, blockDim_x);
+
+    if (i > 0)
+    {
+      sh_h[local_id_bottom] = h[id_bottom];
+      sh_uh[local_id_bottom] = uh[id_bottom];
+      sh_vh[local_id_bottom] = vh[id_bottom];
+    }
+    else
+    {
+      id = ID_2D(i, j, nx);
+
+      sh_h[local_id_bottom]  = h[id];
+      sh_uh[local_id_bottom] = uh[id];
+      sh_vh[local_id_bottom] = -vh[id];
+    }
+  }
+
+  // Top
+  if (threadIdx.y == blockDim.y - 1)
+  {
+    id_top = ID_2D(i + 1, j, nx);
+    local_id_top = SH_ID(local_i + 1, local_j, blockDim_x);
+
+    if (i < ny)
+    {
+      sh_h[local_id_top] = h[id_top];
+      sh_uh[local_id_top] = uh[id_top];
+      sh_vh[local_id_top] = vh[id_top];
+    }
+    else
+    {
+      id = ID_2D(i, j, nx);
+
+      sh_h[local_id_top]  = h[id];
+      sh_uh[local_id_top] = uh[id];
+      sh_vh[local_id_top] = -vh[id];
+    }
+  }
 }
-
 
 __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh, float *__restrict__ vh, float lambda_x, float lambda_y, int nx, int ny, float dt, float finalRuntime)
 {
