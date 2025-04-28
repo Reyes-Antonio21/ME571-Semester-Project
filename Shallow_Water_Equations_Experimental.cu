@@ -331,6 +331,11 @@ __global__ void persistentFusedKernel(float *__restrict__ h, float *__restrict__
 
   __syncthreads();
 
+  // Refresh shared memory halos manually for internal block boundaries
+  refreshInternalHalosShared(sh_h, sh_uh, sh_vh, local_i, local_j, i, j, nx, ny, blockDim.x, blockDim.y);
+    
+  __syncthreads();
+
   applyDomainBoundaryConditionsShared(sh_h, sh_uh, sh_vh, local_i, local_j, i, j, nx, ny, blockDim.x, blockDim.y);
 
   __syncthreads();
