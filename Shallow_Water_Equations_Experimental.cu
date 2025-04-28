@@ -230,7 +230,7 @@ __global__ void persistentFusedKernel(float *__restrict__ h, float *__restrict__
   while (programRuntime < finalRuntime)
   {
     // === Compute fluxes ===
-    if (i < ny + 2 && j < nx + 2)
+    if (i >= 1 && i <= ny && j >= 1 && j <= nx)
     {
       local_id = SH_ID(local_i, local_j, blockDim.x);
 
@@ -255,7 +255,7 @@ __global__ void persistentFusedKernel(float *__restrict__ h, float *__restrict__
       sh_gvh[local_id] = vh2 * inv_h + g_half * h2;
     }
 
-    __syncthreads();
+    __syncwarp();
 
     // === Apply boundary conditions into shared memory ghost cells ===
     if (i < ny + 2 && j < nx + 2)
@@ -305,7 +305,7 @@ __global__ void persistentFusedKernel(float *__restrict__ h, float *__restrict__
       }
     }
 
-    __syncthreads();
+    __syncwarp();
 
     // === Compute updated variables ===
     if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
@@ -360,7 +360,7 @@ __global__ void persistentFusedKernel(float *__restrict__ h, float *__restrict__
           - (float) lambda_y * (gvh_t - gvh_b);
     }
 
-    __syncthreads();
+    __syncwarp();
 
     // === Swap updated values ===
     if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
@@ -372,7 +372,7 @@ __global__ void persistentFusedKernel(float *__restrict__ h, float *__restrict__
       sh_vh[local_id] = sh_vhm[local_id];
     }
 
-    __syncthreads();
+    __syncwarp();
 
     programRuntime += dt;
   }
