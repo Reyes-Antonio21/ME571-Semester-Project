@@ -186,7 +186,10 @@ __device__ void haloExchange(
   int nx, int ny,
   int blockDim_x)
 {
-  unsigned int tid = threadIdx.y * blockDim_x + threadIdx.x;
+  # define SH_ID(i, j, blockDim_x) ((i) * (blockDim_x + 2) + (j))
+  # define ID_2D(i, j, nx) ((i) * (nx + 2) + (j)) 
+  
+  unsigned int tid = threadIdx.y * blockDim.x + threadIdx.x;
   unsigned int warp_id = tid / 32;
   unsigned int lane_id = tid % 32;
 
@@ -198,28 +201,28 @@ __device__ void haloExchange(
   {
       // Left halo loading
       int j_left = lane_id;
-      int global_j_left = blockIdx.x * blockDim_x + j_left;
-      int global_i = blockIdx.y * blockDim_y + threadIdx.y;
+      int global_j_left = blockIdx.x * blockDim.x + j_left;
+      int global_i = blockIdx.y * blockDim.y + threadIdx.y;
 
       if (j_left == 0 && global_j_left > 0)
       {
-          id_left = ID_2D(i, j - 1, nx);
-          local_id_left = SH_ID(local_i, local_j - 1, blockDim_x);
+        id_left = ID_2D(i, j - 1, nx);
+        local_id_left = SH_ID(local_i, local_j - 1, blockDim_x);
 
-          sh_h[local_id_left]  = h[id_left];
-          sh_uh[local_id_left] = -uh[id_left]; // Reflective for uh
-          sh_vh[local_id_left] = vh[id_left];
+        sh_h[local_id_left]  = h[id_left];
+        sh_uh[local_id_left] = -uh[id_left]; // Reflective for uh
+        sh_vh[local_id_left] = vh[id_left];
       }
 
       // Right halo loading
       if (j_left == blockDim_x-1 && global_j_left < nx)
       {
-          id_right = ID_2D(i, j + 1, nx);
-          local_id_right = SH_ID(local_i, local_j + 1, blockDim_x);
+        id_right = ID_2D(i, j + 1, nx);
+        local_id_right = SH_ID(local_i, local_j + 1, blockDim_x);
 
-          sh_h[local_id_right]  = h[id_right];
-          sh_uh[local_id_right] = -uh[id_right];
-          sh_vh[local_id_right] = vh[id_right];
+        sh_h[local_id_right]  = h[id_right];
+        sh_uh[local_id_right] = -uh[id_right];
+        sh_vh[local_id_right] = vh[id_right];
       }
   }
 
@@ -232,24 +235,26 @@ __device__ void haloExchange(
 
       if (i_bottom == 0 && global_i_bottom > 0)
       {
-          id_bottom = ID_2D(i - 1, j, nx);
-          local_id_bottom = SH_ID(local_i - 1, local_j, blockDim_x);
+        id_bottom = ID_2D(i - 1, j, nx);
+        local_id_bottom = SH_ID(local_i - 1, local_j, blockDim_x);
 
-          sh_h[local_id_bottom]  = h[id_bottom];
-          sh_uh[local_id_bottom] = uh[id_bottom];
-          sh_vh[local_id_bottom] = -vh[id_bottom]; // Reflective for vh
+        sh_h[local_id_bottom]  = h[id_bottom];
+        sh_uh[local_id_bottom] = uh[id_bottom];
+        sh_vh[local_id_bottom] = -vh[id_bottom]; // Reflective for vh
       }
 
       if (i_bottom == blockDim_y-1 && global_i_bottom < ny)
       {
-          id_top = ID_2D(i + 1, j, nx);
-          local_id_top = SH_ID(local_i + 1, local_j, blockDim_x);
+        id_top = ID_2D(i + 1, j, nx);
+        local_id_top = SH_ID(local_i + 1, local_j, blockDim_x);
 
-          sh_h[local_id_top]  = h[id_top];
-          sh_uh[local_id_top] = uh[id_top];
-          sh_vh[local_id_top] = -vh[id_top];
+        sh_h[local_id_top]  = h[id_top];
+        sh_uh[local_id_top] = uh[id_top];
+        sh_vh[local_id_top] = -vh[id_top];
       }
   }
+  # undef ID_2D
+  # undef SH_ID
 }
 
 
