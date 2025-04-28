@@ -81,7 +81,7 @@ void writeResults(float h[], float uh[], float vh[], float x[], float y[], float
 
 __global__ void initializeInterior(float *x, float *y, float *h, float *uh, float *vh, int nx, int ny, float dx, float dy, float x_length)
 {
-  unsigned int i = blockIdx.y * blockDim.y + threadIdx.y + 1;  // skip ghost
+  unsigned int i = blockIdx.y * blockDim.y + threadIdx.y + 1;
   unsigned int j = blockIdx.x * blockDim.x + threadIdx.x + 1;
 
   if (i < ny + 1 && j < nx + 1)
@@ -244,33 +244,6 @@ __device__ void refreshInternalHalosShared(float *__restrict__ sh_h, float *__re
   sh_vh[SH_ID(blockDim_y+1, local_j)] = sh_vh[SH_ID(blockDim_y, local_j)];
   }
 
-  // Corner halos
-  if (threadIdx.x == 0 && threadIdx.y == 0 && i > 0 && j > 0) 
-  {
-    sh_h[SH_ID(0, 0)] = sh_h[SH_ID(1, 1)];
-    sh_uh[SH_ID(0, 0)] = sh_uh[SH_ID(1, 1)];
-    sh_vh[SH_ID(0, 0)] = sh_vh[SH_ID(1, 1)];
-  }
-
-  if (threadIdx.x == blockDim_x-1 && threadIdx.y == 0 && i > 0 && j < nx+1) 
-  {
-      sh_h[SH_ID(0, blockDim_x+1)] = sh_h[SH_ID(1, blockDim_x)];
-      sh_uh[SH_ID(0, blockDim_x+1)] = sh_uh[SH_ID(1, blockDim_x)];
-      sh_vh[SH_ID(0, blockDim_x+1)] = sh_vh[SH_ID(1, blockDim_x)];
-  }
-
-  if (threadIdx.x == 0 && threadIdx.y == blockDim_y-1 && i < ny+1 && j > 0) {
-      sh_h[SH_ID(blockDim_y+1, 0)] = sh_h[SH_ID(blockDim_y, 1)];
-      sh_uh[SH_ID(blockDim_y+1, 0)] = sh_uh[SH_ID(blockDim_y, 1)];
-      sh_vh[SH_ID(blockDim_y+1, 0)] = sh_vh[SH_ID(blockDim_y, 1)];
-  }
-
-  if (threadIdx.x == blockDim_x-1 && threadIdx.y == blockDim_y-1 && i < ny+1 && j < nx+1) {
-      sh_h[SH_ID(blockDim_y+1, blockDim_x+1)] = sh_h[SH_ID(blockDim_y, blockDim_x)];
-      sh_uh[SH_ID(blockDim_y+1, blockDim_x+1)] = sh_uh[SH_ID(blockDim_y, blockDim_x)];
-      sh_vh[SH_ID(blockDim_y+1, blockDim_x+1)] = sh_vh[SH_ID(blockDim_y, blockDim_x)];
-  }
-
   #undef SH_ID
 }
 // ****************************************************************************** //
@@ -310,11 +283,47 @@ __global__ void persistentFusedKernel(float *__restrict__ h, float *__restrict__
   # define ID_2D(i,j,nx) ((i) * (nx + 2) + (j))
 
   // Load initial data into shared memory
-  if (i < ny + 2 && j < nx + 2) 
+  if (i < ny+2 && j < nx+2)
   {
-    id = ID_2D(i,j,nx);
-    local_id = SH_ID(local_i,local_j);
+    id = ID_2D(i, j, nx);
+    local_id = SH_ID(local_i, local_j);
 
+    sh_h[local_id] = h[id];
+    sh_uh[local_id] = uh[id];
+    sh_vh[local_id] = vh[id];
+  }
+
+  // Load bottom halo
+  if (threadIdx.y == 0 && i > 0) {
+    id = ID_2D(i-1, j, nx);
+    local_id = SH_ID(local_i-1, local_j);
+    sh_h[local_id] = h[id];
+    sh_uh[local_id] = uh[id];
+    sh_vh[local_id] = vh[id];
+  }
+
+  // Load top halo
+  if (threadIdx.y == blockDim.y-1 && i < ny+1) {
+    id = ID_2D(i+1, j, nx);
+    local_id = SH_ID(local_i+1, local_j);
+    sh_h[local_id] = h[id];
+    sh_uh[local_id] = uh[id];
+    sh_vh[local_id] = vh[id];
+  }
+
+  // Load left halo
+  if (threadIdx.x == 0 && j > 0) {
+    id = ID_2D(i, j-1, nx);
+    local_id = SH_ID(local_i, local_j-1);
+    sh_h[local_id] = h[id];
+    sh_uh[local_id] = uh[id];
+    sh_vh[local_id] = vh[id];
+  }
+
+  // Load right halo
+  if (threadIdx.x == blockDim.x-1 && j < nx+1) {
+    id = ID_2D(i, j+1, nx);
+    local_id = SH_ID(local_i, local_j+1);
     sh_h[local_id] = h[id];
     sh_uh[local_id] = uh[id];
     sh_vh[local_id] = vh[id];
@@ -477,8 +486,8 @@ int main ( int argc, char *argv[] )
   float lambda_y = 0.5f * dt / dy;
 
   // Define the block and grid sizes
-  int dimx = 24;
-  int dimy = 24;
+  int dimx = 32;
+  int dimy = 32;
   dim3 blockSize(dimx, dimy);
   dim3 gridSize((nx + 2 + blockSize.x - 1) / blockSize.x, (ny + 2 + blockSize.y - 1) / blockSize.y);
 
