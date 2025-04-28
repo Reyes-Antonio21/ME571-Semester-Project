@@ -270,7 +270,7 @@ __device__ void refreshInternalHalosShared(float *__restrict__ sh_h, float *__re
       sh_uh[SH_ID(blockDim_y+1, blockDim_x+1)] = sh_uh[SH_ID(blockDim_y, blockDim_x)];
       sh_vh[SH_ID(blockDim_y+1, blockDim_x+1)] = sh_vh[SH_ID(blockDim_y, blockDim_x)];
   }
-  
+
   #undef SH_ID
 }
 // ****************************************************************************** //
@@ -477,8 +477,8 @@ int main ( int argc, char *argv[] )
   float lambda_y = 0.5f * dt / dy;
 
   // Define the block and grid sizes
-  int dimx = 32;
-  int dimy = 32;
+  int dimx = 24;
+  int dimy = 24;
   dim3 blockSize(dimx, dimy);
   dim3 gridSize((nx + 2 + blockSize.x - 1) / blockSize.x, (ny + 2 + blockSize.y - 1) / blockSize.y);
 
