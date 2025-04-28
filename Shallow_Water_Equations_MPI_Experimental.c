@@ -521,37 +521,30 @@ int main (int argc, char *argv[])
       // === vh field ===
       haloExchange(vh, nx_local, ny_local, cart_comm, column_type, north, south, west, east, 8);
 
+      // Compute Fluxes
       for (i = 0; i < ny_local + 2; i++)   
         for (j = 0; j < nx_local + 2; j++) 
         {
           id = ID_2D(i, j, nx_local);
 
           float h_val = h[id];
-
           float uh_val = uh[id];
-
           float vh_val = vh[id];
 
           float inv_h = 1.0f / h_val;
-
           float h2 = h_val * h_val; 
       
           fh[id]  = uh_val;
-
           gh[id]  = vh_val;
       
           float uh2 = uh_val * uh_val; 
-
           float vh2 = vh_val * vh_val; 
-
           float uv  = uh_val * vh_val; 
       
           fuh[id] = uh2 * inv_h + g_half * h2;
-
           fvh[id] = uv  * inv_h;
 
           guh[id] = uv  * inv_h;
-
           gvh[id] = vh2 * inv_h + g_half * h2;
         }
 
@@ -596,16 +589,16 @@ int main (int argc, char *argv[])
           float gvh_t = gvh[id_top];
       
           hm[id] = 0.25f * (h_l + h_r + h_b + h_t)
-                 - (float) lambda_x * (fh_r - fh_l)
-                 - (float) lambda_y * (gh_t - gh_b);
+              - (float) lambda_x * (fh_r - fh_l)
+              - (float) lambda_y * (gh_t - gh_b);
       
           uhm[id] = 0.25f * (uh_l + uh_r + uh_b + uh_t)
-                  - (float) lambda_x * (fuh_r - fuh_l)
-                  - (float) lambda_y * (guh_t - guh_b);
+              - (float) lambda_x * (fuh_r - fuh_l)
+              - (float) lambda_y * (guh_t - guh_b);
       
           vhm[id] = 0.25f * (vh_l + vh_r + vh_b + vh_t)
-                  - (float) lambda_x * (fvh_r - fvh_l)
-                  - (float) lambda_y * (gvh_t - gvh_b);
+              - (float) lambda_x * (fvh_r - fvh_l)
+              - (float) lambda_y * (gvh_t - gvh_b);
         }
       
       //update interior state variables

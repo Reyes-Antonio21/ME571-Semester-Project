@@ -31,7 +31,7 @@ def fitFunc5(x, a, b):
 # -------------------------------------------------------------- CSV Data -------------------------------------------------------------- 
 # Path to the CSV files
 # Note: The path should be updated to the location of your CSV files
-path ='C:/Users/anton/OneDrive/Documents/ME 571 Parallel Scientific Computing/Shallow_Water_Equations_Performance_csv_Files/'
+path ='C:/Users/Antonio Reyes/OneDrive/Documents/ME 571 Parallel Scientific Computing/Shallow_Water_Equations_Performance_csv_Files/'
 cudaKernelPerformance = 'Shallow_Water_Equations_Cuda_Kernel_Runtime_Performance.csv'
 cudaTotalPerformance = 'Shallow_Water_Equations_Cuda_Total_Runtime_Performance.csv'
 mpiTotalPerformance = 'Shallow_Water_Equations_Mpi_Total_Runtime_Performance.csv'
@@ -444,7 +444,7 @@ plt.tight_layout()
 plt.show()
 
 # Choose a fixed problem size for strong scaling
-problem_size_to_analyze = 3400  # Change this to whichever size you want
+problem_size_to_analyze = 5400  # Change this to whichever size you want
 subset = mTPData[problemSizemT == problem_size_to_analyze]
 
 # Sort by number of processors
