@@ -230,8 +230,8 @@ __device__ void haloExchange(
   else if (warp_id == 1)
   {
       int i_bottom = lane_id;
-      int global_i_bottom = blockIdx.y * blockDim_y + i_bottom;
-      int global_j = blockIdx.x * blockDim_x + threadIdx.x;
+      int global_i_bottom = blockIdx.y * blockDim.y + i_bottom;
+      int global_j = blockIdx.x * blockDim.x + threadIdx.x;
 
       if (i_bottom == 0 && global_i_bottom > 0)
       {
