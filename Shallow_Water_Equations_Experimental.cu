@@ -347,15 +347,15 @@ __global__ void persistentFusedKernel(float *__restrict__ h, float *__restrict__
       float gvh_b = sh_gvh[local_id_bottom];
       float gvh_t = sh_gvh[local_id_top];
   
-      sh_hm[id] = 0.25f * (h_l + h_r + h_b + h_t)
+      sh_hm[local_id] = 0.25f * (h_l + h_r + h_b + h_t)
           - (float) lambda_x * (fh_r - fh_l)
           - (float) lambda_y * (gh_t - gh_b);
   
-      sh_uhm[id] = 0.25f * (uh_l + uh_r + uh_b + uh_t)
+      sh_uhm[local_id] = 0.25f * (uh_l + uh_r + uh_b + uh_t)
           - (float) lambda_x * (fuh_r - fuh_l)
           - (float) lambda_y * (guh_t - guh_b);
   
-      sh_vhm[id] = 0.25f * (vh_l + vh_r + vh_b + vh_t)
+      sh_vhm[local_id] = 0.25f * (vh_l + vh_r + vh_b + vh_t)
           - (float) lambda_x * (fvh_r - fvh_l)
           - (float) lambda_y * (gvh_t - gvh_b);
     }
