@@ -346,6 +346,12 @@ __global__ void persistentFusedKernel(float *__restrict__ h, float *__restrict__
 
   while (programRuntime < finalRuntime)
   {
+    
+    // Refresh shared memory halos manually for internal block boundaries
+    refreshInternalHalosShared(sh_h, sh_uh, sh_vh, local_i, local_j, i, j, nx, ny, blockDim.x, blockDim.y);
+    
+    __syncthreads();
+
     // Compute fluxes
     if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1) 
     {
@@ -419,11 +425,6 @@ __global__ void persistentFusedKernel(float *__restrict__ h, float *__restrict__
       sh_vh[local_id] = sh_vhm[local_id];
     }
 
-    __syncthreads();
-
-    // Refresh shared memory halos manually for internal block boundaries
-    refreshInternalHalosShared(sh_h, sh_uh, sh_vh, local_i, local_j, i, j, nx, ny, blockDim.x, blockDim.y);
-    
     __syncthreads();
 
     programRuntime += dt;
