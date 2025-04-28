@@ -279,7 +279,7 @@ __global__ void persistentFusedKernel(float *__restrict__ h, float *__restrict__
   #define SH_ID(i,j) ((i)*(blockDim.x+2)+(j))
   #define ID_2D(i,j,nx) ((i)*(nx+2)+(j))
 
-  // === Load from global into shared (initial)
+  // === Load initial data from global memory ===
   if (i < ny+2 && j < nx+2)
   {
     id = ID_2D(i, j, nx);
@@ -302,15 +302,15 @@ __global__ void persistentFusedKernel(float *__restrict__ h, float *__restrict__
 
   while (programRuntime < finalRuntime)
   {
-    // === Refresh halos first
+    // === Refresh internal halos
     refreshInternalHalosShared(sh_h, sh_uh, sh_vh, local_i, local_j, i, j, nx, ny, blockDim.x, blockDim.y);
-    
+
     __syncthreads();
 
     // === Compute fluxes
-    if (i > 0 && i < ny+1 && j > 0 && j < nx+1) 
+    if (i > 0 && i < ny+1 && j > 0 && j < nx+1)
     {
-      local_id = SH_ID(local_i,local_j);
+      local_id = SH_ID(local_i, local_j);
 
       float h_val  = sh_h [local_id];
       float uh_val = sh_uh[local_id];
@@ -332,9 +332,9 @@ __global__ void persistentFusedKernel(float *__restrict__ h, float *__restrict__
     __syncthreads();
 
     // === Compute updated variables
-    if (i > 0 && i < ny+1 && j > 0 && j < nx+1) 
+    if (i > 0 && i < ny+1 && j > 0 && j < nx+1)
     {
-      local_id = SH_ID(local_i,local_j);
+      local_id = SH_ID(local_i, local_j);
       local_id_left = SH_ID(local_i, local_j-1);
       local_id_right = SH_ID(local_i, local_j+1);
       local_id_bottom = SH_ID(local_i+1, local_j);
@@ -371,7 +371,7 @@ __global__ void persistentFusedKernel(float *__restrict__ h, float *__restrict__
     __syncthreads();
 
     // === Swap updated values
-    if (i > 0 && i < ny+1 && j > 0 && j < nx+1) 
+    if (i > 0 && i < ny+1 && j > 0 && j < nx+1)
     {
       local_id = SH_ID(local_i, local_j);
 
@@ -382,7 +382,7 @@ __global__ void persistentFusedKernel(float *__restrict__ h, float *__restrict__
 
     __syncthreads();
 
-    // === Write updated values back to global memory
+    // === Write back to global memory
     if (i > 0 && i < ny+1 && j > 0 && j < nx+1)
     {
       id = ID_2D(i, j, nx);
@@ -393,15 +393,41 @@ __global__ void persistentFusedKernel(float *__restrict__ h, float *__restrict__
 
     __syncthreads();
 
-    // === Reload from global memory into shared memory
-    if (i < ny+2 && j < nx+2)
+    // === Reload from global memory carefully
+    if (i > 0 && i < ny+1 && j > 0 && j < nx+1)
     {
       id = ID_2D(i, j, nx);
-      local_id = SH_ID(local_i, local_j);
-
-      sh_h[local_id] = h[id];
-      sh_uh[local_id] = uh[id];
-      sh_vh[local_id] = vh[id];
+      sh_h[SH_ID(local_i, local_j)] = h[id];
+      sh_uh[SH_ID(local_i, local_j)] = uh[id];
+      sh_vh[SH_ID(local_i, local_j)] = vh[id];
+    }
+    if (j == 0 && i > 0 && i < ny+1)
+    {
+      id = ID_2D(i, j, nx);
+      sh_h[SH_ID(local_i, local_j-1)] = h[id];
+      sh_uh[SH_ID(local_i, local_j-1)] = uh[id];
+      sh_vh[SH_ID(local_i, local_j-1)] = vh[id];
+    }
+    if (j == nx+1 && i > 0 && i < ny+1)
+    {
+      id = ID_2D(i, j, nx);
+      sh_h[SH_ID(local_i, local_j+1)] = h[id];
+      sh_uh[SH_ID(local_i, local_j+1)] = uh[id];
+      sh_vh[SH_ID(local_i, local_j+1)] = vh[id];
+    }
+    if (i == 0 && j > 0 && j < nx+1)
+    {
+      id = ID_2D(i, j, nx);
+      sh_h[SH_ID(local_i-1, local_j)] = h[id];
+      sh_uh[SH_ID(local_i-1, local_j)] = uh[id];
+      sh_vh[SH_ID(local_i-1, local_j)] = vh[id];
+    }
+    if (i == ny+1 && j > 0 && j < nx+1)
+    {
+      id = ID_2D(i, j, nx);
+      sh_h[SH_ID(local_i+1, local_j)] = h[id];
+      sh_uh[SH_ID(local_i+1, local_j)] = uh[id];
+      sh_vh[SH_ID(local_i+1, local_j)] = vh[id];
     }
 
     __syncthreads();
