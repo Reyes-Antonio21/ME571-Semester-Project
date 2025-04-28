@@ -179,10 +179,7 @@ __global__ void applyTopBoundary(float *h, float *uh, float *vh, int nx, int ny)
 }
 // ****************************************************************************** //
 
-__global__ void shallowWaterSolver(float *h, float *uh, float *vh,
-  float lambda_x, float lambda_y,
-  int nx, int ny,
-  float dt, float finalRuntime)
+__global__ void shallowWaterSolver(float *h, float *uh, float *vh, float lambda_x, float lambda_y, int nx, int ny, float dt, float finalRuntime)
 {
   extern __shared__ float sharedmemory[];
 
@@ -194,8 +191,8 @@ __global__ void shallowWaterSolver(float *h, float *uh, float *vh,
   float *sh_uhm = sh_hm  + (blockDim.y+2)*(blockDim.x+2);
   float *sh_vhm = sh_uhm + (blockDim.y+2)*(blockDim.x+2);
 
-  #define SH_ID(i,j) ((i)*(blockDim.x+2)+(j))
-  #define GID(i,j) ((i)*(nx+2)+(j)) // assume global h,uh,vh have ghost layer
+  #define SH_ID(i,j) ((i) * (blockDim.x+2) + (j))
+  #define GID(i,j) ((i) * (nx + 2) + (j)) // assume global h,uh,vh have ghost layer
 
   int global_i = blockIdx.y * blockDim.y + threadIdx.y;
   int global_j = blockIdx.x * blockDim.x + threadIdx.x;
@@ -212,112 +209,154 @@ __global__ void shallowWaterSolver(float *h, float *uh, float *vh,
   float g = 9.81f;
   float g_half = 0.5f * g;
 
-  while (programRuntime < finalRuntime)
-  {
   // === Load interior ===
   if (global_i < ny && global_j < nx)
   {
-  int gid = GID(global_i+1, global_j+1);
-  int lid = SH_ID(local_i, local_j);
+    int global_id = GID(global_i+1, global_j+1);
+    int local_id = SH_ID(local_i, local_j);
 
-  sh_h[lid]  = h[gid];
-  sh_uh[lid] = uh[gid];
-  sh_vh[lid] = vh[gid];
+    sh_h[local_id]  = h[global_id];
+    sh_uh[local_id] = uh[global_id];
+    sh_vh[local_id] = vh[global_id];
   }
 
   // === Load halos ===
   if (threadIdx.x == 0 && has_left && global_i < ny)
   {
-  int gid = GID(global_i+1, global_j);
-  int lid = SH_ID(local_i, 0);
+    int global_id = GID(global_i + 1, global_j);
+    int local_id = SH_ID(local_i, 0);
 
-  sh_h[lid]  = h[gid];
-  sh_uh[lid] = uh[gid];
-  sh_vh[lid] = vh[gid];
+    sh_h[local_id]  = h[global_id];
+    sh_uh[local_id] = uh[global_id];
+    sh_vh[local_id] = vh[global_id];
   }
+
   if (threadIdx.x == blockDim.x-1 && has_right && global_i < ny)
   {
-  int gid = GID(global_i+1, global_j+2);
-  int lid = SH_ID(local_i, blockDim.x+1);
+    int global_id = GID(global_i+1, global_j+2);
+    int local_id = SH_ID(local_i, blockDim.x+1);
 
-  sh_h[lid]  = h[gid];
-  sh_uh[lid] = uh[gid];
-  sh_vh[lid] = vh[gid];
+    sh_h[local_id]  = h[global_id];
+    sh_uh[local_id] = uh[global_id];
+    sh_vh[local_id] = vh[global_id];
   }
+
   if (threadIdx.y == 0 && has_bottom && global_j < nx)
   {
-  int gid = GID(global_i, global_j+1);
-  int lid = SH_ID(0, local_j);
+    int global_id = GID(global_i, global_j+1);
+    int local_id = SH_ID(0, local_j);
 
-  sh_h[lid]  = h[gid];
-  sh_uh[lid] = uh[gid];
-  sh_vh[lid] = vh[gid];
+    sh_h[local_id]  = h[global_id];
+    sh_uh[local_id] = uh[global_id];
+    sh_vh[local_id] = vh[global_id];
   }
+
   if (threadIdx.y == blockDim.y-1 && has_top && global_j < nx)
   {
-  int gid = GID(global_i+2, global_j+1);
-  int lid = SH_ID(blockDim.y+1, local_j);
+    int global_id = GID(global_i+2, global_j+1);
+    int local_id = SH_ID(blockDim.y+1, local_j);
 
-  sh_h[lid]  = h[gid];
-  sh_uh[lid] = uh[gid];
-  sh_vh[lid] = vh[gid];
+    sh_h[local_id]  = h[global_id];
+    sh_uh[local_id] = uh[global_id];
+    sh_vh[local_id] = vh[global_id];
   }
 
-  __syncthreads();
-
-  // === Compute fluxes and update ===
-  if (global_i < ny && global_j < nx)
+  while (programRuntime < finalRuntime)
   {
-  int lid = SH_ID(local_i, local_j);
-  int lid_l = SH_ID(local_i, local_j-1);
-  int lid_r = SH_ID(local_i, local_j+1);
-  int lid_b = SH_ID(local_i-1, local_j);
-  int lid_t = SH_ID(local_i+1, local_j);
 
-  // Lax-Friedrichs style update
-  sh_hm[lid]  = 0.25f * (sh_h[lid_l] + sh_h[lid_r] + sh_h[lid_b] + sh_h[lid_t])
-  - lambda_x * (sh_uh[lid_r] - sh_uh[lid_l])
-  - lambda_y * (sh_vh[lid_t] - sh_vh[lid_b]);
+    // === Load halos ===
+    if (threadIdx.x == 0 && has_left && global_i < ny)
+    {
+      int global_id = GID(global_i + 1, global_j);
+      int local_id = SH_ID(local_i, 0);
 
-  sh_uhm[lid] = 0.25f * (sh_uh[lid_l] + sh_uh[lid_r] + sh_uh[lid_b] + sh_uh[lid_t])
-  - lambda_x * ((sh_uh[lid_r]*sh_uh[lid_r]/sh_h[lid_r] + 0.5f*g*sh_h[lid_r]*sh_h[lid_r]) -
-  (sh_uh[lid_l]*sh_uh[lid_l]/sh_h[lid_l] + 0.5f*g*sh_h[lid_l]*sh_h[lid_l]))
-  - lambda_y * ((sh_uh[lid_t]*sh_vh[lid_t]/sh_h[lid_t]) -
-  (sh_uh[lid_b]*sh_vh[lid_b]/sh_h[lid_b]));
+      sh_h[local_id]  = h[global_id];
+      sh_uh[local_id] = uh[global_id];
+      sh_vh[local_id] = vh[global_id];
+    }
+    if (threadIdx.x == blockDim.x-1 && has_right && global_i < ny)
+    {
+      int global_id = GID(global_i+1, global_j+2);
+      int local_id = SH_ID(local_i, blockDim.x+1);
 
-  sh_vhm[lid] = 0.25f * (sh_vh[lid_l] + sh_vh[lid_r] + sh_vh[lid_b] + sh_vh[lid_t])
-  - lambda_x * ((sh_uh[lid_r]*sh_vh[lid_r]/sh_h[lid_r]) -
-  (sh_uh[lid_l]*sh_vh[lid_l]/sh_h[lid_l]))
-  - lambda_y * ((sh_vh[lid_t]*sh_vh[lid_t]/sh_h[lid_t] + 0.5f*g*sh_h[lid_t]*sh_h[lid_t]) -
-  (sh_vh[lid_b]*sh_vh[lid_b]/sh_h[lid_b]));
-  }
+      sh_h[local_id]  = h[global_id];
+      sh_uh[local_id] = uh[global_id];
+      sh_vh[local_id] = vh[global_id];
+    }
+    if (threadIdx.y == 0 && has_bottom && global_j < nx)
+    {
+      int global_id = GID(global_i, global_j+1);
+      int local_id = SH_ID(0, local_j);
 
-  __syncthreads();
+      sh_h[local_id]  = h[global_id];
+      sh_uh[local_id] = uh[global_id];
+      sh_vh[local_id] = vh[global_id];
+    }
+    if (threadIdx.y == blockDim.y-1 && has_top && global_j < nx)
+    {
+      int global_id = GID(global_i+2, global_j+1);
+      int local_id = SH_ID(blockDim.y+1, local_j);
 
-  // === Swap updated values ===
-  if (global_i < ny && global_j < nx)
-  {
-  int lid = SH_ID(local_i, local_j);
+      sh_h[local_id]  = h[global_id];
+      sh_uh[local_id] = uh[global_id];
+      sh_vh[local_id] = vh[global_id];
+    }
 
-  sh_h[lid]  = sh_hm[lid];
-  sh_uh[lid] = sh_uhm[lid];
-  sh_vh[lid] = sh_vhm[lid];
-  }
+    __syncthreads();
 
-  __syncthreads();
+    // === Compute fluxes and update ===
+    if (global_i < ny && global_j < nx)
+    {
+    int local_id = SH_ID(local_i, local_j);
+    int local_id_l = SH_ID(local_i, local_j-1);
+    int local_id_r = SH_ID(local_i, local_j+1);
+    int local_id_b = SH_ID(local_i-1, local_j);
+    int local_id_t = SH_ID(local_i+1, local_j);
 
-  programRuntime += dt;
+    // Lax-Friedrichs style update
+    sh_hm[local_id]  = 0.25f * (sh_h[local_id_l] + sh_h[local_id_r] + sh_h[local_id_b] + sh_h[local_id_t])
+    - lambda_x * (sh_uh[local_id_r] - sh_uh[local_id_l])
+    - lambda_y * (sh_vh[local_id_t] - sh_vh[local_id_b]);
+
+    sh_uhm[local_id] = 0.25f * (sh_uh[local_id_l] + sh_uh[local_id_r] + sh_uh[local_id_b] + sh_uh[local_id_t])
+    - lambda_x * ((sh_uh[local_id_r]*sh_uh[local_id_r]/sh_h[local_id_r] + 0.5f*g*sh_h[local_id_r]*sh_h[local_id_r]) -
+    (sh_uh[local_id_l]*sh_uh[local_id_l]/sh_h[local_id_l] + 0.5f*g*sh_h[local_id_l]*sh_h[local_id_l]))
+    - lambda_y * ((sh_uh[local_id_t]*sh_vh[local_id_t]/sh_h[local_id_t]) -
+    (sh_uh[local_id_b]*sh_vh[local_id_b]/sh_h[local_id_b]));
+
+    sh_vhm[local_id] = 0.25f * (sh_vh[local_id_l] + sh_vh[local_id_r] + sh_vh[local_id_b] + sh_vh[local_id_t])
+    - lambda_x * ((sh_uh[local_id_r]*sh_vh[local_id_r]/sh_h[local_id_r]) -
+    (sh_uh[local_id_l]*sh_vh[local_id_l]/sh_h[local_id_l]))
+    - lambda_y * ((sh_vh[local_id_t]*sh_vh[local_id_t]/sh_h[local_id_t] + 0.5f*g*sh_h[local_id_t]*sh_h[local_id_t]) -
+    (sh_vh[local_id_b]*sh_vh[local_id_b]/sh_h[local_id_b]));
+    }
+
+    __syncthreads();
+
+    // === Swap updated values ===
+    if (global_i < ny && global_j < nx)
+    {
+    int local_id = SH_ID(local_i, local_j);
+
+    sh_h[local_id]  = sh_hm[local_id];
+    sh_uh[local_id] = sh_uhm[local_id];
+    sh_vh[local_id] = sh_vhm[local_id];
+    }
+
+    __syncthreads();
+
+    programRuntime += dt;
   }
 
   // === Store back final values ===
   if (global_i < ny && global_j < nx)
   {
-  int gid = GID(global_i+1, global_j+1);
-  int lid = SH_ID(local_i, local_j);
+  int global_id = GID(global_i+1, global_j+1);
+  int local_id = SH_ID(local_i, local_j);
 
-  h[gid]  = sh_h[lid];
-  uh[gid] = sh_uh[lid];
-  vh[gid] = sh_vh[lid];
+  h[global_id]  = sh_h[local_id];
+  uh[global_id] = sh_uh[local_id];
+  vh[global_id] = sh_vh[local_id];
   }
 
   #undef SH_ID
