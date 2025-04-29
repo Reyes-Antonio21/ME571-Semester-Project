@@ -179,17 +179,6 @@ __global__ void applyTopBoundary(float *h, float *uh, float *vh, int nx, int ny)
 }
 // ****************************************************************************** //
 
-void checkOccupancy() 
-{
-  int minGridSize = 0;
-  int blockSize = 0;
-  
-  cudaOccupancyMaxPotentialBlockSize(&minGridSize, &blockSize, shallowWaterSolver, 0, 0);
-
-  std::cout << "Recommended block size: " << blockSize << std::endl;
-  std::cout << "Minimum grid size: " << minGridSize << std::endl;
-}
-
 __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const float* h, const float* uh, const float* vh, int i, int j, int local_i, int local_j, int nx, int ny, int blockDim_x)
 {
   #define SH_ID(i, j, blockDim_x) ((i) * (blockDim_x + 2) + (j))
@@ -452,6 +441,17 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
   }
 }
 // ****************************************************************************************************************** //
+
+void checkOccupancy() 
+{
+  int minGridSize = 0;
+  int blockSize = 0;
+  
+  cudaOccupancyMaxPotentialBlockSize(&minGridSize, &blockSize, shallowWaterSolver, 0, 0);
+
+  std::cout << "Recommended block size: " << blockSize << std::endl;
+  std::cout << "Minimum grid size: " << minGridSize << std::endl;
+}
 
 // ****************************************************** MAIN ****************************************************** //
 int main ( int argc, char *argv[] )
