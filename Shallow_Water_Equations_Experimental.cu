@@ -502,8 +502,8 @@ int main ( int argc, char *argv[] )
   float lambda_y = 0.5f * dt / dy;
 
   // Define the block and grid sizes
-  int dimx = 16;
-  int dimy = 16;
+  int dimx = 32;
+  int dimy = 20;
   dim3 blockSize(dimx, dimy);
   dim3 gridSize((nx + 2 + blockSize.x - 1) / blockSize.x, (ny + 2 + blockSize.y - 1) / blockSize.y);
 
@@ -610,7 +610,7 @@ int main ( int argc, char *argv[] )
     // start program timer
     auto start_time = std::chrono::steady_clock::now();
 
-    shallowWaterSolver<<<numBlocks, blockSize1, sharedMemSize>>>(d_h, d_uh, d_vh, lambda_x, lambda_y, nx, ny, dt, finalRuntime);
+    shallowWaterSolver<<<gridSize, blockSize, sharedMemSize>>>(d_h, d_uh, d_vh, lambda_x, lambda_y, nx, ny, dt, finalRuntime);
 
     cudaError_t err = cudaGetLastError();
     if (err != cudaSuccess) 
