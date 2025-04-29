@@ -507,6 +507,9 @@ int main ( int argc, char *argv[] )
   dim3 blockSize(dimx, dimy);
   dim3 gridSize((nx + 2 + blockSize.x - 1) / blockSize.x, (ny + 2 + blockSize.y - 1) / blockSize.y);
 
+  int blockSize1 = 640;  // recommended by occupancy API
+  int numBlocks = (N + blockSize - 1) / blockSize;
+
   // Calculate shared memory size
   size_t sharedMemSize = ((9 * (blockSize.x+2) * (blockSize.y+2) * sizeof(float)) + 127) & ~127;
 
@@ -607,7 +610,7 @@ int main ( int argc, char *argv[] )
     // start program timer
     auto start_time = std::chrono::steady_clock::now();
 
-    shallowWaterSolver<<<gridSize, blockSize, sharedMemSize>>>(d_h, d_uh, d_vh, lambda_x, lambda_y, nx, ny, dt, finalRuntime);
+    shallowWaterSolver<<<numBlocks, blockSize1, sharedMemSize>>>(d_h, d_uh, d_vh, lambda_x, lambda_y, nx, ny, dt, finalRuntime);
 
     cudaError_t err = cudaGetLastError();
     if (err != cudaSuccess) 
