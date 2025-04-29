@@ -508,7 +508,7 @@ int main ( int argc, char *argv[] )
   dim3 gridSize((nx + 2 + blockSize.x - 1) / blockSize.x, (ny + 2 + blockSize.y - 1) / blockSize.y);
 
   int blockSize1 = 640;  // recommended by occupancy API
-  int numBlocks = (nx * ny + blockSize - 1) / blockSize;
+  int numBlocks = (nx * ny + blockSize1 - 1) / blockSize1;
 
   // Calculate shared memory size
   size_t sharedMemSize = ((9 * (blockSize.x+2) * (blockSize.y+2) * sizeof(float)) + 127) & ~127;
