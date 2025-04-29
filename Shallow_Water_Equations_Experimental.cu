@@ -4,6 +4,7 @@
 # include <string.h>
 # include <time.h>
 # include <chrono>
+# include <iostream>
 # include <cuda_runtime.h>
 
 // ************************************************ UTILITIES ************************************************ //
@@ -183,7 +184,7 @@ void checkOccupancy()
   int minGridSize = 0;
   int blockSize = 0;
   
-  cudaOccupancyMaxPotentialBlockSize(&minGridSize, &blockSize, myKernel, 0, 0);
+  cudaOccupancyMaxPotentialBlockSize(&minGridSize, &blockSize, shallowWaterSolver, 0, 0);
 
   std::cout << "Recommended block size: " << blockSize << std::endl;
   std::cout << "Minimum grid size: " << minGridSize << std::endl;
