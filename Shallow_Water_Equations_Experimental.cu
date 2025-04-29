@@ -271,7 +271,7 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const floa
 }
 
 
-__global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh, float *__restrict__ vh, float lambda_x, float lambda_y, int nx, int ny, float dt, float finalRuntime)
+__global__ __launch_bounds__(1024,1) void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh, float *__restrict__ vh, float lambda_x, float lambda_y, int nx, int ny, float dt, float finalRuntime)
 {
   unsigned int i = blockIdx.y * blockDim.y + threadIdx.y;
   unsigned int j = blockIdx.x * blockDim.x + threadIdx.x;
@@ -496,7 +496,7 @@ int main ( int argc, char *argv[] )
   dim3 gridSize((nx + 2 + blockSize.x - 1) / blockSize.x, (ny + 2 + blockSize.y - 1) / blockSize.y);
 
   // Calculate shared memory size
-  size_t sharedMemSize = ((10 * (blockSize.x+2) * (blockSize.y+2) * sizeof(float)) + 127) & ~127;
+  size_t sharedMemSize = ((9 * (blockSize.x+2) * (blockSize.y+2) * sizeof(float)) + 127) & ~127;
 
   cudaFuncSetAttribute(shallowWaterSolver, cudaFuncAttributeMaxDynamicSharedMemorySize, 98304);
 
