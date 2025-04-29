@@ -180,104 +180,96 @@ __global__ void applyTopBoundary(float *h, float *uh, float *vh, int nx, int ny)
 
 __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const float* h, const float* uh, const float* vh, int i, int j, int local_i, int local_j, int nx, int ny, int blockDim_x)
 {
-  # define SH_ID(i, j, blockDim_x) ((i) * (blockDim_x + 2) + (j))
-  # define ID_2D(i, j, nx) ((i) * (nx + 2) + (j))
-  
-  int id, id_left, id_right, id_bottom, id_top;
-  int local_id_left, local_id_right, local_id_bottom, local_id_top;
+  #define SH_ID(i, j, blockDim_x) ((i) * (blockDim_x + 2) + (j))
+  #define ID_2D(i, j, nx) ((i) * (nx + 2) + (j))
 
-  // === Load Halo points from global memory ===
-  // Left
-  if (threadIdx.x == 0)
+  int global_id, halo_global_id;
+  int local_halo_id;
+
+  // === LEFT Halo ===
+  if (threadIdx.x == 0 && j > 0)
   {
-    id_left = ID_2D(i, j - 1, nx);
-    local_id_left = SH_ID(local_i, local_j - 1, blockDim_x);
+    halo_global_id = ID_2D(i, j - 1, nx);
+    local_halo_id  = SH_ID(local_i, local_j - 1, blockDim_x);
 
-    if (j > 0)
-    {
-      sh_h[local_id_left] = h[id_left];
-      sh_uh[local_id_left] = uh[id_left];
-      sh_vh[local_id_left] = vh[id_left];
-    }
-    else
-    {
-      id = ID_2D(i, j, nx);
+    sh_h[local_halo_id]  = h[halo_global_id];
+    sh_uh[local_halo_id] = uh[halo_global_id];
+    sh_vh[local_halo_id] = vh[halo_global_id];
+  }
+  else if (threadIdx.x == 0 && j == 0)
+  {
+    global_id = ID_2D(i, j, nx);
+    local_halo_id = SH_ID(local_i, local_j - 1, blockDim_x);
 
-      sh_h[local_id_left]  = h[id];
-      sh_uh[local_id_left] = -uh[id];
-      sh_vh[local_id_left] = vh[id];
-    }
+    sh_h[local_halo_id]  = h[global_id];
+    sh_uh[local_halo_id] = -uh[global_id];
+    sh_vh[local_halo_id] =  vh[global_id];
   }
 
-  // Right
-  if (threadIdx.x == blockDim.x - 1)
+  // === RIGHT Halo ===
+  if (threadIdx.x == blockDim.x - 1 && j < nx + 1)
   {
-    id_right = ID_2D(i, j + 1, nx);
-    local_id_right = SH_ID(local_i, local_j + 1, blockDim_x);
+    halo_global_id = ID_2D(i, j + 1, nx);
+    local_halo_id  = SH_ID(local_i, local_j + 1, blockDim_x);
 
-    if (j < nx)
-    {
-      sh_h[local_id_right] = h[id_right];
-      sh_uh[local_id_right] = uh[id_right];
-      sh_vh[local_id_right] = vh[id_right];
-    }
-    else
-    {
-      id = ID_2D(i, j, nx);
+    sh_h[local_halo_id]  = h[halo_global_id];
+    sh_uh[local_halo_id] = uh[halo_global_id];
+    sh_vh[local_halo_id] = vh[halo_global_id];
+  }
+  else if (threadIdx.x == blockDim.x - 1 && j == nx + 1)
+  {
+    global_id = ID_2D(i, j, nx);
+    local_halo_id = SH_ID(local_i, local_j + 1, blockDim_x);
 
-      sh_h[local_id_right]  = h[id];
-      sh_uh[local_id_right] = -uh[id];
-      sh_vh[local_id_right] = vh[id];
-    }
+    sh_h[local_halo_id]  = h[global_id];
+    sh_uh[local_halo_id] = -uh[global_id];
+    sh_vh[local_halo_id] =  vh[global_id];
   }
 
-  // Bottom
-  if (threadIdx.y == 0)
+  // === BOTTOM Halo ===
+  if (threadIdx.y == 0 && i > 0)
   {
-    id_bottom = ID_2D(i - 1, j, nx);
-    local_id_bottom = SH_ID(local_i - 1, local_j, blockDim_x);
+    halo_global_id = ID_2D(i - 1, j, nx);
+    local_halo_id  = SH_ID(local_i - 1, local_j, blockDim_x);
 
-    if (i > 0)
-    {
-      sh_h[local_id_bottom] = h[id_bottom];
-      sh_uh[local_id_bottom] = uh[id_bottom];
-      sh_vh[local_id_bottom] = vh[id_bottom];
-    }
-    else
-    {
-      id = ID_2D(i, j, nx);
+    sh_h[local_halo_id]  = h[halo_global_id];
+    sh_uh[local_halo_id] = uh[halo_global_id];
+    sh_vh[local_halo_id] = vh[halo_global_id];
+  }
+  else if (threadIdx.y == 0 && i == 0)
+  {
+    global_id = ID_2D(i, j, nx);
+    local_halo_id = SH_ID(local_i - 1, local_j, blockDim_x);
 
-      sh_h[local_id_bottom]  = h[id];
-      sh_uh[local_id_bottom] = uh[id];
-      sh_vh[local_id_bottom] = -vh[id];
-    }
+    sh_h[local_halo_id]  = h[global_id];
+    sh_uh[local_halo_id] =  uh[global_id];
+    sh_vh[local_halo_id] = -vh[global_id];
   }
 
-  // Top
-  if (threadIdx.y == blockDim.y - 1)
+  // === TOP Halo ===
+  if (threadIdx.y == blockDim.y - 1 && i < ny + 1)
   {
-    id_top = ID_2D(i + 1, j, nx);
-    local_id_top = SH_ID(local_i + 1, local_j, blockDim_x);
+    halo_global_id = ID_2D(i + 1, j, nx);
+    local_halo_id  = SH_ID(local_i + 1, local_j, blockDim_x);
 
-    if (i < ny)
-    {
-      sh_h[local_id_top] = h[id_top];
-      sh_uh[local_id_top] = uh[id_top];
-      sh_vh[local_id_top] = vh[id_top];
-    }
-    else
-    {
-      id = ID_2D(i, j, nx);
+    sh_h[local_halo_id]  = h[halo_global_id];
+    sh_uh[local_halo_id] = uh[halo_global_id];
+    sh_vh[local_halo_id] = vh[halo_global_id];
+  }
+  else if (threadIdx.y == blockDim.y - 1 && i == ny + 1)
+  {
+    global_id = ID_2D(i, j, nx);
+    local_halo_id = SH_ID(local_i + 1, local_j, blockDim_x);
 
-      sh_h[local_id_top]  = h[id];
-      sh_uh[local_id_top] = uh[id];
-      sh_vh[local_id_top] = -vh[id];
-    }
+    sh_h[local_halo_id]  = h[global_id];
+    sh_uh[local_halo_id] =  uh[global_id];
+    sh_vh[local_halo_id] = -vh[global_id];
   }
 
   #undef ID_2D
   #undef SH_ID
 }
+
 
 __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh, float *__restrict__ vh, float lambda_x, float lambda_y, int nx, int ny, float dt, float finalRuntime)
 {
