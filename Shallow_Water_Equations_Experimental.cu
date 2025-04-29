@@ -279,7 +279,7 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const floa
   #undef SH_ID
 }
 
-__global__ __launch_bounds__(1024,1) void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh, float *__restrict__ vh, float lambda_x, float lambda_y, int nx, int ny, float dt, float finalRuntime)
+__global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh, float *__restrict__ vh, float lambda_x, float lambda_y, int nx, int ny, float dt, float finalRuntime)
 {
   unsigned int i = blockIdx.y * blockDim.y + threadIdx.y;
   unsigned int j = blockIdx.x * blockDim.x + threadIdx.x;
@@ -303,14 +303,9 @@ __global__ __launch_bounds__(1024,1) void shallowWaterSolver(float *__restrict__
   float *sh_fvh = sh_guh + (blockDim.y + 2) * (blockDim.x + 2);
   float *sh_gvh = sh_fvh + (blockDim.y + 2) * (blockDim.x + 2);
 
-  float *sh_hm  = sh_gvh + (blockDim.y + 2) * (blockDim.x + 2);
-  float *sh_uhm = sh_hm  + (blockDim.y + 2) * (blockDim.x + 2);
-  float *sh_vhm = sh_uhm + (blockDim.y + 2) * (blockDim.x + 2);
-
   # define SH_ID(i, j, blockDim_x) ((i) * (blockDim_x + 2) + (j))
-  # define ID_2D(i, j, nx) ((i) * (nx + 2) + (j)) 
+  # define ID_2D(i, j, nx) ((i) * (nx + 2) + (j))
 
-  // === Load interior data from global memory ===
   if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
   {
     id = ID_2D(i, j, nx);
@@ -335,7 +330,6 @@ __global__ __launch_bounds__(1024,1) void shallowWaterSolver(float *__restrict__
 
     __syncthreads();
 
-    // === Compute fluxes ===
     if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
     {
       local_id = SH_ID(local_i, local_j, blockDim.x);
@@ -361,121 +355,80 @@ __global__ __launch_bounds__(1024,1) void shallowWaterSolver(float *__restrict__
       sh_gvh[local_id] = __fmaf_rn(vh2, inv_h, g_half * h2);
     }
 
-    __syncwarp();
+    __syncthreads();
 
-    // === Compute updated variables ===
     if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
     {
-      local_id = SH_ID(local_i, local_j, blockDim.x);
-      local_id_left = SH_ID(local_i, local_j - 1, blockDim.x);
+      local_id       = SH_ID(local_i, local_j, blockDim.x);
+      local_id_left  = SH_ID(local_i, local_j - 1, blockDim.x);
       local_id_right = SH_ID(local_i, local_j + 1, blockDim.x);
       local_id_bottom = SH_ID(local_i - 1, local_j, blockDim.x);
-      local_id_top = SH_ID(local_i + 1, local_j, blockDim.x);
+      local_id_top    = SH_ID(local_i + 1, local_j, blockDim.x);
 
-      // Load neighbor values into local registers
       float h_l  = sh_h[local_id_left];
       float h_r  = sh_h[local_id_right];
       float h_b  = sh_h[local_id_bottom];
       float h_t  = sh_h[local_id_top];
-  
+
       float uh_l = sh_uh[local_id_left];
       float uh_r = sh_uh[local_id_right];
       float uh_b = sh_uh[local_id_bottom];
       float uh_t = sh_uh[local_id_top];
-  
+
       float vh_l = sh_vh[local_id_left];
       float vh_r = sh_vh[local_id_right];
       float vh_b = sh_vh[local_id_bottom];
       float vh_t = sh_vh[local_id_top];
-  
+
       float fh_l = sh_fh[local_id_left];
       float fh_r = sh_fh[local_id_right];
       float gh_b = sh_gh[local_id_bottom];
       float gh_t = sh_gh[local_id_top];
-  
+
       float fuh_l = sh_fuh[local_id_left];
       float fuh_r = sh_fuh[local_id_right];
       float guh_b = sh_guh[local_id_bottom];
       float guh_t = sh_guh[local_id_top];
-  
+
       float fvh_l = sh_fvh[local_id_left];
       float fvh_r = sh_fvh[local_id_right];
       float gvh_b = sh_gvh[local_id_bottom];
       float gvh_t = sh_gvh[local_id_top];
-  
-      sh_hm[local_id] = __fmaf_rn(-lambda_x, (fh_r - fh_l),
-                        __fmaf_rn(-lambda_y, (gh_t - gh_b),
-                        0.25f * (h_l + h_r + h_b + h_t))); 
 
-      sh_uhm[local_id] = __fmaf_rn(-lambda_x, (fuh_r - fuh_l),
-                         __fmaf_rn(-lambda_y, (guh_t - guh_b),
-                         0.25f * (uh_l + uh_r + uh_b + uh_t)));
-  
-      sh_vhm[local_id] = __fmaf_rn(-lambda_x, (fvh_r - fvh_l),
-                         __fmaf_rn(-lambda_y, (gvh_t - gvh_b),
-                         0.25f * (vh_l + vh_r + vh_b + vh_t)));   
+      sh_h[local_id] = __fmaf_rn(-lambda_x, (fh_r - fh_l), __fmaf_rn(-lambda_y, (gh_t - gh_b), 0.25f * (h_l + h_r + h_b + h_t)));
+      sh_uh[local_id] = __fmaf_rn(-lambda_x, (fuh_r - fuh_l), __fmaf_rn(-lambda_y, (guh_t - guh_b), 0.25f * (uh_l + uh_r + uh_b + uh_t)));
+      sh_vh[local_id] = __fmaf_rn(-lambda_x, (fvh_r - fvh_l), __fmaf_rn(-lambda_y, (gvh_t - gvh_b), 0.25f * (vh_l + vh_r + vh_b + vh_t)));
     }
 
-    __syncwarp();
+    __syncthreads();
 
-    // === Swap updated values ===
-    if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
+    // Correct boundary condition application using shared memory coordinates
+    if (local_j == 0 && local_i > 0 && local_i < blockDim.y + 1)
     {
-      local_id = SH_ID(local_i, local_j, blockDim.x);
-
-      sh_h[local_id]  = sh_hm[local_id];
-      sh_uh[local_id] = sh_uhm[local_id];
-      sh_vh[local_id] = sh_vhm[local_id];
+      sh_h[SH_ID(local_i, local_j, blockDim.x)] = sh_h[SH_ID(local_i, local_j + 1, blockDim.x)];
+      sh_uh[SH_ID(local_i, local_j, blockDim.x)] = -sh_uh[SH_ID(local_i, local_j + 1, blockDim.x)];
+      sh_vh[SH_ID(local_i, local_j, blockDim.x)] = sh_vh[SH_ID(local_i, local_j + 1, blockDim.x)];
     }
 
-    __syncwarp();
-
-    // === Apply boundary conditions into shared memory ghost cells ===
-    if (i < ny + 2 && j < nx + 2)
+    if (local_j == blockDim.x + 1 && local_i > 0 && local_i < blockDim.y + 1)
     {
-      // Left boundary (j == 0)
-      if (local_j == 1 && j == 1)
-      {
-        local_id = SH_ID(local_i, local_j, blockDim.x);
-        local_id_left = SH_ID(local_i, 0, blockDim.x);
+      sh_h[SH_ID(local_i, local_j, blockDim.x)] = sh_h[SH_ID(local_i, local_j - 1, blockDim.x)];
+      sh_uh[SH_ID(local_i, local_j, blockDim.x)] = -sh_uh[SH_ID(local_i, local_j - 1, blockDim.x)];
+      sh_vh[SH_ID(local_i, local_j, blockDim.x)] = sh_vh[SH_ID(local_i, local_j - 1, blockDim.x)];
+    }
 
-        sh_h[local_id_left]  = sh_h[local_id];
-        sh_uh[local_id_left] = -sh_uh[local_id];
-        sh_vh[local_id_left] = sh_vh[local_id];
-      }
+    if (local_i == 0 && local_j > 0 && local_j < blockDim.x + 1)
+    {
+      sh_h[SH_ID(local_i, local_j, blockDim.x)] = sh_h[SH_ID(local_i + 1, local_j, blockDim.x)];
+      sh_uh[SH_ID(local_i, local_j, blockDim.x)] = sh_uh[SH_ID(local_i + 1, local_j, blockDim.x)];
+      sh_vh[SH_ID(local_i, local_j, blockDim.x)] = -sh_vh[SH_ID(local_i + 1, local_j, blockDim.x)];
+    }
 
-      // Right boundary (j == nx)
-      if (local_j == blockDim.x && j == nx)
-      {
-        local_id = SH_ID(local_i, local_j, blockDim.x);
-        local_id_right = SH_ID(local_i, local_j + 1, blockDim.x);
-
-        sh_h[local_id_right]  = sh_h[local_id];
-        sh_uh[local_id_right] = -sh_uh[local_id];
-        sh_vh[local_id_right] = sh_vh[local_id];
-      }
-
-      // Bottom boundary (i == 0)
-      if (local_i == 1 && i == 1)
-      {
-        local_id = SH_ID(local_i, local_j, blockDim.x);
-        local_id_bottom = SH_ID(0, local_j, blockDim.x);
-
-        sh_h[local_id_bottom]  = sh_h[local_id];
-        sh_uh[local_id_bottom] = sh_uh[local_id];
-        sh_vh[local_id_bottom] = -sh_vh[local_id];
-      }
-
-      // Top boundary (i == ny)
-      if (local_i == blockDim.y && i == ny)
-      {
-        local_id = SH_ID(local_i, local_j, blockDim.x);
-        local_id_top = SH_ID(local_i + 1, local_j, blockDim.x);
-
-        sh_h[local_id_top]  = sh_h[local_id];
-        sh_uh[local_id_top] = sh_uh[local_id];
-        sh_vh[local_id_top] = -sh_vh[local_id];
-      }
+    if (local_i == blockDim.y + 1 && local_j > 0 && local_j < blockDim.x + 1)
+    {
+      sh_h[SH_ID(local_i, local_j, blockDim.x)] = sh_h[SH_ID(local_i - 1, local_j, blockDim.x)];
+      sh_uh[SH_ID(local_i, local_j, blockDim.x)] = sh_uh[SH_ID(local_i - 1, local_j, blockDim.x)];
+      sh_vh[SH_ID(local_i, local_j, blockDim.x)] = -sh_vh[SH_ID(local_i - 1, local_j, blockDim.x)];
     }
 
     __syncthreads();
@@ -483,8 +436,8 @@ __global__ __launch_bounds__(1024,1) void shallowWaterSolver(float *__restrict__
     programRuntime += dt;
   }
 
-  // === Store final results back to global memory ===
-  if (i < ny + 2 && j < nx + 2)
+  // Final write-back to global memory
+  if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
   {
     id = ID_2D(i, j, nx);
     local_id = SH_ID(local_i, local_j, blockDim.x);
@@ -493,9 +446,6 @@ __global__ __launch_bounds__(1024,1) void shallowWaterSolver(float *__restrict__
     uh[id] = sh_uh[local_id];
     vh[id] = sh_vh[local_id];
   }
-
-  #undef SH_ID
-  #undef ID_2D
 }
 // ****************************************************************************************************************** //
 
