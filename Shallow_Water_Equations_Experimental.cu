@@ -95,86 +95,7 @@ __global__ void initializeInterior(float *x, float *y, float *h, float *uh, floa
     x[j - 1] = xx;
     y[i - 1] = yy;
 
-    h[id] += 1.0f + 0.40f * expf(-5.0f * (xx * xx + yy * yy));
-  }
-}
-// ****************************************************************************** //
-
-__global__ void applyLeftBoundary(float *h, float *uh, float *vh, int nx, int ny)
-{
-  int i = threadIdx.x + blockIdx.x * blockDim.x;
-  if (i > 0 && i < ny + 1)
-  {
-    int id = i * (nx + 2);
-    int id_interior = i * (nx + 2) + 1;
-
-    float h_val = h[id_interior];
-    float uh_val = uh[id_interior];
-    float vh_val = vh[id_interior];
-
-    h[id]  = h_val;
-    uh[id] = -uh_val;
-    vh[id] =  vh_val;
-  }
-}
-// ****************************************************************************** //
-
-__global__ void applyRightBoundary(float *h, float *uh, float *vh, int nx, int ny)
-{
-  int i = threadIdx.x + blockIdx.x * blockDim.x;
-  if (i > 0 && i < ny + 1)
-  {
-    int nx_ext = nx + 2;
-    int id = i * nx_ext + (nx + 1);
-    int id_interior = i * nx_ext + nx;
-
-    float h_val = h[id_interior];
-    float uh_val = uh[id_interior];
-    float vh_val = vh[id_interior];
-
-    h[id]  = h_val;
-    uh[id] = -uh_val;
-    vh[id] =  vh_val;
-  }
-}
-// ****************************************************************************** //
-
-__global__ void applyBottomBoundary(float *h, float *uh, float *vh, int nx, int ny)
-{
-  int j = threadIdx.x + blockIdx.x * blockDim.x;
-  if (j > 0 && j < nx + 1)
-  {
-    int nx_ext = nx + 2;
-    int id = j;
-    int id_interior = 1 * nx_ext + j;
-
-    float h_val = h[id_interior];
-    float uh_val = uh[id_interior];
-    float vh_val = vh[id_interior];
-
-    h[id]  = h_val;
-    uh[id] =  uh_val;
-    vh[id] = -vh_val;
-  }
-}
-// ****************************************************************************** //
-
-__global__ void applyTopBoundary(float *h, float *uh, float *vh, int nx, int ny)
-{
-  int j = threadIdx.x + blockIdx.x * blockDim.x;
-  if (j > 0 && j < nx + 1)
-  {
-    int nx_ext = nx + 2;
-    int id = (ny + 1) * nx_ext + j;
-    int id_interior = ny * nx_ext + j;
-
-    float h_val = h[id_interior];
-    float uh_val = uh[id_interior];
-    float vh_val = vh[id_interior];
-
-    h[id]  = h_val;
-    uh[id] =  uh_val;
-    vh[id] = -vh_val;
+    h[id] += 1;
   }
 }
 // ****************************************************************************** //
@@ -308,149 +229,21 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     sh_vh[local_id] = vh[id];
   }
 
+  if (i = 0 && i < ny + 1 && j = 0 && j < nx + 1)
+  {
+    printf("%.2f", sh_h[local_id]);
+  }
+
   haloExchange(sh_h, sh_uh, sh_vh, h, uh, vh, i, j, local_i, local_j, nx, ny, blockDim.x);
 
   __syncthreads();
 
-  float programRuntime = 0.0f;
-  float g = 9.81f;
-  float g_half = 0.5f * g;
-
-  while (programRuntime < finalRuntime)
+  if (i = 0 && i < ny + 1 && j = 0 && j < nx + 1)
   {
-    haloExchange(sh_h, sh_uh, sh_vh, h, uh, vh, i, j, local_i, local_j, nx, ny, blockDim.x);
-
-    __syncthreads();
-
-    if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
-    {
-      local_id = SH_ID(local_i, local_j, blockDim.x);
-
-      float h_val  = sh_h[local_id];
-      float uh_val = sh_uh[local_id];
-      float vh_val = sh_vh[local_id];
-
-      float inv_h = 1.0f / h_val;
-      float h2 = h_val * h_val;
-
-      sh_fh[local_id] = uh_val;
-      sh_gh[local_id] = vh_val;
-
-      float uh2 = uh_val * uh_val;
-      float vh2 = vh_val * vh_val;
-      float uv = uh_val * vh_val;
-
-      sh_fuh[local_id] = __fmaf_rn(uh2, inv_h, g_half * h2);
-      sh_fvh[local_id] = uv * inv_h;           
-
-      sh_guh[local_id] = uv * inv_h;           
-      sh_gvh[local_id] = __fmaf_rn(vh2, inv_h, g_half * h2);
-    }
-
-    __syncthreads();
-
-    if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
-    {
-      local_id       = SH_ID(local_i, local_j, blockDim.x);
-      local_id_left  = SH_ID(local_i, local_j - 1, blockDim.x);
-      local_id_right = SH_ID(local_i, local_j + 1, blockDim.x);
-      local_id_bottom = SH_ID(local_i - 1, local_j, blockDim.x);
-      local_id_top    = SH_ID(local_i + 1, local_j, blockDim.x);
-
-      float h_l  = sh_h[local_id_left];
-      float h_r  = sh_h[local_id_right];
-      float h_b  = sh_h[local_id_bottom];
-      float h_t  = sh_h[local_id_top];
-
-      float uh_l = sh_uh[local_id_left];
-      float uh_r = sh_uh[local_id_right];
-      float uh_b = sh_uh[local_id_bottom];
-      float uh_t = sh_uh[local_id_top];
-
-      float vh_l = sh_vh[local_id_left];
-      float vh_r = sh_vh[local_id_right];
-      float vh_b = sh_vh[local_id_bottom];
-      float vh_t = sh_vh[local_id_top];
-
-      float fh_l = sh_fh[local_id_left];
-      float fh_r = sh_fh[local_id_right];
-      float gh_b = sh_gh[local_id_bottom];
-      float gh_t = sh_gh[local_id_top];
-
-      float fuh_l = sh_fuh[local_id_left];
-      float fuh_r = sh_fuh[local_id_right];
-      float guh_b = sh_guh[local_id_bottom];
-      float guh_t = sh_guh[local_id_top];
-
-      float fvh_l = sh_fvh[local_id_left];
-      float fvh_r = sh_fvh[local_id_right];
-      float gvh_b = sh_gvh[local_id_bottom];
-      float gvh_t = sh_gvh[local_id_top];
-
-      sh_h[local_id] = __fmaf_rn(-lambda_x, (fh_r - fh_l), __fmaf_rn(-lambda_y, (gh_t - gh_b), 0.25f * (h_l + h_r + h_b + h_t)));
-      sh_uh[local_id] = __fmaf_rn(-lambda_x, (fuh_r - fuh_l), __fmaf_rn(-lambda_y, (guh_t - guh_b), 0.25f * (uh_l + uh_r + uh_b + uh_t)));
-      sh_vh[local_id] = __fmaf_rn(-lambda_x, (fvh_r - fvh_l), __fmaf_rn(-lambda_y, (gvh_t - gvh_b), 0.25f * (vh_l + vh_r + vh_b + vh_t)));
-    }
-
-    __syncthreads();
-
-    // Correct boundary condition application using shared memory coordinates
-    if (local_j == 0 && local_i > 0 && local_i < blockDim.y + 1)
-    {
-      sh_h[SH_ID(local_i, local_j, blockDim.x)] = sh_h[SH_ID(local_i, local_j + 1, blockDim.x)];
-      sh_uh[SH_ID(local_i, local_j, blockDim.x)] = -sh_uh[SH_ID(local_i, local_j + 1, blockDim.x)];
-      sh_vh[SH_ID(local_i, local_j, blockDim.x)] = sh_vh[SH_ID(local_i, local_j + 1, blockDim.x)];
-    }
-
-    if (local_j == blockDim.x + 1 && local_i > 0 && local_i < blockDim.y + 1)
-    {
-      sh_h[SH_ID(local_i, local_j, blockDim.x)] = sh_h[SH_ID(local_i, local_j - 1, blockDim.x)];
-      sh_uh[SH_ID(local_i, local_j, blockDim.x)] = -sh_uh[SH_ID(local_i, local_j - 1, blockDim.x)];
-      sh_vh[SH_ID(local_i, local_j, blockDim.x)] = sh_vh[SH_ID(local_i, local_j - 1, blockDim.x)];
-    }
-
-    if (local_i == 0 && local_j > 0 && local_j < blockDim.x + 1)
-    {
-      sh_h[SH_ID(local_i, local_j, blockDim.x)] = sh_h[SH_ID(local_i + 1, local_j, blockDim.x)];
-      sh_uh[SH_ID(local_i, local_j, blockDim.x)] = sh_uh[SH_ID(local_i + 1, local_j, blockDim.x)];
-      sh_vh[SH_ID(local_i, local_j, blockDim.x)] = -sh_vh[SH_ID(local_i + 1, local_j, blockDim.x)];
-    }
-
-    if (local_i == blockDim.y + 1 && local_j > 0 && local_j < blockDim.x + 1)
-    {
-      sh_h[SH_ID(local_i, local_j, blockDim.x)] = sh_h[SH_ID(local_i - 1, local_j, blockDim.x)];
-      sh_uh[SH_ID(local_i, local_j, blockDim.x)] = sh_uh[SH_ID(local_i - 1, local_j, blockDim.x)];
-      sh_vh[SH_ID(local_i, local_j, blockDim.x)] = -sh_vh[SH_ID(local_i - 1, local_j, blockDim.x)];
-    }
-
-    __syncthreads();
-
-    programRuntime += dt;
-  }
-
-  // Final write-back to global memory
-  if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
-  {
-    id = ID_2D(i, j, nx);
-    local_id = SH_ID(local_i, local_j, blockDim.x);
-
-    h[id]  = sh_h[local_id];
-    uh[id] = sh_uh[local_id];
-    vh[id] = sh_vh[local_id];
+    printf("%.2f", sh_h[local_id]);
   }
 }
 // ****************************************************************************************************************** //
-
-void checkOccupancy() 
-{
-  int minGridSize = 0;
-  int blockSize = 0;
-  
-  cudaOccupancyMaxPotentialBlockSize(&minGridSize, &blockSize, shallowWaterSolver, 0, 0);
-
-  std::cout << "Recommended block size: " << blockSize << std::endl;
-  std::cout << "Minimum grid size: " << minGridSize << std::endl;
-}
 
 // ****************************************************** MAIN ****************************************************** //
 int main ( int argc, char *argv[] )
@@ -501,22 +294,13 @@ int main ( int argc, char *argv[] )
   float lambda_y = 0.5f * dt / dy;
 
   // Define the block and grid sizes
-  int dimx = 32;
-  int dimy = 24;
-  dim3 blockSize(dimx, dimy);
-  dim3 gridSize((nx + 2 + blockSize.x - 1) / blockSize.x, (ny + 2 + blockSize.y - 1) / blockSize.y);
-
-  int blockSize1 = 640;  // recommended by occupancy API
-  int numBlocks = (nx * ny + blockSize1 - 1) / blockSize1;
+  int x_threads = 2;
+  int y_threads = 2;
+  dim3 blockDim(x_threads, y_threads);
+  dim3 gridDim((nx + 2 + blockDim.x - 1) / blockDim.x, (ny + 2 + blockDim.y - 1) / blockDim.y);
 
   // Calculate shared memory size
-  size_t sharedMemSize = ((9 * (blockSize.x+2) * (blockSize.y+2) * sizeof(float)) + 127) & ~127;
-
-  cudaFuncSetAttribute(shallowWaterSolver, cudaFuncAttributeMaxDynamicSharedMemorySize, 98304);
-
-  int boundaryBlockSize = 1024;
-  int gridSizeY = (ny + boundaryBlockSize - 1) / boundaryBlockSize; 
-  int gridSizeX = (nx + boundaryBlockSize - 1) / boundaryBlockSize;  
+  size_t sharedMemSize = ((9 * (blockDim.x+2) * (blockDim.y+2) * sizeof(float)) + 127) & ~127;
 
   // ************************************************ MEMORY ALLOCATIONS ************************************************ //
 
@@ -581,15 +365,7 @@ int main ( int argc, char *argv[] )
   for(k = 1; k < 6; k++)
   {
     // Apply the initial conditions.
-    initializeInterior<<<gridSize, blockSize>>>(d_x, d_y, d_h, d_uh, d_vh, nx, ny, dx, dy, x_length);
-
-    applyLeftBoundary<<<gridSizeY, boundaryBlockSize>>>(d_h, d_uh, d_vh, nx, ny);
-
-    applyRightBoundary<<<gridSizeY, boundaryBlockSize>>>(d_h, d_uh, d_vh, nx, ny);
-
-    applyBottomBoundary<<<gridSizeX, boundaryBlockSize>>>(d_h, d_uh, d_vh, nx, ny);
-
-    applyTopBoundary<<<gridSizeX, boundaryBlockSize>>>(d_h, d_uh, d_vh, nx, ny);
+    initializeInterior<<<gridDim, blockDim>>>(d_x, d_y, d_h, d_uh, d_vh, nx, ny, dx, dy, x_length);
 
     if(k == 1 && nx == 200)
     {
@@ -609,7 +385,7 @@ int main ( int argc, char *argv[] )
     // start program timer
     auto start_time = std::chrono::steady_clock::now();
 
-    shallowWaterSolver<<<gridSize, blockSize, sharedMemSize>>>(d_h, d_uh, d_vh, lambda_x, lambda_y, nx, ny, dt, finalRuntime);
+    shallowWaterSolver<<<gridDim, blockDim, sharedMemSize>>>(d_h, d_uh, d_vh, lambda_x, lambda_y, nx, ny, dt, finalRuntime);
 
     cudaError_t err = cudaGetLastError();
     if (err != cudaSuccess) 
