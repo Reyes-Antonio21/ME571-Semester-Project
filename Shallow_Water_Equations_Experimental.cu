@@ -271,7 +271,6 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const floa
   #undef SH_ID
 }
 
-
 __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh, float *__restrict__ vh, float lambda_x, float lambda_y, int nx, int ny, float dt, float finalRuntime)
 {
   unsigned int i = blockIdx.y * blockDim.y + threadIdx.y;
