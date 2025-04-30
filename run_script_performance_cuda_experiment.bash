@@ -9,7 +9,7 @@
 #SBATCH --exclusive
 
 # Fixed simulation constants
-nx=8000
+nx=4
 xlen=10
 t_final=0.5
 g=9.81
