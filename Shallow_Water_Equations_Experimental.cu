@@ -231,7 +231,8 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
 
   if (i = 0 && i < ny + 1 && j = 0 && j < nx + 1)
   {
-    printf("%.2f", sh_h[i][j]);
+    local_id = SH_ID(local_i, local_j, blockDim.x);
+    printf("%.2f", sh_h[local_id]);
   }
 
   haloExchange(sh_h, sh_uh, sh_vh, h, uh, vh, i, j, local_i, local_j, nx, ny, blockDim.x);
@@ -240,6 +241,7 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
 
   if (i = 0 && i < ny + 1 && j = 0 && j < nx + 1)
   {
+    local_id = SH_ID(local_i, local_j, blockDim.x);
     printf("%.2f", sh_h[i][j]);
   }
 }
