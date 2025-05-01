@@ -236,25 +236,35 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     sh_vh[local_id] = vh[id];
   }
 
-  for (i = 0; i < ny + 2; i++)
-    for (j = 0; j < nx + 2; j++)
-    {
-      local_id = SH_ID(local_i, local_j, blockDim.x);
-      printf("%.2f", sh_h[local_id]);
-      printf("\n");
+  __syncthreads();
+
+  // Only thread (0,0) prints the shared block before halo exchange
+  if (threadIdx.x == 0 && threadIdx.y == 0) {
+    printf("Shared memory (before halo), block (%d, %d):\n", blockIdx.x, blockIdx.y);
+    for (int y = 1; y <= blockDim.y; y++) {
+        for (int x = 1; x <= blockDim.x; x++) {
+            int lid = y * (blockDim.x + 2) + x;
+            printf("%6.2f ", sh_h[lid]);
+        }
+        printf("\n");
     }
+  }
 
   haloExchange(sh_h, sh_uh, sh_vh, h, uh, vh, i, j, local_i, local_j, nx, ny, blockDim.x);
 
   __syncthreads();
 
-  for (i = 0; i < ny + 2; i++)
-    for (j = 0; j < nx + 2; j++)
-    {
-      local_id = SH_ID(local_i, local_j, blockDim.x);
-      printf("%.2f", sh_h[local_id]);
-      printf("\n");
+  // Print shared memory after halo exchange
+  if (threadIdx.x == 0 && threadIdx.y == 0) {
+    printf("Shared memory (after halo), block (%d, %d):\n", blockIdx.x, blockIdx.y);
+    for (int y = 0; y < blockDim.y + 2; y++) {
+        for (int x = 0; x < blockDim.x + 2; x++) {
+            int lid = y * (blockDim.x + 2) + x;
+            printf("%6.2f ", sh_h[lid]);
+        }
+        printf("\n");
     }
+  }
 }
 // ****************************************************************************************************************** //
 
