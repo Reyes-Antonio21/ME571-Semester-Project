@@ -97,8 +97,8 @@ __global__ void initializeInterior(float *x, float *y, float *h, float *uh, floa
 
     int value = 1;
 
-    for (i = 0; i <= ny + 1; i++)
-      for (j = 0; j <= nx + 1; j++)
+    for (i > 0; i < ny + 1; i++)
+      for (j > 0; j < nx + 1; j++)
       {
   
         h[id] = value++;
