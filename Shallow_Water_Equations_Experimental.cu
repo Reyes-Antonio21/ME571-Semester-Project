@@ -95,13 +95,14 @@ __global__ void initializeInterior(float *x, float *y, float *h, float *uh, floa
     x[j - 1] = xx;
     y[i - 1] = yy;
 
-    int value = 1;
+    int value = 1;......
 
-    if ( i >= 0 && i < ny + 1 && j >= 0 && j < nx + 1)
-    {
-      
-      h[id] = value++;
-    }
+    for (i = 0; i < ny + 1; i++)
+      for (j = 0; j < nx + 1; j++)
+      {
+        
+        h[id] = value++;
+      }
   }
 }
 // ****************************************************************************** //
@@ -238,7 +239,7 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
   if (i >= 0 && i < ny + 1 && j >= 0 && j < nx + 1)
   {
     local_id = SH_ID(local_i, local_j, blockDim.x);
-    printf("%.2f", sh_h[local_id]);
+    printf("%.2f\n\n", sh_h[local_id]);
   }
 
   haloExchange(sh_h, sh_uh, sh_vh, h, uh, vh, i, j, local_i, local_j, nx, ny, blockDim.x);
@@ -248,7 +249,7 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
   if (i >= 0 && i < ny + 1 && j >= 0 && j < nx + 1)
   {
     local_id = SH_ID(local_i, local_j, blockDim.x);
-    printf("%.2f", sh_h[local_id]);
+    printf("%.2f\n\n", sh_h[local_id]);
   }
 }
 // ****************************************************************************************************************** //
