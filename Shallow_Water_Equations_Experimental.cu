@@ -80,7 +80,7 @@ void writeResults(float h[], float uh[], float vh[], float x[], float y[], float
 }
 // ****************************************************************************** //
 
-__global__ void initializeInterior(float *x, float *y, float *h, float *uh, float *vh, int nx, int ny, float dx, float dy, float x_length)
+__global__ void initializeInterior(float *x, float *y, float *h, int nx, int ny, float dx, float dy, float x_length)
 {
   unsigned int i = blockIdx.y * blockDim.y + threadIdx.y + 1;
   unsigned int j = blockIdx.x * blockDim.x + threadIdx.x + 1;
@@ -97,7 +97,7 @@ __global__ void initializeInterior(float *x, float *y, float *h, float *uh, floa
 
     if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1) 
     {
-      array[id] = id + 1;
+      h[id] = id + 1;
     }
   }
 }
