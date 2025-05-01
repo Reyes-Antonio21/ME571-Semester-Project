@@ -95,12 +95,12 @@ __global__ void initializeInterior(float *x, float *y, float *h, float *uh, floa
     x[j - 1] = xx;
     y[i - 1] = yy;
 
-    int value = 1;......
+    int value = 1;
 
     for (i = 0; i < ny + 1; i++)
       for (j = 0; j < nx + 1; j++)
       {
-        
+  
         h[id] = value++;
       }
   }
