@@ -382,8 +382,8 @@ int main ( int argc, char *argv[] )
   
   for(k = 1; k < 6; k++)
   {
-    // Apply the initial conditions.
-    initializeInterior<<<gridDim, blockDim>>>(d_x, d_y, d_h, d_uh, d_vh, nx, ny, dx, dy, x_length);
+    // Apply the initial conditions
+    initializeInterior<<<gridDim, blockDim>>>(d_x, d_y, d_h, nx, ny, dx, dy, x_length);
 
     if(k == 1 && nx == 200)
     {
