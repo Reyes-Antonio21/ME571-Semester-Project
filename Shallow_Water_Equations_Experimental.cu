@@ -85,7 +85,7 @@ __global__ void initializeInterior(float *x, float *y, float *h, int nx, int ny,
   unsigned int i = blockIdx.y * blockDim.y + threadIdx.y + 1;
   unsigned int j = blockIdx.x * blockDim.x + threadIdx.x + 1;
 
-  if (i < ny + 1 && j < nx + 1)
+  if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
   {
     int id = i * (nx + 2) + j;
 
