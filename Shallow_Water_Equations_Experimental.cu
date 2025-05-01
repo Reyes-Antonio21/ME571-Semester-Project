@@ -400,7 +400,7 @@ int main ( int argc, char *argv[] )
     std::chrono::duration<double> time_elapsed = end_time - start_time;
 
     // Print out the results
-    printf("Problem size: %d, Iteration: %d, Elapsed time: %f s\n", nx, k, time_elapsed);
+    printf("Problem size: %d, Iteration: %d, Elapsed time: %f s\n\n", nx, k, time_elapsed);
 
     if(k == 1 && nx == 200)
     {
