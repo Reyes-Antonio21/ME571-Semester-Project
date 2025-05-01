@@ -98,7 +98,10 @@ __global__ void initializeInterior(float *x, float *y, float *h, float *uh, floa
     int value = 1;
 
     if ( i >= 0 && i < ny + 1 && j >= 0 && j < nx + 1)
-    h[id] = value++;
+    {
+      
+      h[id] = value++;
+    }
   }
 }
 // ****************************************************************************** //
