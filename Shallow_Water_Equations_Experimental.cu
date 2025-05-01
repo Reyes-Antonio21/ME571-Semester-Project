@@ -229,7 +229,7 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     sh_vh[local_id] = vh[id];
   }
 
-  if (i = 0 && i < ny + 1 && j = 0 && j < nx + 1)
+  if (i >= 0 && i < ny + 1 && j >= 0 && j < nx + 1)
   {
     local_id = SH_ID(local_i, local_j, blockDim.x);
     printf("%.2f", sh_h[local_id]);
@@ -239,10 +239,10 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
 
   __syncthreads();
 
-  if (i = 0 && i < ny + 1 && j = 0 && j < nx + 1)
+  if (i >= 0 && i < ny + 1 && j >= 0 && j < nx + 1)
   {
     local_id = SH_ID(local_i, local_j, blockDim.x);
-    printf("%.2f", sh_h[i][j]);
+    printf("%.2f", sh_h[local_id]);
   }
 }
 // ****************************************************************************************************************** //
