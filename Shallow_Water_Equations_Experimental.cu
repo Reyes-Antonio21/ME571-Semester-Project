@@ -95,10 +95,7 @@ __global__ void initializeInterior(float *x, float *y, float *h, int nx, int ny,
     x[j - 1] = xx;
     y[i - 1] = yy;
 
-    if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1) 
-    {
-      h[id] = id + 1;
-    }
+    h[id] = id + 1;
   }
 }
 // ****************************************************************************** //
@@ -234,13 +231,23 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
 
   __syncthreads();
 
+  int width = blockDim.x + 2;
+  int height = blockDim.y + 2;
+
   // Only thread (0,0) prints the shared block before halo exchange
   if (threadIdx.x == 0 && threadIdx.y == 0) 
   {
+
+    // Force ordered printing across blocks (debug only)
+    __syncthreads();      // Sync all threads in the block
+    __threadfence();      // Ensure memory visibility before continuing
+    for (int i = 0; i < blockIdx.y * gridDim.x + blockIdx.x; ++i)
+        __nanosleep(1000);  // Delay to serialize print output
+
     printf("Shared memory (before halo), block (%d, %d):\n", blockIdx.x, blockIdx.y);
-    for (int y = 1; y <= blockDim.y; y++) {
-        for (int x = 1; x <= blockDim.x; x++) {
-            int lid = y * (blockDim.x + 2) + x;
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x <= width; x++) {
+            int lid = y * width + x;
             printf("%6.2f ", sh_h[lid]);
         }
         printf("\n");
@@ -252,7 +259,15 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
   __syncthreads();
 
   // Print shared memory after halo exchange
-  if (threadIdx.x == 0 && threadIdx.y == 0) {
+  if (threadIdx.x == 0 && threadIdx.y == 0) 
+  {
+
+    // Force ordered printing across blocks (debug only)
+    __syncthreads();      // Sync all threads in the block
+    __threadfence();      // Ensure memory visibility before continuing
+    for (int i = 0; i < blockIdx.y * gridDim.x + blockIdx.x; ++i)
+        __nanosleep(1000);  // Delay to serialize print output
+
     printf("Shared memory (after halo), block (%d, %d):\n", blockIdx.x, blockIdx.y);
     for (int y = 0; y < blockDim.y + 2; y++) {
         for (int x = 0; x < blockDim.x + 2; x++) {
