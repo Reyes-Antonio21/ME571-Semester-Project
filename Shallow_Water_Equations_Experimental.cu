@@ -95,14 +95,10 @@ __global__ void initializeInterior(float *x, float *y, float *h, float *uh, floa
     x[j - 1] = xx;
     y[i - 1] = yy;
 
-    int value = 1;
-
-    for (i > 0; i < ny + 1; i++)
-      for (j > 0; j < nx + 1; j++)
-      {
-  
-        h[id] = value++;
-      }
+    if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1) 
+    {
+      array[id] = id + 1;
+    }
   }
 }
 // ****************************************************************************** //
@@ -239,7 +235,8 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
   __syncthreads();
 
   // Only thread (0,0) prints the shared block before halo exchange
-  if (threadIdx.x == 0 && threadIdx.y == 0) {
+  if (threadIdx.x == 0 && threadIdx.y == 0) 
+  {
     printf("Shared memory (before halo), block (%d, %d):\n", blockIdx.x, blockIdx.y);
     for (int y = 1; y <= blockDim.y; y++) {
         for (int x = 1; x <= blockDim.x; x++) {
