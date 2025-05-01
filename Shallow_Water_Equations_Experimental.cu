@@ -237,7 +237,7 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
   }
 
   for (i = 0; i < ny + 2; i++)
-    for (j = 0; j < nx + 2' j++)
+    for (j = 0; j < nx + 2; j++)
     {
       local_id = SH_ID(local_i, local_j, blockDim.x);
       printf("%.2f", sh_h[local_id]);
@@ -247,7 +247,7 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
   haloExchange(sh_h, sh_uh, sh_vh, h, uh, vh, i, j, local_i, local_j, nx, ny, blockDim.x);
 
   __syncthreads();
-`
+  
   for (i = 0; i < ny + 2; i++)
     for (j = 0; j < nx + 2' j++)
     {
