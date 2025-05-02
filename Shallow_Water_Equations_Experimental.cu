@@ -283,11 +283,11 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const floa
 // Updated shallowWaterSolver kernel using improved haloExchange
 __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh, float *__restrict__ vh, float lambda_x, float lambda_y, int nx, int ny, float dt, float finalRuntime)
 {
-  unsigned int i = blockIdx.y * blockDim.y + threadIdx.y;
-  unsigned int j = blockIdx.x * blockDim.x + threadIdx.x;
+  unsigned int i = blockIdx.y * blockDim.y + threadIdx.y + 1;
+  unsigned int j = blockIdx.x * blockDim.x + threadIdx.x + 1;
 
-  unsigned int local_i = threadIdx.y;
-  unsigned int local_j = threadIdx.x;
+  unsigned int local_i = threadIdx.y + 1;
+  unsigned int local_j = threadIdx.x + 1;
 
   extern __shared__ float sharedmemory[];
 
