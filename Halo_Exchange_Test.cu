@@ -23,25 +23,25 @@ __device__ void haloExchange(float* sh_h, const float* h,
     int sh_stride = blockDim_x + 2;
 
     // Left
-    if (threadIdx.x == 0) {
+    if (threadIdx.x == 0 && j > 1) {
         int gid = ID_2D(i, j - 1, global_stride);
         int lid = SH_ID(local_i, local_j - 1, sh_stride);
         sh_h[lid] = h[gid];
     }
     // Right
-    if (threadIdx.x == blockDim_x - 1) {
+    if (threadIdx.x == blockDim_x - 1 && j < nx) {
         int gid = ID_2D(i, j + 1, global_stride);
         int lid = SH_ID(local_i, local_j + 1, sh_stride);
         sh_h[lid] = h[gid];
     }
     // Top
-    if (threadIdx.y == blockDim_y - 1) {
+    if (threadIdx.y == blockDim_y - 1 && i < ny) {
         int gid = ID_2D(i + 1, j, global_stride);
         int lid = SH_ID(local_i + 1, local_j, sh_stride);
         sh_h[lid] = h[gid];
     }
     // Bottom
-    if (threadIdx.y == 0) {
+    if (threadIdx.y == 0 && i > 1) {
         int gid = ID_2D(i - 1, j, global_stride);
         int lid = SH_ID(local_i - 1, local_j, sh_stride);
         sh_h[lid] = h[gid];
