@@ -15,53 +15,67 @@ __device__ int ID_2D(int i, int j, int stride) {
     return i * stride + j;
 }
 
-__device__ void haloExchange(float* sh_h, const float* h,
-                              int i, int j, int local_i, int local_j,
-                              int nx, int ny, int blockDim_x, int blockDim_y) {
-
+__device__ void haloExchange(float* sh_h, const float* h, int i, int j, int local_i, int local_j, int nx, int ny, int blockDim_x, int blockDim_y) 
+{
     int global_stride = nx + 2;
     int sh_stride = blockDim_x + 2;
 
     // Left
-    if (threadIdx.x == 0) {
+    if (threadIdx.x == 0) 
+    {
         int lid = SH_ID(local_i, local_j - 1, sh_stride);
-        if (j > 1) {
+
+        if (j > 1) 
+        {
             int gid = ID_2D(i, j - 1, global_stride);
             sh_h[lid] = h[gid];
-        } else {
+        } else 
+        {
             int gid = ID_2D(i, j, global_stride);
             sh_h[lid] = h[gid];
         }
     }
     // Right
-    if (threadIdx.x == blockDim_x - 1) {
+    if (threadIdx.x == blockDim_x - 1) 
+    {
         int lid = SH_ID(local_i, local_j + 1, sh_stride);
-        if (j < nx) {
+
+        if (j < nx) 
+        {
             int gid = ID_2D(i, j + 1, global_stride);
             sh_h[lid] = h[gid];
-        } else {
+        } else 
+        {
             int gid = ID_2D(i, j, global_stride);
             sh_h[lid] = h[gid];
         }
     }
     // Top
-    if (threadIdx.y == blockDim_y - 1) {
+    if (threadIdx.y == blockDim_y - 1) 
+    {
         int lid = SH_ID(local_i + 1, local_j, sh_stride);
-        if (i < ny) {
+
+        if (i < ny) 
+        {
             int gid = ID_2D(i + 1, j, global_stride);
             sh_h[lid] = h[gid];
-        } else {
+        } else 
+        {
             int gid = ID_2D(i, j, global_stride);
             sh_h[lid] = h[gid];
         }
     }
     // Bottom
-    if (threadIdx.y == 0) {
+    if (threadIdx.y == 0) 
+    {
         int lid = SH_ID(local_i - 1, local_j, sh_stride);
-        if (i > 1) {
+        
+        if (i > 1) 
+        {
             int gid = ID_2D(i - 1, j, global_stride);
             sh_h[lid] = h[gid];
-        } else {
+        } else 
+        {
             int gid = ID_2D(i, j, global_stride);
             sh_h[lid] = h[gid];
         }
