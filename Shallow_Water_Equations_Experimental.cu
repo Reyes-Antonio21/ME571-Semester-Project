@@ -176,6 +176,58 @@ __global__ void applyTopBoundary(float *h, float *uh, float *vh, int nx, int ny)
 }
 // ****************************************************************************** //
 
+__device__ void applyReflectiveBCs(float* sh_h, float* sh_uh, float* sh_vh, int local_i, int local_j, int blockDim_x, int blockDim_y)
+{
+  #define SH_ID(i, j) (__fmaf_rn(i, (blockDim.x + 2), j))
+
+  // Left boundary: reflect uh
+  if (local_j == 1) 
+  {
+    int left_id = SH_ID(local_i, 0);
+    int interior_id = SH_ID(local_i, 1);
+
+    sh_h[left_id] = sh_h[interior_id];
+    sh_uh[left_id] = -sh_uh[interior_id];
+    sh_vh[left_id] =  sh_vh[interior_id];
+  }
+
+  // Right boundary: reflect uh
+  if (local_j == blockDim_x) 
+  {
+    int right_id = SH_ID(local_i, blockDim_x + 1);
+    int interior_id = SH_ID(local_i, blockDim_x);
+
+    sh_h[right_id] = sh_h[interior_id];
+    sh_uh[right_id] = -sh_uh[interior_id];
+    sh_vh[right_id] =  sh_vh[interior_id];
+  }
+
+  // Bottom boundary: reflect vh
+  if (local_i == 1) 
+  {
+    int bottom_id = SH_ID(0, local_j);
+    int interior_id = SH_ID(1, local_j);
+
+    sh_h[bottom_id] = sh_h[interior_id];
+    sh_uh[bottom_id] = sh_uh[interior_id];
+    sh_vh[bottom_id] = -sh_vh[interior_id];
+  }
+
+  // Top boundary: reflect vh
+  if (local_i == blockDim_y) 
+  {
+    int top_id = SH_ID(blockDim_y + 1, local_j);
+    int interior_id = SH_ID(blockDim_y, local_j);
+
+    sh_h[top_id] = sh_h[interior_id];
+    sh_uh[top_id] = sh_uh[interior_id];
+    sh_vh[top_id] = -sh_vh[interior_id];
+  }
+
+  #undef SH_ID
+}
+// ****************************************************************************************************************** //
+
 __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const float* h, const float* uh, const float* vh, int i, int j, int local_i, int local_j, int nx, int ny, int blockDim_x, int blockDim_y)
 {
   #define SH_ID(i, j) (__fmaf_rn(i, (blockDim.x + 2), j)) 
@@ -279,6 +331,9 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
   }
   __syncthreads();
   
+  applyReflectiveBCs(sh_h, sh_uh, sh_vh, local_i, local_j, blockDim.x, blockDim.y);
+  __syncthreads();
+
   haloExchange(sh_h, sh_uh, sh_vh, h, uh, vh, i, j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
   __syncthreads();
 
@@ -385,7 +440,9 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     }
     __syncthreads();
 
-    // Refresh ghost zones
+    applyReflectiveBCs(sh_h, sh_uh, sh_vh, local_i, local_j, blockDim.x, blockDim.y);
+    __syncthreads();
+
     haloExchange(sh_h, sh_uh, sh_vh, h, uh, vh, i, j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
     __syncthreads();
   }
