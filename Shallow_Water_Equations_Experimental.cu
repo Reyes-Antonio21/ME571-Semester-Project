@@ -308,9 +308,15 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
   int global_id = ID_2D(i, j);
   int local_id = SH_ID(local_i, local_j);
 
-  sh_h[local_id]  = h[global_id];
-  sh_uh[local_id] = uh[global_id];
-  sh_vh[local_id] = vh[global_id];
+  if (i > 0 && i <= ny && j > 0 && j <= nx)
+  {
+    int global_id = ID_2D(i, j);
+    int local_id = SH_ID(local_i, local_j);
+
+    sh_h[local_id]  = h[global_id];
+    sh_uh[local_id] = uh[global_id];
+    sh_vh[local_id] = vh[global_id];
+  }
   __syncthreads();
   
   haloExchange(sh_h, sh_uh, sh_vh, h, uh, vh, i, j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
@@ -413,9 +419,16 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     __syncthreads();
   }
 
-  h[global_id]  = sh_h[local_id];
-  uh[global_id] = sh_uh[local_id];
-  vh[global_id] = sh_vh[local_id];
+  // Write final result to global memory
+  if (i > 0 && i <= ny && j > 0 && j <= nx)
+  {
+    int global_id = ID_2D(i, j);
+    int local_id = SH_ID(local_i, local_j);
+
+    h[global_id]  = sh_h[local_id];
+    uh[global_id] = sh_uh[local_id];
+    vh[global_id] = sh_vh[local_id];
+  }
 
   #undef ID_2D
   #undef SH_ID
