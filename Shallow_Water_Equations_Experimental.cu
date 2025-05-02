@@ -124,9 +124,8 @@ __global__ void applyRightBoundary(float *h, float *uh, float *vh, int nx, int n
   int i = threadIdx.x + blockIdx.x * blockDim.x;
   if (i > 0 && i < ny + 1)
   {
-    int nx_ext = nx + 2;
-    int id = i * nx_ext + (nx + 1);
-    int id_interior = i * nx_ext + nx;
+    int id = i * (nx + 2) + (nx + 1);
+    int id_interior = i * (nx + 2) + nx;
 
     float h_val = h[id_interior];
     float uh_val = uh[id_interior];
@@ -144,9 +143,8 @@ __global__ void applyBottomBoundary(float *h, float *uh, float *vh, int nx, int 
   int j = threadIdx.x + blockIdx.x * blockDim.x;
   if (j > 0 && j < nx + 1)
   {
-    int nx_ext = nx + 2;
     int id = j;
-    int id_interior = 1 * nx_ext + j;
+    int id_interior = 1 * (nx + 2) + j;
 
     float h_val = h[id_interior];
     float uh_val = uh[id_interior];
@@ -164,9 +162,8 @@ __global__ void applyTopBoundary(float *h, float *uh, float *vh, int nx, int ny)
   int j = threadIdx.x + blockIdx.x * blockDim.x;
   if (j > 0 && j < nx + 1)
   {
-    int nx_ext = nx + 2;
-    int id = (ny + 1) * nx_ext + j;
-    int id_interior = ny * nx_ext + j;
+    int id = (ny + 1) * (nx + 2) + j;
+    int id_interior = ny * (nx + 2) + j;
 
     float h_val = h[id_interior];
     float uh_val = uh[id_interior];
@@ -180,110 +177,119 @@ __global__ void applyTopBoundary(float *h, float *uh, float *vh, int nx, int ny)
 // ****************************************************************************** //
 
 // Improved halo exchange function
-__device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, 
-                           const float* h, const float* uh, const float* vh, 
-                           int i, int j, int local_i, int local_j, 
-                           int nx, int ny, int blockDim_x, int blockDim_y)
+__device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const float* h, const float* uh, const float* vh, int i, int j, int local_i, int local_j, int nx, int ny, int blockDim_x, int blockDim_y)
 {
-    // Define local macros for cleaner indexing
-    #define SH_ID(i, j) (__fmaf_rn(i, (blockDim.x + 2), j)) 
-    #define ID_2D(i, j) (__fmaf_rn(i, (nx + 2), j))
-    
-    // Left halo cells (first column in each block)
-    if (threadIdx.x == 0) {
-        if (j > 1) {
-            // Internal halo - get data from left neighbor cell
-            int global_id = ID_2D(i, j-1);
-            int local_id = SH_ID(local_i, 0);
-            
-            sh_h[local_id] = h[global_id];
-            sh_uh[local_id] = uh[global_id];
-            sh_vh[local_id] = vh[global_id];
-        }
-        else if (j == 1) {
-            // Domain boundary - apply reflection boundary condition
-            int global_id = ID_2D(i, j);
-            int local_id = SH_ID(local_i, 0);
-            
-            sh_h[local_id] = h[global_id];
-            sh_uh[local_id] = -uh[global_id]; // Reflect x-momentum
-            sh_vh[local_id] = vh[global_id];  // Keep y-momentum
-        }
+  // Define local macros for cleaner indexing
+  #define SH_ID(i, j) (__fmaf_rn(i, (blockDim.x + 2), j)) 
+  #define ID_2D(i, j) (__fmaf_rn(i, (nx + 2), j))
+  
+  // Left halo cells (first column in each block)
+  if (threadIdx.x == 0) 
+  {
+    if (j > 1) 
+    {
+      // Internal halo - get data from left neighbor cell
+      int global_id = ID_2D(i, j-1);
+      int local_id = SH_ID(local_i, 0);
+      
+      sh_h[local_id] = h[global_id];
+      sh_uh[local_id] = uh[global_id];
+      sh_vh[local_id] = vh[global_id];
     }
-    
-    // Right halo cells (last column in each block)
-    if (threadIdx.x == blockDim_x - 1) {
-        if (j < nx) {
-            // Internal halo - get data from right neighbor cell
-            int global_id = ID_2D(i, j+1);
-            int local_id = SH_ID(local_i, blockDim_x+1);
-            
-            sh_h[local_id] = h[global_id];
-            sh_uh[local_id] = uh[global_id];
-            sh_vh[local_id] = vh[global_id];
-        }
-        else if (j == nx) {
-            // Domain boundary - apply reflection boundary condition
-            int global_id = ID_2D(i, j);
-            int local_id = SH_ID(local_i, blockDim_x+1);
-            
-            sh_h[local_id] = h[global_id];
-            sh_uh[local_id] = -uh[global_id]; // Reflect x-momentum
-            sh_vh[local_id] = vh[global_id];  // Keep y-momentum
-        }
+    else if (j == 1) 
+    {
+      // Domain boundary - apply reflection boundary condition
+      int global_id = ID_2D(i, j);
+      int local_id = SH_ID(local_i, 0);
+      
+      sh_h[local_id] = h[global_id];
+      sh_uh[local_id] = -uh[global_id]; // Reflect x-momentum
+      sh_vh[local_id] = vh[global_id];  // Keep y-momentum
     }
-    
-    // Bottom halo cells (first row in each block)
-    if (threadIdx.y == 0) {
-        if (i > 1) {
-            // Internal halo - get data from bottom neighbor cell
-            int global_id = ID_2D(i-1, j);
-            int local_id = SH_ID(0, local_j);
-            
-            sh_h[local_id] = h[global_id];
-            sh_uh[local_id] = uh[global_id];
-            sh_vh[local_id] = vh[global_id];
-        }
-        else if (i == 1) {
-            // Domain boundary - apply reflection boundary condition
-            int global_id = ID_2D(i, j);
-            int local_id = SH_ID(0, local_j);
-            
-            sh_h[local_id] = h[global_id];
-            sh_uh[local_id] = uh[global_id];  // Keep x-momentum
-            sh_vh[local_id] = -vh[global_id]; // Reflect y-momentum
-        }
+  }
+  
+  // Right halo cells (last column in each block)
+  if (threadIdx.x == blockDim_x - 1) 
+  {
+    if (j < nx) 
+    {
+      // Internal halo - get data from right neighbor cell
+      int global_id = ID_2D(i, j+1);
+      int local_id = SH_ID(local_i, blockDim_x+1);
+      
+      sh_h[local_id] = h[global_id];
+      sh_uh[local_id] = uh[global_id];
+      sh_vh[local_id] = vh[global_id];
     }
-    
-    // Top halo cells (last row in each block)
-    if (threadIdx.y == blockDim_y - 1) {
-        if (i < ny) {
-            // Internal halo - get data from top neighbor cell
-            int global_id = ID_2D(i+1, j);
-            int local_id = SH_ID(blockDim_y+1, local_j);
-            
-            sh_h[local_id] = h[global_id];
-            sh_uh[local_id] = uh[global_id];
-            sh_vh[local_id] = vh[global_id];
-        }
-        else if (i == ny) {
-            // Domain boundary - apply reflection boundary condition
-            int global_id = ID_2D(i, j);
-            int local_id = SH_ID(blockDim_y+1, local_j);
-            
-            sh_h[local_id] = h[global_id];
-            sh_uh[local_id] = uh[global_id];  // Keep x-momentum
-            sh_vh[local_id] = -vh[global_id]; // Reflect y-momentum
-        }
+    else if (j == nx) 
+    {
+      // Domain boundary - apply reflection boundary condition
+      int global_id = ID_2D(i, j);
+      int local_id = SH_ID(local_i, blockDim_x+1);
+      
+      sh_h[local_id] = h[global_id];
+      sh_uh[local_id] = -uh[global_id]; // Reflect x-momentum
+      sh_vh[local_id] = vh[global_id];  // Keep y-momentum
     }
-    
-    #undef ID_2D
-    #undef SH_ID
+  }
+  
+  // Bottom halo cells (first row in each block)
+  if (threadIdx.y == 0) 
+  {
+    if (i > 1) 
+    {
+      // Internal halo - get data from bottom neighbor cell
+      int global_id = ID_2D(i-1, j);
+      int local_id = SH_ID(0, local_j);
+      
+      sh_h[local_id] = h[global_id];
+      sh_uh[local_id] = uh[global_id];
+      sh_vh[local_id] = vh[global_id];
+    }
+    else if (i == 1) 
+    {
+      // Domain boundary - apply reflection boundary condition
+      int global_id = ID_2D(i, j);
+      int local_id = SH_ID(0, local_j);
+      
+      sh_h[local_id] = h[global_id];
+      sh_uh[local_id] = uh[global_id];  // Keep x-momentum
+      sh_vh[local_id] = -vh[global_id]; // Reflect y-momentum
+    }
+  }
+  
+  // Top halo cells (last row in each block)
+  if (threadIdx.y == blockDim_y - 1) 
+  {
+    if (i < ny) 
+    {
+      // Internal halo - get data from top neighbor cell
+      int global_id = ID_2D(i+1, j);
+      int local_id = SH_ID(blockDim_y+1, local_j);
+      
+      sh_h[local_id] = h[global_id];
+      sh_uh[local_id] = uh[global_id];
+      sh_vh[local_id] = vh[global_id];
+    }
+    else if (i == ny) 
+    {
+      // Domain boundary - apply reflection boundary condition
+      int global_id = ID_2D(i, j);
+      int local_id = SH_ID(blockDim_y+1, local_j);
+      
+      sh_h[local_id] = h[global_id];
+      sh_uh[local_id] = uh[global_id];  // Keep x-momentum
+      sh_vh[local_id] = -vh[global_id]; // Reflect y-momentum
+    }
+  }
+  
+  #undef ID_2D
+  #undef SH_ID
 }
+// ****************************************************************************************************************** //
 
 // Updated shallowWaterSolver kernel that uses the improved halo exchange function
-__global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh, float *__restrict__ vh, 
-                                float lambda_x, float lambda_y, int nx, int ny, float dt, float finalRuntime)
+__global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh, float *__restrict__ vh, float lambda_x, float lambda_y, int nx, int ny, float dt, float finalRuntime)
 {
   unsigned int i = blockIdx.y * blockDim.y + threadIdx.y;
   unsigned int j = blockIdx.x * blockDim.x + threadIdx.x;
@@ -499,6 +505,7 @@ void checkOccupancy()
   std::cout << "Recommended block size: " << blockSize << std::endl;
   std::cout << "Minimum grid size: " << minGridSize << std::endl;
 }
+// ****************************************************************************************************************** //
 
 // ****************************************************** MAIN ****************************************************** //
 int main ( int argc, char *argv[] )
@@ -554,13 +561,8 @@ int main ( int argc, char *argv[] )
   dim3 blockSize(dimx, dimy);
   dim3 gridSize((nx + 2 + blockSize.x - 1) / blockSize.x, (ny + 2 + blockSize.y - 1) / blockSize.y);
 
-  int blockSize1 = 640;  // recommended by occupancy API
-  int numBlocks = (nx * ny + blockSize1 - 1) / blockSize1;
-
   // Calculate shared memory size
   size_t sharedMemSize = ((9 * (blockSize.x+2) * (blockSize.y+2) * sizeof(float)) + 127) & ~127;
-
-  cudaFuncSetAttribute(shallowWaterSolver, cudaFuncAttributeMaxDynamicSharedMemorySize, 98304);
 
   int boundaryBlockSize = 1024;
   int gridSizeY = (ny + boundaryBlockSize - 1) / boundaryBlockSize; 

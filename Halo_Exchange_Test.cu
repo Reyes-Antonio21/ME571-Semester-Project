@@ -1,0 +1,116 @@
+#include <stdio.h>
+#include <cuda_runtime.h>
+
+#define BLOCK_SIZE 4
+#define HALO 1
+#define BLOCK_WITH_HALO (BLOCK_SIZE + 2 * HALO)
+#define GRID_DIM 3
+
+#define IDX2D(i, j, stride) ((i) * (stride) + (j))
+
+__device__ int SH_ID(int i, int j, int stride) {
+    return i * stride + j;
+}
+__device__ int ID_2D(int i, int j, int stride) {
+    return i * stride + j;
+}
+
+__device__ void haloExchange(float* sh_h, const float* h,
+                              int i, int j, int local_i, int local_j,
+                              int nx, int ny, int blockDim_x, int blockDim_y) {
+
+    int global_stride = nx + 2;
+    int sh_stride = blockDim_x + 2;
+
+    // Left
+    if (threadIdx.x == 0) {
+        int gid = ID_2D(i, j - 1, global_stride);
+        int lid = SH_ID(local_i, local_j - 1, sh_stride);
+        sh_h[lid] = h[gid];
+    }
+    // Right
+    if (threadIdx.x == blockDim_x - 1) {
+        int gid = ID_2D(i, j + 1, global_stride);
+        int lid = SH_ID(local_i, local_j + 1, sh_stride);
+        sh_h[lid] = h[gid];
+    }
+    // Top
+    if (threadIdx.y == blockDim_y - 1) {
+        int gid = ID_2D(i + 1, j, global_stride);
+        int lid = SH_ID(local_i + 1, local_j, sh_stride);
+        sh_h[lid] = h[gid];
+    }
+    // Bottom
+    if (threadIdx.y == 0) {
+        int gid = ID_2D(i - 1, j, global_stride);
+        int lid = SH_ID(local_i - 1, local_j, sh_stride);
+        sh_h[lid] = h[gid];
+    }
+}
+
+__global__ void testHaloKernel(float *h, float *h_result, int nx, int ny) {
+    int global_i = blockIdx.y * blockDim.y + threadIdx.y + 1;
+    int global_j = blockIdx.x * blockDim.x + threadIdx.x + 1;
+
+    int local_i = threadIdx.y + 1;
+    int local_j = threadIdx.x + 1;
+
+    extern __shared__ float sh_h[];
+
+    int global_stride = nx + 2;
+    int sh_stride = blockDim.x + 2;
+
+    int gid = ID_2D(global_i, global_j, global_stride);
+    int lid = SH_ID(local_i, local_j, sh_stride);
+
+    sh_h[lid] = h[gid];
+    __syncthreads();
+
+    haloExchange(sh_h, h, global_i, global_j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
+    __syncthreads();
+
+    h_result[gid] = sh_h[lid];
+}
+
+int main() {
+    const int nx = BLOCK_SIZE * GRID_DIM;
+    const int ny = BLOCK_SIZE * GRID_DIM;
+    const int total_size = (nx + 2) * (ny + 2);
+
+    float *h_h = (float*)malloc(total_size * sizeof(float));
+    float *h_result = (float*)malloc(total_size * sizeof(float));
+
+    for (int i = 0; i < ny + 2; ++i) {
+        for (int j = 0; j < nx + 2; ++j) {
+            int block_id = (i - 1) / BLOCK_SIZE * GRID_DIM + (j - 1) / BLOCK_SIZE;
+            h_h[IDX2D(i, j, nx + 2)] = (i == 0 || j == 0 || i == ny + 1 || j == nx + 1) ? -1.0f : block_id;
+        }
+    }
+
+    float *d_h, *d_result;
+    cudaMalloc(&d_h, total_size * sizeof(float));
+    cudaMalloc(&d_result, total_size * sizeof(float));
+
+    cudaMemcpy(d_h, h_h, total_size * sizeof(float), cudaMemcpyHostToDevice);
+
+    dim3 blockDim(BLOCK_SIZE, BLOCK_SIZE);
+    dim3 gridDim(GRID_DIM, GRID_DIM);
+    size_t shmem_size = (BLOCK_SIZE + 2) * (BLOCK_SIZE + 2) * sizeof(float);
+
+    testHaloKernel<<<gridDim, blockDim, shmem_size>>>(d_h, d_result, nx, ny);
+    cudaMemcpy(h_result, d_result, total_size * sizeof(float), cudaMemcpyDeviceToHost);
+
+    printf("After halo exchange:\n");
+    for (int i = 0; i < ny + 2; ++i) {
+        for (int j = 0; j < nx + 2; ++j) {
+            printf("%5.1f ", h_result[IDX2D(i, j, nx + 2)]);
+        }
+        printf("\n");
+    }
+
+    cudaFree(d_h);
+    cudaFree(d_result);
+    free(h_h);
+    free(h_result);
+    return 0;
+}

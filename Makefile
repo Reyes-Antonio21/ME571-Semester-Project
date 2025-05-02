@@ -32,6 +32,9 @@ swep_2d_an: Shallow_Water_Equations_Animate.cu
 
 swep_2d_ad: Shallow_Water_Equations_Animate_Drop.cu
 	$(CUDACC) -O3 --use_fast_math -arch=sm_70 -o swep_2d_ad Shallow_Water_Equations_Animate_Drop.cu
+	
+het: Halo_Exchange_Test.cu
+	$(CUDACC) -O3 --use_fast_math -arch=sm_70 -o het Halo_Exchange_Test.cu
 
 clean:
 	rm -f swe_2d_ts swe_2d_tt swem_2d_ts swem_2d_tt swep_2d_tk swep_2d_tt swep_2d_ex swep_2d_an swep_2d_ad
