@@ -90,18 +90,16 @@ __global__ void testHaloKernel(float *h, float *h_result, int nx, int ny) {
 
     // === Per-block printing for debug ===
     if (threadIdx.x == 0 && threadIdx.y == 0) {
-        printf("BLOCK (%d, %d):\n", blockIdx.y, blockIdx.x);
-
-        for (int li = 0; li < blockDim.y + 2; ++li) {
-            // Print left halo, interior, and right halo
-            for (int lj = 0; lj < blockDim.x + 2; ++lj) {
-                printf("%4.1f ", sh_h[SH_ID(li, lj, sh_stride)]);
+        printf("Block (%d, %d):\n", blockIdx.x, blockIdx.y);
+        for (int ii = 0; ii < blockDim.y + 2; ++ii) {
+            for (int jj = 0; jj < blockDim.x + 2; ++jj) {
+                int lid = SH_ID(ii, jj, sh_stride);
+                printf("%4.1f ", sh_h[lid]);
             }
             printf("\n");
         }
         printf("\n");
     }
-
     __syncthreads();
 
     // Write interior values back
