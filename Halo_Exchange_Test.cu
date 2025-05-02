@@ -29,7 +29,8 @@ __device__ void haloExchange(float* sh_h, const float* h, int i, int j, int loca
         {
             int gid = ID_2D(i, j - 1, global_stride);
             sh_h[lid] = h[gid];
-        } else 
+        } 
+        else 
         {
             int gid = ID_2D(i, j, global_stride);
             sh_h[lid] = h[gid];
@@ -69,7 +70,7 @@ __device__ void haloExchange(float* sh_h, const float* h, int i, int j, int loca
     if (threadIdx.y == 0) 
     {
         int lid = SH_ID(local_i - 1, local_j, sh_stride);
-        
+
         if (i > 1) 
         {
             int gid = ID_2D(i - 1, j, global_stride);

@@ -186,19 +186,19 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const floa
   // Left halo cells (first column in each block)
   if (threadIdx.x == 0) 
   {
+    int local_id = SH_ID(local_i, local_j - 1);
+
     if (j > 1) 
     {
       int global_id = ID_2D(i, j - 1);
-      int local_id = SH_ID(local_i, 0);
 
       sh_h[local_id]  = h[global_id];
       sh_uh[local_id] = uh[global_id];
       sh_vh[local_id] = vh[global_id];
     }
-    else if (j == 1) 
+    else
     {
       int global_id = ID_2D(i, j);
-      int local_id = SH_ID(local_i, 0);
 
       sh_h[local_id]  = h[global_id];
       sh_uh[local_id] = -uh[global_id];
@@ -209,19 +209,19 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const floa
   // Right halo cells (last column in each block)
   if (threadIdx.x == blockDim_x - 1) 
   {
+    int local_id = SH_ID(local_i, local_j + 1);
+
     if (j < nx) 
     {
       int global_id = ID_2D(i, j + 1);
-      int local_id = SH_ID(local_i, blockDim_x + 1);
 
       sh_h[local_id]  = h[global_id];
       sh_uh[local_id] = uh[global_id];
       sh_vh[local_id] = vh[global_id];
     } 
-    else if (j == nx) 
+    else
     {
       int global_id = ID_2D(i, j);
-      int local_id = SH_ID(local_i, blockDim_x+1);
 
       sh_h[local_id]  = h[global_id];
       sh_uh[local_id] = -uh[global_id];
@@ -232,19 +232,19 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const floa
   // Bottom halo cells (first row in each block)
   if (threadIdx.y == 0) 
   {
+    int local_id = SH_ID(local_i - 1, local_j);
+
     if (i > 1) 
     {
-      int global_id = ID_2D(i-1, j);
-      int local_id = SH_ID(0, local_j);
+      int global_id = ID_2D(i - 1, j);
 
       sh_h[local_id]  = h[global_id];
       sh_uh[local_id] = uh[global_id];
       sh_vh[local_id] = vh[global_id];
     } 
-    else if (i == 1) 
+    else
     {
       int global_id = ID_2D(i, j);
-      int local_id = SH_ID(0, local_j);
 
       sh_h[local_id]  = h[global_id];
       sh_uh[local_id] =  uh[global_id];
@@ -255,19 +255,19 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const floa
   // Top halo cells (last row in each block)
   if (threadIdx.y == blockDim_y - 1) 
   {
+    int local_id = SH_ID(local_i + 1, local_j);
+
     if (i < ny) 
     {
-      int global_id = ID_2D(i+1, j);
-      int local_id = SH_ID(blockDim_y + 1, local_j);
+      int global_id = ID_2D(i + 1, j);
 
       sh_h[local_id]  = h[global_id];
       sh_uh[local_id] = uh[global_id];
       sh_vh[local_id] = vh[global_id];
     } 
-    else if (i == ny) 
+    else
     {
       int global_id = ID_2D(i, j);
-      int local_id = SH_ID(blockDim_y + 1, local_j);
 
       sh_h[local_id]  = h[global_id];
       sh_uh[local_id] =  uh[global_id];
@@ -283,8 +283,8 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const floa
 // Updated shallowWaterSolver kernel using improved haloExchange
 __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh, float *__restrict__ vh, float lambda_x, float lambda_y, int nx, int ny, float dt, float finalRuntime)
 {
-  unsigned int i = blockIdx.y * blockDim.y + threadIdx.y;
-  unsigned int j = blockIdx.x * blockDim.x + threadIdx.x;
+  unsigned int i = blockIdx.y * blockDim.y + threadIdx.y + 1;
+  unsigned int j = blockIdx.x * blockDim.x + threadIdx.x + 1;
 
   unsigned int local_i = threadIdx.y + 1;
   unsigned int local_j = threadIdx.x + 1;
@@ -305,16 +305,14 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
   #define SH_ID(i, j) (__fmaf_rn(i, (blockDim.x + 2), j)) 
   #define ID_2D(i, j) (__fmaf_rn(i, (nx + 2), j))
 
-  if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
-  {
-    int global_id = ID_2D(i, j);
-    int local_id = SH_ID(local_i, local_j);
+  int global_id = ID_2D(i, j);
+  int local_id = SH_ID(local_i, local_j);
 
-    sh_h[local_id]  = h[global_id];
-    sh_uh[local_id] = uh[global_id];
-    sh_vh[local_id] = vh[global_id];
-  }
-
+  sh_h[local_id]  = h[global_id];
+  sh_uh[local_id] = uh[global_id];
+  sh_vh[local_id] = vh[global_id];
+  __syncthreads();
+  
   haloExchange(sh_h, sh_uh, sh_vh, h, uh, vh, i, j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
   __syncthreads();
 
@@ -415,16 +413,9 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     __syncthreads();
   }
 
-  // Write final result to global memory
-  if (i > 0 && i <= ny && j > 0 && j <= nx)
-  {
-    int global_id = ID_2D(i, j);
-    int local_id = SH_ID(local_i, local_j);
-
-    h[global_id]  = sh_h[local_id];
-    uh[global_id] = sh_uh[local_id];
-    vh[global_id] = sh_vh[local_id];
-  }
+  h[global_id]  = sh_h[local_id];
+  uh[global_id] = sh_uh[local_id];
+  vh[global_id] = sh_vh[local_id];
 
   #undef ID_2D
   #undef SH_ID
