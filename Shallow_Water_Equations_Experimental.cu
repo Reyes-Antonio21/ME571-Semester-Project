@@ -188,7 +188,7 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const floa
   {
     if (j > 1) 
     {
-      int global_id = ID_2D(i, j-1);
+      int global_id = ID_2D(i, j - 1);
       int local_id = SH_ID(local_i, 0);
 
       sh_h[local_id]  = h[global_id];
@@ -211,8 +211,8 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const floa
   {
     if (j < nx) 
     {
-      int global_id = ID_2D(i, j+1);
-      int local_id = SH_ID(local_i, blockDim_x+1);
+      int global_id = ID_2D(i, j + 1);
+      int local_id = SH_ID(local_i, blockDim_x + 1);
 
       sh_h[local_id]  = h[global_id];
       sh_uh[local_id] = uh[global_id];
@@ -258,7 +258,7 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const floa
     if (i < ny) 
     {
       int global_id = ID_2D(i+1, j);
-      int local_id = SH_ID(blockDim_y+1, local_j);
+      int local_id = SH_ID(blockDim_y + 1, local_j);
 
       sh_h[local_id]  = h[global_id];
       sh_uh[local_id] = uh[global_id];
@@ -267,8 +267,8 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const floa
     else if (i == ny) 
     {
       int global_id = ID_2D(i, j);
-      int local_id = SH_ID(blockDim_y+1, local_j);
-      
+      int local_id = SH_ID(blockDim_y + 1, local_j);
+
       sh_h[local_id]  = h[global_id];
       sh_uh[local_id] =  uh[global_id];
       sh_vh[local_id] = -vh[global_id];
@@ -314,11 +314,6 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     sh_uh[local_id] = uh[global_id];
     sh_vh[local_id] = vh[global_id];
   }
-
-  // Initial halo exchange
-  haloExchange(sh_h, sh_uh, sh_vh, h, uh, vh, i, j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
-
-  __syncthreads();
 
   float programRuntime = 0.0f;
   float g = 9.81f;
