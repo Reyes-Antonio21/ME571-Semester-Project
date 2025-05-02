@@ -24,14 +24,14 @@ __device__ void haloExchange(float* sh_h, const float* h, int i, int j, int loca
     if (local_j == 1) {
         int gid = ID_2D(i, j - 1, global_stride);
         int lid = SH_ID(local_i, local_j - 1, sh_stride);
-        if (j - 1 >= 0) sh_h[lid] = h[gid];
+        if (j >= 1) sh_h[lid] = h[gid];  // changed from j-1 >= 0
     }
 
     // RIGHT
     if (local_j == blockDim_x) {
         int gid = ID_2D(i, j + 1, global_stride);
         int lid = SH_ID(local_i, local_j + 1, sh_stride);
-        if (j + 1 < nx + 2) sh_h[lid] = h[gid];
+        if (j + 1 < nx + 2) sh_h[lid] = h[gid];  // verify nx+2 is full padded width
     }
 
     // BOTTOM
