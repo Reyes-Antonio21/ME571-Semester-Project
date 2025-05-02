@@ -87,7 +87,7 @@ __global__ void testHaloKernel(float *h, float *h_result, int nx, int ny) {
     sh_h[lid] = h[gid];
     __syncthreads();
 
-    haloExchange(sh_h, h, global_i, global_j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
+    haloExchange(sh_h, sh_uh, sh_vh, h, uh, vh, i, j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
     __syncthreads();
 
     // Write interior
