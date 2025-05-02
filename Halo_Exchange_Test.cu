@@ -16,33 +16,55 @@ __device__ int ID_2D(int i, int j, int stride) {
 }
 
 __device__ void haloExchange(
-    float* sh_h,
-    const float* h,
+    float* sh_h, const float* h,
     int i, int j, int local_i, int local_j,
-    int nx, int ny, int blockDim_x, int blockDim_y) {
-
+    int nx, int ny, int blockDim_x, int blockDim_y)
+{
     int global_stride = nx + 2;
-    int sh_stride = blockDim_x + 2;
+    int sh_stride     = blockDim_x + 2;
 
+    // === LEFT halo ===
     if (local_j == 1) {
-        int gid = ID_2D(i, j - 1, global_stride);
+        int gid_j = j - 1;
         int lid = SH_ID(local_i, local_j - 1, sh_stride);
-        if (j - 1 >= 0) sh_h[lid] = h[gid];
+
+        if (gid_j >= 0) {
+            int gid = ID_2D(i, gid_j, global_stride);
+            sh_h[lid] = h[gid];
+        }
     }
+
+    // === RIGHT halo ===
     if (local_j == blockDim_x) {
-        int gid = ID_2D(i, j + 1, global_stride);
+        int gid_j = j + 1;
         int lid = SH_ID(local_i, local_j + 1, sh_stride);
-        if (j + 1 < nx + 2) sh_h[lid] = h[gid];
+
+        if (gid_j < nx + 2) {
+            int gid = ID_2D(i, gid_j, global_stride);
+            sh_h[lid] = h[gid];
+        }
     }
+
+    // === BOTTOM halo ===
     if (local_i == 1) {
-        int gid = ID_2D(i - 1, j, global_stride);
+        int gid_i = i - 1;
         int lid = SH_ID(local_i - 1, local_j, sh_stride);
-        if (i - 1 >= 0) sh_h[lid] = h[gid];
+
+        if (gid_i >= 0) {
+            int gid = ID_2D(gid_i, j, global_stride);
+            sh_h[lid] = h[gid];
+        }
     }
+
+    // === TOP halo ===
     if (local_i == blockDim_y) {
-        int gid = ID_2D(i + 1, j, global_stride);
+        int gid_i = i + 1;
         int lid = SH_ID(local_i + 1, local_j, sh_stride);
-        if (i + 1 < ny + 2) sh_h[lid] = h[gid];
+
+        if (gid_i < ny + 2) {
+            int gid = ID_2D(gid_i, j, global_stride);
+            sh_h[lid] = h[gid];
+        }
     }
 }
 
