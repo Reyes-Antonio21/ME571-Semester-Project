@@ -446,26 +446,20 @@ float gvh_b = sh_gvh[local_id_bottom];
 float gvh_t = sh_gvh[local_id_top];
 
 // Update using Lax-Friedrichs scheme
-float new_h = __fmaf_rn(-lambda_x, (fh_r - fh_l), 
+float sh_h = __fmaf_rn(-lambda_x, (fh_r - fh_l), 
  __fmaf_rn(-lambda_y, (gh_t - gh_b), 
  0.25f * (h_l + h_r + h_b + h_t)));
 
-float new_uh = __fmaf_rn(-lambda_x, (fuh_r - fuh_l), 
+float sh_uh = __fmaf_rn(-lambda_x, (fuh_r - fuh_l), 
   __fmaf_rn(-lambda_y, (guh_t - guh_b), 
   0.25f * (uh_l + uh_r + uh_b + uh_t)));
 
-float new_vh = __fmaf_rn(-lambda_x, (fvh_r - fvh_l), 
+float sh_vh = __fmaf_rn(-lambda_x, (fvh_r - fvh_l), 
   __fmaf_rn(-lambda_y, (gvh_t - gvh_b), 
   0.25f * (vh_l + vh_r + vh_b + vh_t)));
 
 // Ensure water height doesn't go negative
-new_h = fmaxf(new_h, 1e-10f);
-
-// Store updated values in shared memory
-sh_h[local_id] = new_h;
-sh_uh[local_id] = new_uh;
-sh_vh[local_id] = new_vh;
-}
+sh_h = fmaxf(sh_h, 1e-10f);
 
 __syncthreads();
 
