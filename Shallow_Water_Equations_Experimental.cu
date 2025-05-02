@@ -400,7 +400,7 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     __syncthreads();
 
     // At the END of each time step (before haloExchange)
-    if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1) 
+    if (i < ny + 2 && j < nx + 2) 
     {
       int global_id = ID_2D(i, j);
       int local_id = SH_ID(local_i, local_j);
@@ -416,7 +416,7 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
   }
 
   // Write final result to global memory
-  if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
+  if (i < ny + 2 && j < nx + 2)
   {
     int global_id = ID_2D(i, j);
     int local_id = SH_ID(local_i, local_j);
