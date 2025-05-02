@@ -239,7 +239,6 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
   {
     // Force ordered printing across blocks (debug only)
     __syncthreads();      // Sync all threads in the block
-    __threadfence();      // Ensure memory visibility before continuing
 
     printf("Shared memory (before halo), block (%d, %d):\n", blockIdx.x, blockIdx.y);
     for (int y = 0; y < height; y++) 
@@ -262,7 +261,6 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
   {
     // Force ordered printing across blocks (debug only)
     __syncthreads();      // Sync all threads in the block
-    __threadfence();      // Ensure memory visibility before continuing
 
     printf("Shared memory (after halo), block (%d, %d):\n", blockIdx.x, blockIdx.y);
     for (int y = 0; y < blockDim.y + 2; y++) 
