@@ -315,15 +315,16 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     sh_vh[local_id] = vh[global_id];
   }
 
+  haloExchange(sh_h, sh_uh, sh_vh, h, uh, vh, i, j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
+  __syncthreads();
+
   float programRuntime = 0.0f;
   float g = 9.81f;
   float g_half = 0.5f * g;
 
   while (programRuntime < finalRuntime)
   {
-    // Refresh ghost zones
-    haloExchange(sh_h, sh_uh, sh_vh, h, uh, vh, i, j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
-    __syncthreads();
+    programRuntime += dt;
 
     if (i > 0 && i <= ny && j > 0 && j <= nx)
     {
@@ -409,7 +410,9 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
 
     __syncthreads();
 
-    programRuntime += dt;
+    // Refresh ghost zones
+    haloExchange(sh_h, sh_uh, sh_vh, h, uh, vh, i, j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
+    __syncthreads();
   }
 
   // Write final result to global memory
