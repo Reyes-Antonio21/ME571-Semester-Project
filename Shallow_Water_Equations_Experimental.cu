@@ -213,7 +213,7 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const floa
   if (local_i == 1) 
   {
     int global_id = ID_2D(i - 1, j);
-    int local_id = SH_ID(local_i - 1);
+    int local_id = SH_ID(local_i - 1, j);
 
     if (i - 1 >= 0) 
     {
