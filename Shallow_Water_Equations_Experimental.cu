@@ -306,8 +306,8 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
   float *sh_fvh = sh_guh + (blockDim.y + 2) * (blockDim.x + 2);
   float *sh_gvh = sh_fvh + (blockDim.y + 2) * (blockDim.x + 2);
 
-  #define SH_ID(i, j) (__fmaf_rn(i, (blockDim.x + 2), j)) 
-  #define ID_2D(i, j) (__fmaf_rn(i, (nx + 2), j))
+  #define SH_ID(i, j) ((i) * (blockDim.x + 2) + (j)) 
+  #define ID_2D(i, j) ((i) * (nx + 2) + (j))
 
   if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
   {
