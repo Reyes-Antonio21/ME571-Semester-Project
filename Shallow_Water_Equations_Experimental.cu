@@ -240,17 +240,19 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     // Force ordered printing across blocks (debug only)
     __syncthreads();      // Sync all threads in the block
     __threadfence();      // Ensure memory visibility before continuing
-    __nanosleep(1000);  // Delay to serialize print output
 
-    printf("Shared memory (before halo), block (%d, %d):\n", blockIdx.x, blockIdx.y);
-    for (int y = 0; y < height; y++) 
+    for (int i = 0; i < blockIdx.y * gridDim.x + blockIdx.x; ++i)
     {
-      for (int x = 0; x <= width; x++) 
+      printf("Shared memory (before halo), block (%d, %d):\n", blockIdx.x, blockIdx.y);
+      for (int y = 0; y < height; y++) 
       {
-        int lid = y * width + x;
-        printf("%6.2f ", sh_h[lid]);
+        for (int x = 0; x <= width; x++) 
+        {
+          int lid = y * width + x;
+          printf("%6.2f ", sh_h[lid]);
+        }
+        printf("\n");
       }
-      printf("\n");
     }
   }
 
@@ -264,19 +266,20 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     // Force ordered printing across blocks (debug only)
     __syncthreads();      // Sync all threads in the block
     __threadfence();      // Ensure memory visibility before continuing
-
-    __nanosleep(1000);  // Delay to serialize print output
-
-    printf("Shared memory (after halo), block (%d, %d):\n", blockIdx.x, blockIdx.y);
-    for (int y = 0; y < blockDim.y + 2; y++) 
+    
+    for (int i = 0; i < blockIdx.y * gridDim.x + blockIdx.x; ++i)
     {
-      for (int x = 0; x < blockDim.x + 2; x++) 
+      printf("Shared memory (after halo), block (%d, %d):\n", blockIdx.x, blockIdx.y);
+      for (int y = 0; y < blockDim.y + 2; y++) 
       {
-        int lid = y * (blockDim.x + 2) + x;
-        printf("%6.2f ", sh_h[lid]);
+        for (int x = 0; x < blockDim.x + 2; x++) 
+        {
+          int lid = y * (blockDim.x + 2) + x;
+          printf("%6.2f ", sh_h[lid]);
+        }
+        printf("\n");
       }
-      printf("\n");
-    }
+
   }
 }
 // ****************************************************************************************************************** //
