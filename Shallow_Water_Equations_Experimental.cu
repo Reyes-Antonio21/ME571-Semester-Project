@@ -308,7 +308,7 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
   int global_id = ID_2D(i, j);
   int local_id = SH_ID(local_i, local_j);
 
-  if (i > 0 && i < ny && j > 0 && j < nx)
+  if (i >= 0 && i <= ny && j >= 0 && j <= nx)
   {
     int global_id = ID_2D(i, j);
     int local_id = SH_ID(local_i, local_j);
@@ -330,7 +330,7 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
   {
     programRuntime += dt;
 
-    if (i > 0 && i < ny && j > 0 && j < nx)
+    if (i >= 0 && i <= ny && j >= 0 && j <= nx)
     {
       int local_id = SH_ID(local_i, local_j);
 
@@ -357,7 +357,7 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
 
     __syncthreads();
 
-    if (i > 0 && i < ny && j > 0 && j < nx)
+    if (i >= 0 && i <= ny && j >= 0 && j <= nx)
     {
       int local_id = SH_ID(local_i, local_j);
       int local_id_left   = SH_ID(local_i, local_j - 1);
@@ -420,7 +420,7 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
   }
 
   // Write final result to global memory
-  if (i > 0 && i < ny && j > 0 && j < nx)
+  if (i >= 0 && i <= ny && j >= 0 && j <= nx)
   {
     int global_id = ID_2D(i, j);
     int local_id = SH_ID(local_i, local_j);
