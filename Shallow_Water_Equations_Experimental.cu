@@ -181,95 +181,58 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const floa
   #define SH_ID(i, j) (__fmaf_rn(i, (blockDim.x + 2), j)) 
   #define ID_2D(i, j) (__fmaf_rn(i, (nx + 2), j))
 
-  // Left halo cells (first column in each block)
-  if (threadIdx.x == 0) 
+  // === LEFT ===
+  if (local_j == 1) 
   {
+    int global_id = ID_2D(i, j - 1);
     int local_id = SH_ID(local_i, local_j - 1);
 
-    if (j > 1) 
+    if (j - 1 >= 0) 
     {
-      int global_id = ID_2D(i, j - 1);
-
       sh_h[local_id]  = h[global_id];
       sh_uh[local_id] = uh[global_id];
       sh_vh[local_id] = vh[global_id];
     }
-    else
-    {
-      int global_id = ID_2D(i, j);
-
-      sh_h[local_id]  = h[global_id];
-      sh_uh[local_id] = -uh[global_id];
-      sh_vh[local_id] =  vh[global_id];
-    }
   }
 
-  // Right halo cells (last column in each block)
-  if (threadIdx.x == blockDim_x - 1) 
+  // === RIGHT ===
+  if (local_j == blockDim_x) 
   {
+    int global_id = ID_2D(i, j + 1);
     int local_id = SH_ID(local_i, local_j + 1);
 
-    if (j < nx) 
+    if (j + 1 < nx + 2) 
     {
-      int global_id = ID_2D(i, j + 1);
-
       sh_h[local_id]  = h[global_id];
       sh_uh[local_id] = uh[global_id];
       sh_vh[local_id] = vh[global_id];
-    } 
-    else
-    {
-      int global_id = ID_2D(i, j);
-
-      sh_h[local_id]  = h[global_id];
-      sh_uh[local_id] = -uh[global_id];
-      sh_vh[local_id] =  vh[global_id];
     }
   }
 
-  // Bottom halo cells (first row in each block)
-  if (threadIdx.y == 0) 
+  // === BOTTOM ===
+  if (local_i == 1) 
   {
-    int local_id = SH_ID(local_i - 1, local_j);
+    int global_id = ID_2D(i - 1, j);
+    int local_id = SH_ID(local_i - 1);
 
-    if (i > 1) 
+    if (i - 1 >= 0) 
     {
-      int global_id = ID_2D(i - 1, j);
-
       sh_h[local_id]  = h[global_id];
       sh_uh[local_id] = uh[global_id];
       sh_vh[local_id] = vh[global_id];
-    } 
-    else
-    {
-      int global_id = ID_2D(i, j);
-
-      sh_h[local_id]  = h[global_id];
-      sh_uh[local_id] =  uh[global_id];
-      sh_vh[local_id] = -vh[global_id];
     }
   }
 
-  // Top halo cells (last row in each block)
-  if (threadIdx.y == blockDim_y - 1) 
+  // === TOP ===
+  if (local_i == blockDim_y) 
   {
+    int global_id = ID_2D(i + 1, j);
     int local_id = SH_ID(local_i + 1, local_j);
 
-    if (i < ny) 
-    {
-      int global_id = ID_2D(i + 1, j);
-
+    if (i + 1 < ny + 2) {
       sh_h[local_id]  = h[global_id];
       sh_uh[local_id] = uh[global_id];
       sh_vh[local_id] = vh[global_id];
-    } 
-    else
-    {
-      int global_id = ID_2D(i, j);
-
-      sh_h[local_id]  = h[global_id];
-      sh_uh[local_id] =  uh[global_id];
-      sh_vh[local_id] = -vh[global_id];
     }
   }
 
