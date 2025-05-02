@@ -93,6 +93,16 @@ int main() {
 
     cudaMemcpy(d_h, h_h, total_size * sizeof(float), cudaMemcpyHostToDevice);
 
+    // Print before halo exchange
+    cudaMemcpy(h_result, d_h, total_size * sizeof(float), cudaMemcpyDeviceToHost);
+    printf("Before halo exchange:\n");
+    for (int i = 0; i < ny + 2; ++i) {
+        for (int j = 0; j < nx + 2; ++j) {
+            printf("%5.1f ", h_result[IDX2D(i, j, nx + 2)]);
+        }
+        printf("\n");
+    }
+
     dim3 blockDim(BLOCK_SIZE, BLOCK_SIZE);
     dim3 gridDim(GRID_DIM, GRID_DIM);
     size_t shmem_size = (BLOCK_SIZE + 2) * (BLOCK_SIZE + 2) * sizeof(float);
