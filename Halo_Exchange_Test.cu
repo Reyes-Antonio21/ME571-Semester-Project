@@ -84,11 +84,11 @@ __device__ void haloExchange(float* sh_h, const float* h, int i, int j, int loca
 }
 
 __global__ void testHaloKernel(float *h, float *h_result, int nx, int ny) {
-    int global_i = blockIdx.y * blockDim.y + threadIdx.y + 1;
-    int global_j = blockIdx.x * blockDim.x + threadIdx.x + 1;
+    int global_i = blockIdx.y * blockDim.y + threadIdx.y;
+    int global_j = blockIdx.x * blockDim.x + threadIdx.x;
 
-    int local_i = threadIdx.y + 1;
-    int local_j = threadIdx.x + 1;
+    int local_i = threadIdx.y;
+    int local_j = threadIdx.x;
 
     extern __shared__ float sh_h[];
 
