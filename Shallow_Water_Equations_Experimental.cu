@@ -186,8 +186,8 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh,
                            int nx, int ny, int blockDim_x, int blockDim_y)
 {
     // Define local macros for cleaner indexing
-    #define SH_ID(i, j) (__fmaf_rn(i, (blockDim.x + 2), j)) 
-    #define ID_2D(i, j) (__fmaf_rn(i, (nx + 2), j))
+    #define SH_ID(i, j) ((i) * (blockDim.x + 2) + (j)) 
+    #define ID_2D(i, j) ((i) * (nx + 2) + (j))
     
     // Left halo cells (first column in each block)
     if (threadIdx.x == 0) {
