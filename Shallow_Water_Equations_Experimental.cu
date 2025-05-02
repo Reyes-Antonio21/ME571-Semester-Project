@@ -176,10 +176,8 @@ __global__ void applyTopBoundary(float *h, float *uh, float *vh, int nx, int ny)
 }
 // ****************************************************************************** //
 
-// Improved halo exchange function
 __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const float* h, const float* uh, const float* vh, int i, int j, int local_i, int local_j, int nx, int ny, int blockDim_x, int blockDim_y)
 {
-  // Define local macros for cleaner indexing
   #define SH_ID(i, j) (__fmaf_rn(i, (blockDim.x + 2), j)) 
   #define ID_2D(i, j) (__fmaf_rn(i, (nx + 2), j))
 
@@ -280,7 +278,6 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const floa
 }
 // ****************************************************************************************************************** //
 
-// Updated shallowWaterSolver kernel using improved haloExchange
 __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh, float *__restrict__ vh, float lambda_x, float lambda_y, int nx, int ny, float dt, float finalRuntime)
 {
   unsigned int i = blockIdx.y * blockDim.y + threadIdx.y + 1;
@@ -330,7 +327,11 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
   {
     programRuntime += dt;
 
-    if (i < ny + 2 && j < nx + 2)
+    // Refresh ghost zones
+    haloExchange(sh_h, sh_uh, sh_vh, h, uh, vh, i, j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
+    __syncthreads();
+
+    if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
     {
       int local_id = SH_ID(local_i, local_j);
 
@@ -413,14 +414,10 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     }
 
     __syncthreads();
-
-    // Refresh ghost zones
-    haloExchange(sh_h, sh_uh, sh_vh, h, uh, vh, i, j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
-    __syncthreads();
   }
 
   // Write final result to global memory
-  if (i > 0 && i <= ny && j > 0 && j <= nx)
+  if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
   {
     int global_id = ID_2D(i, j);
     int local_id = SH_ID(local_i, local_j);

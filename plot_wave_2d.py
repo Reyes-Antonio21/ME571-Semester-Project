@@ -30,7 +30,7 @@ fig = plt.figure()
 
 # `ax` is a 3D-aware axis instance, because of the projection='3d' keyword argument to add_subplot
 ax = fig.add_subplot(1, 1, 1, projection='3d')
-ax.plot_surface(xi, yi, hi, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, alpha=0.75 )
+ax.plot_surface(xi, yi, hi, rstride=1, cstride=1, cmap=cm.coolwarm, linewidth=0, alpha=0.75)
 ax.set_zlim(0.75, 1.25);
 
 ax.set_xlim(min(x), max(x));
