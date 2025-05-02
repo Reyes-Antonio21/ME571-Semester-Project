@@ -178,8 +178,8 @@ __global__ void applyTopBoundary(float *h, float *uh, float *vh, int nx, int ny)
 
 __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const float* h, const float* uh, const float* vh, int i, int j, int local_i, int local_j, int nx, int ny, int blockDim_x, int blockDim_y)
 {
-  #define SH_ID(i, j) (__fmaf_rn(i, (blockDim.x + 2), j)) 
-  #define ID_2D(i, j) (__fmaf_rn(i, (nx + 2), j))
+  #define SH_ID(i, j) ((i) * (blockDim.x * 2) + (j)) 
+  #define ID_2D(i, j) ((i) * (nx + 2) + (j))
 
   // === LEFT ===
   if (local_j == 1) 
@@ -290,8 +290,8 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
   float *sh_fvh = sh_guh + (blockDim.y + 2) * (blockDim.x + 2);
   float *sh_gvh = sh_fvh + (blockDim.y + 2) * (blockDim.x + 2);
 
-  #define SH_ID(i, j) (__fmaf_rn(i, (blockDim.x + 2), j)) 
-  #define ID_2D(i, j) (__fmaf_rn(i, (nx + 2), j))
+  #define SH_ID(i, j) ((i) * (blockDim.x * 2) + (j)) 
+  #define ID_2D(i, j) ((i) * (nx + 2) + (j))
 
   if (i > 0 && i <= ny && j > 0 && j <= nx)
   {
