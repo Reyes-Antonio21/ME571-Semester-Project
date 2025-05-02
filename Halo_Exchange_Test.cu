@@ -15,7 +15,10 @@ __device__ int ID_2D(int i, int j, int stride) {
     return i * stride + j;
 }
 
-__device__ void haloExchange(float* sh_h, const float* h, int i, int j, int local_i, int local_j, int nx, int ny, int blockDim_x, int blockDim_y) 
+__device__ void haloExchange(
+    float* sh_h, const float* h,
+    int i, int j, int local_i, int local_j,
+    int nx, int ny, int blockDim_x, int blockDim_y)
 {
     int global_stride = nx + 2;
     int sh_stride     = blockDim_x + 2;
@@ -80,48 +83,32 @@ __global__ void testHaloKernel(float *h, float *h_result, int nx, int ny) {
     int gid = ID_2D(global_i, global_j, global_stride);
     int lid = SH_ID(local_i, local_j, sh_stride);
 
-    // Load interior value into shared memory
     sh_h[lid] = h[gid];
     __syncthreads();
 
-    // Perform halo exchange
     haloExchange(sh_h, h, global_i, global_j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
     __syncthreads();
 
-    // === DEBUG BLOCK-LEVEL SHARED MEMORY PRINT ===
-    if (threadIdx.x == 0 && threadIdx.y == 0) {
-        printf("Block (%d, %d):\n", blockIdx.x, blockIdx.y);
-        for (int li = 0; li < blockDim.y + 2; ++li) {
-            for (int lj = 0; lj < blockDim.x + 2; ++lj) {
-                int lid_dbg = SH_ID(li, lj, sh_stride);
-                printf("%5.1f ", sh_h[lid_dbg]);
-            }
-            printf("\n");
-        }
-        printf("\n");
-    }
-    __syncthreads();
-
-    // Write interior result
+    // Write interior
     h_result[gid] = sh_h[lid];
 
-    // Write halo edges
-    if (local_j == 1) {
+    // Write halo if thread is on boundary
+    if (threadIdx.x == 0) {
         int gid_left = ID_2D(global_i, global_j - 1, global_stride);
         int lid_left = SH_ID(local_i, local_j - 1, sh_stride);
         if (global_j - 1 >= 0) h_result[gid_left] = sh_h[lid_left];
     }
-    if (local_j == blockDim.x) {
+    if (threadIdx.x == blockDim.x - 1) {
         int gid_right = ID_2D(global_i, global_j + 1, global_stride);
         int lid_right = SH_ID(local_i, local_j + 1, sh_stride);
         if (global_j + 1 < nx + 2) h_result[gid_right] = sh_h[lid_right];
     }
-    if (local_i == 1) {
+    if (threadIdx.y == 0) {
         int gid_bottom = ID_2D(global_i - 1, global_j, global_stride);
         int lid_bottom = SH_ID(local_i - 1, local_j, sh_stride);
         if (global_i - 1 >= 0) h_result[gid_bottom] = sh_h[lid_bottom];
     }
-    if (local_i == blockDim.y) {
+    if (threadIdx.y == blockDim.y - 1) {
         int gid_top = ID_2D(global_i + 1, global_j, global_stride);
         int lid_top = SH_ID(local_i + 1, local_j, sh_stride);
         if (global_i + 1 < ny + 2) h_result[gid_top] = sh_h[lid_top];
@@ -149,12 +136,10 @@ int main() {
 
     cudaMemcpy(d_h, h_h, total_size * sizeof(float), cudaMemcpyHostToDevice);
 
-    // Print before halo exchange
-    cudaMemcpy(h_result, d_h, total_size * sizeof(float), cudaMemcpyDeviceToHost);
     printf("Before halo exchange:\n");
     for (int i = 0; i < ny + 2; ++i) {
         for (int j = 0; j < nx + 2; ++j) {
-            printf("%5.1f ", h_result[IDX2D(i, j, nx + 2)]);
+            printf("%5.1f ", h_h[IDX2D(i, j, nx + 2)]);
         }
         printf("\n");
     }
@@ -166,12 +151,27 @@ int main() {
     testHaloKernel<<<gridDim, blockDim, shmem_size>>>(d_h, d_result, nx, ny);
     cudaMemcpy(h_result, d_result, total_size * sizeof(float), cudaMemcpyDeviceToHost);
 
-    printf("After halo exchange:\n");
+    printf("\nAfter halo exchange (global view):\n");
     for (int i = 0; i < ny + 2; ++i) {
         for (int j = 0; j < nx + 2; ++j) {
             printf("%5.1f ", h_result[IDX2D(i, j, nx + 2)]);
         }
         printf("\n");
+    }
+
+    printf("\nPer-block structured views:\n");
+    for (int by = 0; by < GRID_DIM; ++by) {
+        for (int bx = 0; bx < GRID_DIM; ++bx) {
+            printf("\nBlock (%d, %d):\n", by, bx);
+            for (int ty = 0; ty < BLOCK_WITH_HALO; ++ty) {
+                for (int tx = 0; tx < BLOCK_WITH_HALO; ++tx) {
+                    int gi = by * BLOCK_SIZE + ty;
+                    int gj = bx * BLOCK_SIZE + tx;
+                    printf("%5.1f ", h_result[IDX2D(gi, gj, nx + 2)]);
+                }
+                printf("\n");
+            }
+        }
     }
 
     cudaFree(d_h);
