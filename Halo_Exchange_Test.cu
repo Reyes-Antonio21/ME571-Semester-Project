@@ -64,32 +64,48 @@ __global__ void testHaloKernel(float *h, float *h_result, int nx, int ny) {
     int gid = ID_2D(global_i, global_j, global_stride);
     int lid = SH_ID(local_i, local_j, sh_stride);
 
+    // Load interior value into shared memory
     sh_h[lid] = h[gid];
     __syncthreads();
 
+    // Perform halo exchange
     haloExchange(sh_h, h, global_i, global_j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
     __syncthreads();
 
-    // Write interior
+    // === DEBUG BLOCK-LEVEL SHARED MEMORY PRINT ===
+    if (threadIdx.x == 0 && threadIdx.y == 0) {
+        printf("Block (%d, %d):\n", blockIdx.x, blockIdx.y);
+        for (int li = 0; li < blockDim.y + 2; ++li) {
+            for (int lj = 0; lj < blockDim.x + 2; ++lj) {
+                int lid_dbg = SH_ID(li, lj, sh_stride);
+                printf("%5.1f ", sh_h[lid_dbg]);
+            }
+            printf("\n");
+        }
+        printf("\n");
+    }
+    __syncthreads();
+
+    // Write interior result
     h_result[gid] = sh_h[lid];
 
-    // Write halo if thread is on boundary
-    if (threadIdx.x == 0) {
+    // Write halo edges
+    if (local_j == 1) {
         int gid_left = ID_2D(global_i, global_j - 1, global_stride);
         int lid_left = SH_ID(local_i, local_j - 1, sh_stride);
         if (global_j - 1 >= 0) h_result[gid_left] = sh_h[lid_left];
     }
-    if (threadIdx.x == blockDim.x - 1) {
+    if (local_j == blockDim.x) {
         int gid_right = ID_2D(global_i, global_j + 1, global_stride);
         int lid_right = SH_ID(local_i, local_j + 1, sh_stride);
         if (global_j + 1 < nx + 2) h_result[gid_right] = sh_h[lid_right];
     }
-    if (threadIdx.y == 0) {
+    if (local_i == 1) {
         int gid_bottom = ID_2D(global_i - 1, global_j, global_stride);
         int lid_bottom = SH_ID(local_i - 1, local_j, sh_stride);
         if (global_i - 1 >= 0) h_result[gid_bottom] = sh_h[lid_bottom];
     }
-    if (threadIdx.y == blockDim.y - 1) {
+    if (local_i == blockDim.y) {
         int gid_top = ID_2D(global_i + 1, global_j, global_stride);
         int lid_top = SH_ID(local_i + 1, local_j, sh_stride);
         if (global_i + 1 < ny + 2) h_result[gid_top] = sh_h[lid_top];
