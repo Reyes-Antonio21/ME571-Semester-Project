@@ -186,7 +186,7 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const floa
   {
     int local_id = SH_ID(local_i, local_j - 1);
 
-    if (j > 1) 
+    if (j >= 1) 
     {
       int global_id = ID_2D(i, j - 1);
 
@@ -209,7 +209,7 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const floa
   {
     int local_id = SH_ID(local_i, local_j + 1);
 
-    if (j < nx) 
+    if (j <= nx) 
     {
       int global_id = ID_2D(i, j + 1);
 
@@ -232,7 +232,7 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const floa
   {
     int local_id = SH_ID(local_i - 1, local_j);
 
-    if (i > 1) 
+    if (i >= 1) 
     {
       int global_id = ID_2D(i - 1, j);
 
@@ -255,7 +255,7 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const floa
   {
     int local_id = SH_ID(local_i + 1, local_j);
 
-    if (i < ny) 
+    if (i <= ny) 
     {
       int global_id = ID_2D(i + 1, j);
 
