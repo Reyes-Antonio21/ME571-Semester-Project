@@ -311,12 +311,12 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
 
   if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
   {
-    id = ID_2D(i, j);
-    local_id = SH_ID(local_i, local_j);
+    int global_id = ID_2D(i, j);
+    int local_id = SH_ID(local_i, local_j);
 
-    sh_h[local_id]  = h[id];
-    sh_uh[local_id] = uh[id];
-    sh_vh[local_id] = vh[id];
+    sh_h[local_id]  = h[global_id];
+    sh_uh[local_id] = uh[global_id];
+    sh_vh[local_id] = vh[global_id];
   }
 
   // Initialize shared memory with data from global memory
