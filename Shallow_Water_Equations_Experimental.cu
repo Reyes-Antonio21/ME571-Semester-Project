@@ -287,35 +287,6 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh,
         }
     }
     
-    // Corner halo cells - handle separately to avoid race conditions
-    // Bottom-left corner
-    if (threadIdx.x == 0 && threadIdx.y == 0) {
-        sh_h[SH_ID(0, 0)] = sh_h[SH_ID(1, 1)];
-        sh_uh[SH_ID(0, 0)] = -sh_uh[SH_ID(1, 1)];
-        sh_vh[SH_ID(0, 0)] = -sh_vh[SH_ID(1, 1)];
-    }
-    
-    // Bottom-right corner
-    if (threadIdx.x == blockDim_x - 1 && threadIdx.y == 0) {
-        sh_h[SH_ID(0, blockDim_x+1)] = sh_h[SH_ID(1, blockDim_x)];
-        sh_uh[SH_ID(0, blockDim_x+1)] = -sh_uh[SH_ID(1, blockDim_x)];
-        sh_vh[SH_ID(0, blockDim_x+1)] = -sh_vh[SH_ID(1, blockDim_x)];
-    }
-    
-    // Top-left corner
-    if (threadIdx.x == 0 && threadIdx.y == blockDim_y - 1) {
-        sh_h[SH_ID(blockDim_y+1, 0)] = sh_h[SH_ID(blockDim_y, 1)];
-        sh_uh[SH_ID(blockDim_y+1, 0)] = -sh_uh[SH_ID(blockDim_y, 1)];
-        sh_vh[SH_ID(blockDim_y+1, 0)] = -sh_vh[SH_ID(blockDim_y, 1)];
-    }
-    
-    // Top-right corner
-    if (threadIdx.x == blockDim_x - 1 && threadIdx.y == blockDim_y - 1) {
-        sh_h[SH_ID(blockDim_y+1, blockDim_x+1)] = sh_h[SH_ID(blockDim_y, blockDim_x)];
-        sh_uh[SH_ID(blockDim_y+1, blockDim_x+1)] = -sh_uh[SH_ID(blockDim_y, blockDim_x)];
-        sh_vh[SH_ID(blockDim_y+1, blockDim_x+1)] = -sh_vh[SH_ID(blockDim_y, blockDim_x)];
-    }
-    
     #undef ID_2D
     #undef SH_ID
 }
