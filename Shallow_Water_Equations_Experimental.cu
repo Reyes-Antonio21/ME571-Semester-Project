@@ -322,7 +322,7 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
   {
     programRuntime += dt;
 
-    if (i < ny + 2 && j < nx + 2)
+    if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
     {
       int local_id = SH_ID(local_i, local_j);
 
