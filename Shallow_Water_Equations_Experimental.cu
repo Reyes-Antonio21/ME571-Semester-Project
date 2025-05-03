@@ -176,20 +176,20 @@ __global__ void applyTopBoundary(float *h, float *uh, float *vh, int nx, int ny)
 }
 // ****************************************************************************** //
 
-__device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const float* h, const float* uh, const float* vh, int i, int j, int local_i, int local_j, int nx, int ny, int blockDim_x, int blockDim_y)
+__device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const float* h, const float* uh, const float* vh, int global_i, int global_j, int local_i, int local_j, int nx, int ny, int blockDim_x, int blockDim_y)
 {
-  #define SH_ID(i, j) ((i) * (blockDim.x + 2) + (j)) 
-  #define ID_2D(i, j) ((i) * (nx + 2) + (j))
+  #define SH_ID(local_i, local_j) ((local_i) * (blockDim.x + 2) + (local_j)) 
+  #define ID_2D(global_i, global_j) ((global_i) * (nx + 2) + (global_j))
 
   // === LEFT ===
-  if (local_j == 1) 
+  if (local_j == 1)
   {
-    int global_id = ID_2D(0, j - 1);
+    int global_id = ID_2D(0, global_j - 1);
     int local_id = SH_ID(local_i, local_j - 1);
 
     if (global_id >= 0) 
     {
-      int global_id = ID_2D(i, j - 1);
+      int global_id = ID_2D(global_i, global_j - 1);
 
       sh_h[local_id]  = h[global_id];
       sh_uh[local_id] = uh[global_id];
@@ -200,12 +200,12 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const floa
   // === RIGHT ===
   if (local_j == blockDim_x) 
   {
-    int global_id = ID_2D(0, j + 1);
+    int global_id = ID_2D(0, global_j + 1);
     int local_id = SH_ID(local_i, local_j + 1);
 
     if (global_id < nx + 2) 
     {
-      int global_id = ID_2D(i, j + 1);
+      int global_id = ID_2D(global_i, global_j + 1);
 
       sh_h[local_id]  = h[global_id];
       sh_uh[local_id] = uh[global_id];
@@ -216,12 +216,12 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const floa
   // === BOTTOM ===
   if (local_i == 1) 
   {
-    int global_id = ID_2D(i - 1, 0);
+    int global_id = ID_2D(global_i - 1, 0);
     int local_id = SH_ID(local_i - 1, local_j);
 
     if (global_id >= 0) 
     {
-      int global_id = ID_2D(i - 1, j);
+      int global_id = ID_2D(global_i - 1, global_j);
 
       sh_h[local_id]  = h[global_id];
       sh_uh[local_id] = uh[global_id];
@@ -232,12 +232,12 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const floa
   // === TOP ===
   if (local_i == blockDim_y) 
   {
-    int global_id = ID_2D(i + 1, 0);
+    int global_id = ID_2D(global_i + 1, 0);
     int local_id = SH_ID(local_i + 1, local_j);
 
     if (global_id < ny + 2) 
     { 
-      int global_id = ID_2D(i + 1, j);
+      int global_id = ID_2D(global_i + 1, global_j);
       sh_h[local_id]  = h[global_id];
       sh_uh[local_id] = uh[global_id];
       sh_vh[local_id] = vh[global_id];
@@ -251,7 +251,7 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const floa
 
 __device__ void applyReflectiveBCs(float* sh_h, float* sh_uh, float* sh_vh, int local_i, int local_j, int blockDim_x, int blockDim_y)
 {
-  #define SH_ID(i, j) ((i) * (blockDim.x + 2) + (j))
+  #define SH_ID(local_i, local_j) ((local_i) * (blockDim.x + 2) + (local_j))
 
   // Left boundary: reflect uh
   if (local_j == 1) 
@@ -301,16 +301,16 @@ __device__ void applyReflectiveBCs(float* sh_h, float* sh_uh, float* sh_vh, int 
 }
 // ****************************************************************************************************************** //
 
-__device__ void writeGlobalToInterior(const float* d_mem, float* sh_mem, int i, int j, int local_i, int local_j, int nx, int ny, int blockDim_x, int blockDim_y)
+__device__ void writeGlobalToInterior(const float* d_mem, float* sh_mem, int global_i, int global_j, int local_i, int local_j, int nx, int ny, int blockDim_x, int blockDim_y)
 {
-  #define SH_ID(i, j) ((i) * (blockDim.x + 2) + (j)) 
-  #define ID_2D(i, j) ((i) * (nx + 2) + (j))
+  #define SH_ID(local_i, local_j) ((local_i) * (blockDim.x + 2) + (local_j)) 
+  #define ID_2D(global_i, global_j) ((global_i) * (nx + 2) + (global_j))
 
   if (local_i > 0 && local_i < blockDim_y - 1 && local_j > 0 && local_j < blockDim_x - 1)
   {
-    if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
+    if (global_i > 0 && global_i < ny + 1 && global_j > 0 && global_j < nx + 1)
     {
-      int global_id = ID_2D(i, j);
+      int global_id = ID_2D(global_i, global_j);
       int local_id = SH_ID(local_i, local_j);
 
       sh_mem[local_id] = d_mem[global_id];
@@ -322,16 +322,16 @@ __device__ void writeGlobalToInterior(const float* d_mem, float* sh_mem, int i, 
 }
 // ****************************************************************************************************************** //
 
-__device__ void writeInteriorToGlobal(float* d_mem, const float* sh_mem, int i, int j, int local_i, int local_j, int nx, int ny, int blockDim_x, int blockDim_y)
+__device__ void writeInteriorToGlobal(float* d_mem, const float* sh_mem, int global_i, int global_j, int local_i, int local_j, int nx, int ny, int blockDim_x, int blockDim_y)
 {
-  #define SH_ID(i, j) ((i) * (blockDim.x + 2) + (j)) 
-  #define ID_2D(i, j) ((i) * (nx + 2) + (j))
+  #define SH_ID(local_i, local_j) ((local_i) * (blockDim.x + 2) + (local_j)) 
+  #define ID_2D(global_i, global_j) ((global_i) * (nx + 2) + (global_j))
 
-  if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
+  if (global_i > 0 && global_i < ny + 1 && global_j > 0 && global_j < nx + 1)
   {
     if (local_i > 0 && local_i < blockDim_y - 1 && local_j > 0 && local_j < blockDim_x - 1)
     {
-      int global_id = ID_2D(i, j);
+      int global_id = ID_2D(global_i, global_j);
       int local_id = SH_ID(local_i, local_j);
 
       d_mem[global_id] = sh_mem[local_id];
@@ -345,8 +345,8 @@ __device__ void writeInteriorToGlobal(float* d_mem, const float* sh_mem, int i, 
 
 __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh, float *__restrict__ vh, float lambda_x, float lambda_y, int nx, int ny, float dt, float finalRuntime)
 {
-  unsigned int i = blockIdx.y * blockDim.y + threadIdx.y + 1;
-  unsigned int j = blockIdx.x * blockDim.x + threadIdx.x + 1;
+  unsigned int global_i = blockIdx.y * blockDim.y + threadIdx.y + 1;
+  unsigned int global_j = blockIdx.x * blockDim.x + threadIdx.x + 1;
 
   unsigned int local_i = threadIdx.y + 1;
   unsigned int local_j = threadIdx.x + 1;
@@ -366,8 +366,8 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
   float *sh_uhm =  sh_hm + (blockDim.y + 2) * (blockDim.x + 2);
   float *sh_vhm = sh_uhm + (blockDim.y + 2) * (blockDim.x + 2);
 
-  #define SH_ID(i, j) ((i) * (blockDim.x + 2) + (j)) 
-  #define ID_2D(i, j) ((i) * (nx + 2) + (j))
+  #define SH_ID(local_i, local_j) ((local_i) * (blockDim.x + 2) + (local_j)) 
+  #define ID_2D(global_i, global_j) ((global_i) * (nx + 2) + (global_j))
 
   __syncthreads();
 
@@ -377,15 +377,15 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
   {
     programRuntime += dt;
 
-    writeGlobalToInterior(h, sh_h, i, j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
-    writeGlobalToInterior(uh, sh_uh, i, j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
-    writeGlobalToInterior(vh, sh_vh, i, j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
+    writeGlobalToInterior(h, sh_h, global_i, global_j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
+    writeGlobalToInterior(uh, sh_uh, global_i, global_j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
+    writeGlobalToInterior(vh, sh_vh, global_i, global_j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
     __syncthreads();
 
-    haloExchange(sh_h, sh_uh, sh_vh, h, uh, vh, i, j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
+    haloExchange(sh_h, sh_uh, sh_vh, h, uh, vh, global_i, global_j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
     __syncthreads();
 
-    if (i < ny + 2 && j < nx + 2)
+    if (global_i < ny + 2 && global_j < nx + 2)
     {
       int local_id = SH_ID(local_i, local_j);
 
@@ -414,7 +414,7 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     }
     __syncthreads();
 
-    if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
+    if (global_i > 0 && global_i < ny + 1 && global_j > 0 && global_j < nx + 1)
     {
       int local_id = SH_ID(local_i, local_j);
       int local_id_left   = SH_ID(local_i, local_j - 1);
@@ -466,7 +466,7 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     }
     __syncthreads();
 
-    if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
+    if (global_i > 0 && global_i < ny + 1 && global_j > 0 && global_j < nx + 1)
     {
       int local_id = SH_ID(local_i, local_j);
 
@@ -479,15 +479,15 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     applyReflectiveBCs(sh_h, sh_uh, sh_vh, local_i, local_j, blockDim.x, blockDim.y);
     __syncthreads();
 
-    writeInteriorToGlobal(h, sh_h, i, j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
-    writeInteriorToGlobal(uh, sh_uh, i, j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
-    writeInteriorToGlobal(vh, sh_vh, i, j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
+    writeInteriorToGlobal(h, sh_h, global_i, global_j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
+    writeInteriorToGlobal(uh, sh_uh, global_i, global_j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
+    writeInteriorToGlobal(vh, sh_vh, global_i, global_j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
     __syncthreads();
   }
 
-  writeInteriorToGlobal(h, sh_h, i, j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
-  writeInteriorToGlobal(uh, sh_uh, i, j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
-  writeInteriorToGlobal(vh, sh_vh, i, j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);  
+  writeInteriorToGlobal(h, sh_h, global_i, global_j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
+  writeInteriorToGlobal(uh, sh_uh, global_i, global_j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
+  writeInteriorToGlobal(vh, sh_vh, global_i, global_j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);  
 
   #undef ID_2D
   #undef SH_ID
