@@ -191,11 +191,13 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const floa
     sh_uh[left_id] = -sh_uh[interior_id];
     sh_vh[left_id] =  sh_vh[interior_id];
 
-    int global_id = ID_2D(i, j - 1);
+    int global_id = ID_2D(0, j - 1);
     int local_id = SH_ID(local_i, local_j - 1);
 
-    if (j - 1 >= 0) 
+    if (global_id >= 0) 
     {
+      int global_id = ID_2D(i, global_id_j);
+
       sh_h[local_id]  = h[global_id];
       sh_uh[local_id] = uh[global_id];
       sh_vh[local_id] = vh[global_id];
@@ -212,11 +214,13 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const floa
     sh_uh[right_id] = -sh_uh[interior_id];
     sh_vh[right_id] =  sh_vh[interior_id];
 
-    int global_id = ID_2D(i, j + 1);
+    int global_id = ID_2D(0, j + 1);
     int local_id = SH_ID(local_i, local_j + 1);
 
-    if (j + 1 < nx + 2) 
+    if (global_id < nx + 2) 
     {
+      int global_id = ID_2D(i, global_id_j);
+
       sh_h[local_id]  = h[global_id];
       sh_uh[local_id] = uh[global_id];
       sh_vh[local_id] = vh[global_id];
@@ -233,11 +237,13 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const floa
     sh_uh[bottom_id] = sh_uh[interior_id];
     sh_vh[bottom_id] = -sh_vh[interior_id];
 
-    int global_id = ID_2D(i - 1, j);
+    int global_id = ID_2D(i - 1, 0);
     int local_id = SH_ID(local_i - 1, local_j);
 
-    if (i - 1 >= 0) 
+    if (global_id >= 0) 
     {
+      int global_id = ID_2D(global_id_i, j);
+
       sh_h[local_id]  = h[global_id];
       sh_uh[local_id] = uh[global_id];
       sh_vh[local_id] = vh[global_id];
@@ -254,10 +260,12 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const floa
     sh_uh[top_id] = sh_uh[interior_id];
     sh_vh[top_id] = -sh_vh[interior_id];
 
-    int global_id = ID_2D(i + 1, j);
+    int global_id = ID_2D(i + 1, 0);
     int local_id = SH_ID(local_i + 1, local_j);
 
-    if (i + 1 < ny + 2) {
+    if (global_id < ny + 2) 
+    { 
+      int global_id = ID_2D(global_id_i, j);
       sh_h[local_id]  = h[global_id];
       sh_uh[local_id] = uh[global_id];
       sh_vh[local_id] = vh[global_id];
