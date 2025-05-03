@@ -301,6 +301,24 @@ __device__ void applyReflectiveBCs(float* sh_h, float* sh_uh, float* sh_vh, int 
 }
 // ****************************************************************************************************************** //
 
+__device__ void writeGlobalToInterior(float* d_mem, const float* sh_mem, int i, int j, int local_i, int local_j, int nx, int ny, int blockDim_x, int blockDim_y)
+{
+  #define SH_ID(i, j) ((i) * (blockDim.x + 2) + (j)) 
+  #define ID_2D(i, j) ((i) * (nx + 2) + (j))
+
+  if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
+  {
+    int global_id = ID_2D(i, j);
+    int local_id = SH_ID(local_i, local_j);
+
+    sh_mem[local_id]  = d_mem[global_id];
+  }
+
+  #undef SH_ID
+  #undef ID_2D
+}
+// ****************************************************************************************************************** //
+
 __device__ void writeInteriorToGlobal(float* d_mem, const float* sh_mem, int i, int j, int local_i, int local_j, int nx, int ny, int blockDim_x, int blockDim_y)
 {
   #define SH_ID(i, j) ((i) * (blockDim.x + 2) + (j)) 
@@ -318,7 +336,7 @@ __device__ void writeInteriorToGlobal(float* d_mem, const float* sh_mem, int i, 
   #undef SH_ID
   #undef ID_2D
 }
-
+// ****************************************************************************************************************** //
 
 __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh, float *__restrict__ vh, float lambda_x, float lambda_y, int nx, int ny, float dt, float finalRuntime)
 {
@@ -346,15 +364,6 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
   #define SH_ID(i, j) ((i) * (blockDim.x + 2) + (j)) 
   #define ID_2D(i, j) ((i) * (nx + 2) + (j))
 
-  if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
-  {
-    int global_id = ID_2D(i, j);
-    int local_id = SH_ID(local_i, local_j);
-
-    sh_h[local_id]  = h[global_id];
-    sh_uh[local_id] = uh[global_id];
-    sh_vh[local_id] = vh[global_id];
-  }
   __syncthreads();
 
   float programRuntime = 0.0f;
@@ -362,6 +371,11 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
   while (programRuntime < finalRuntime)
   {
     programRuntime += dt;
+
+    writeGlobalToInterior(h, sh_h, i, j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
+    writeGlobalToInterior(uh, sh_uh, i, j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
+    writeGlobalToInterior(vh, sh_vh, i, j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
+    __syncthreads();
 
     haloExchange(sh_h, sh_uh, sh_vh, h, uh, vh, i, j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
     __syncthreads();
