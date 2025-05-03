@@ -25,45 +25,45 @@ __device__ void haloExchange(
 
     // === LEFT halo ===
     if (local_j == 1) {
-        int gid_j = j - 1;
-        int lid = SH_ID(local_i, local_j - 1, sh_stride);
+        int global_id_j = j - 1;
+        int local_id = SH_ID(local_i, local_j - 1, sh_stride);
 
-        if (gid_j >= 0) {
-            int gid = ID_2D(i, gid_j, global_stride);
-            sh_h[lid] = h[gid];
+        if (global_id_j >= 0) {
+            int global_id = ID_2D(i, global_id_j, global_stride);
+            sh_h[local_id] = h[global_id];
         }
     }
 
     // === RIGHT halo ===
     if (local_j == blockDim_x) {
-        int gid_j = j + 1;
-        int lid = SH_ID(local_i, local_j + 1, sh_stride);
+        int global_id_j = j + 1;
+        int local_id = SH_ID(local_i, local_j + 1, sh_stride);
 
-        if (gid_j < nx + 2) {
-            int gid = ID_2D(i, gid_j, global_stride);
-            sh_h[lid] = h[gid];
+        if (global_id_j < nx + 2) {
+            int global_id = ID_2D(i, global_id_j, global_stride);
+            sh_h[local_id] = h[global_id];
         }
     }
 
     // === BOTTOM halo ===
     if (local_i == 1) {
-        int gid_i = i - 1;
-        int lid = SH_ID(local_i - 1, local_j, sh_stride);
+        int global_id_i = i - 1;
+        int local_id = SH_ID(local_i - 1, local_j, sh_stride);
 
-        if (gid_i >= 0) {
-            int gid = ID_2D(gid_i, j, global_stride);
-            sh_h[lid] = h[gid];
+        if (global_id_i >= 0) {
+            int global_id = ID_2D(global_id_i, j, global_stride);
+            sh_h[local_id] = h[global_id];
         }
     }
 
     // === TOP halo ===
     if (local_i == blockDim_y) {
-        int gid_i = i + 1;
-        int lid = SH_ID(local_i + 1, local_j, sh_stride);
+        int global_id_i = i + 1;
+        int local_id = SH_ID(local_i + 1, local_j, sh_stride);
 
-        if (gid_i < ny + 2) {
-            int gid = ID_2D(gid_i, j, global_stride);
-            sh_h[lid] = h[gid];
+        if (global_id_i < ny + 2) {
+            int global_id = ID_2D(global_id_i, j, global_stride);
+            sh_h[local_id] = h[global_id];
         }
     }
 }
@@ -80,38 +80,38 @@ __global__ void testHaloKernel(float *h, float *h_result, int nx, int ny) {
     int global_stride = nx + 2;
     int sh_stride = blockDim.x + 2;
 
-    int gid = ID_2D(global_i, global_j, global_stride);
-    int lid = SH_ID(local_i, local_j, sh_stride);
+    int global_id = ID_2D(global_i, global_j, global_stride);
+    int local_id = SH_ID(local_i, local_j, sh_stride);
 
-    sh_h[lid] = h[gid];
+    sh_h[local_id] = h[global_id];
     __syncthreads();
 
     haloExchange(sh_h, h, global_i, global_j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
     __syncthreads();
 
     // Write interior
-    h_result[gid] = sh_h[lid];
+    h_result[global_id] = sh_h[local_id];
 
     // Write halo if thread is on boundary
     if (threadIdx.x == 0) {
-        int gid_left = ID_2D(global_i, global_j - 1, global_stride);
-        int lid_left = SH_ID(local_i, local_j - 1, sh_stride);
-        if (global_j - 1 >= 0) h_result[gid_left] = sh_h[lid_left];
+        int global_id_left = ID_2D(global_i, global_j - 1, global_stride);
+        int local_id_left = SH_ID(local_i, local_j - 1, sh_stride);
+        if (global_j - 1 >= 0) h_result[global_id_left] = sh_h[local_id_left];
     }
     if (threadIdx.x == blockDim.x - 1) {
-        int gid_right = ID_2D(global_i, global_j + 1, global_stride);
-        int lid_right = SH_ID(local_i, local_j + 1, sh_stride);
-        if (global_j + 1 < nx + 2) h_result[gid_right] = sh_h[lid_right];
+        int global_id_right = ID_2D(global_i, global_j + 1, global_stride);
+        int local_id_right = SH_ID(local_i, local_j + 1, sh_stride);
+        if (global_j + 1 < nx + 2) h_result[global_id_right] = sh_h[local_id_right];
     }
     if (threadIdx.y == 0) {
-        int gid_bottom = ID_2D(global_i - 1, global_j, global_stride);
-        int lid_bottom = SH_ID(local_i - 1, local_j, sh_stride);
-        if (global_i - 1 >= 0) h_result[gid_bottom] = sh_h[lid_bottom];
+        int global_id_bottom = ID_2D(global_i - 1, global_j, global_stride);
+        int local_id_bottom = SH_ID(local_i - 1, local_j, sh_stride);
+        if (global_i - 1 >= 0) h_result[global_id_bottom] = sh_h[local_id_bottom];
     }
     if (threadIdx.y == blockDim.y - 1) {
-        int gid_top = ID_2D(global_i + 1, global_j, global_stride);
-        int lid_top = SH_ID(local_i + 1, local_j, sh_stride);
-        if (global_i + 1 < ny + 2) h_result[gid_top] = sh_h[lid_top];
+        int global_id_top = ID_2D(global_i + 1, global_j, global_stride);
+        int local_id_top = SH_ID(local_i + 1, local_j, sh_stride);
+        if (global_i + 1 < ny + 2) h_result[global_id_top] = sh_h[local_id_top];
     }
 }
 

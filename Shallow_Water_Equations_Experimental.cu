@@ -279,7 +279,6 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
 
   extern __shared__ float sharedmemory[];
 
-  // Shared memory partition
   float *sh_h   = sharedmemory;
   float *sh_uh  = sh_h   + (blockDim.y + 2) * (blockDim.x + 2);
   float *sh_vh  = sh_uh  + (blockDim.y + 2) * (blockDim.x + 2);
@@ -293,7 +292,7 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
   #define SH_ID(i, j) ((i) * (blockDim.x + 2) + (j)) 
   #define ID_2D(i, j) ((i) * (nx + 2) + (j))
 
-  if (i > 0 && i <= ny && j > 0 && j <= nx)
+  if (i < ny + 2 && j < nx + 2)
   {
     int global_id = ID_2D(i, j);
     int local_id = SH_ID(local_i, local_j);
