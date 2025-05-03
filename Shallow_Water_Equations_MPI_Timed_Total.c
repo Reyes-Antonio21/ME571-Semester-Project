@@ -550,31 +550,23 @@ int main (int argc, char *argv[])
           id = ID_2D(i, j, nx_local);
 
           float h_val = h[id];
-
           float uh_val = uh[id];
-
           float vh_val = vh[id];
 
           float inv_h = 1.0f / h_val;
-
           float h2 = h_val * h_val; 
       
           fh[id]  = uh_val;
-
           gh[id]  = vh_val;
       
           float uh2 = uh_val * uh_val; 
-
           float vh2 = vh_val * vh_val; 
-
           float uv  = uh_val * vh_val; 
       
           fuh[id] = uh2 * inv_h + g_half * h2;
-
           fvh[id] = uv  * inv_h;
 
           guh[id] = uv  * inv_h;
-
           gvh[id] = vh2 * inv_h + g_half * h2;
         }
 

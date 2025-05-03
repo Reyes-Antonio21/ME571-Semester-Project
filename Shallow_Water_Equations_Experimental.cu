@@ -181,16 +181,19 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const floa
   #define SH_ID(i, j) ((i) * (blockDim.x + 2) + (j)) 
   #define ID_2D(i, j) ((i) * (nx + 2) + (j))
 
+  if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1) 
+  {
+    int global_id = ID_2D(i, j);
+    int local_id = SH_ID(local_i, local_j);
+
+    h[global_id]  = sh_h[local_id];
+    uh[global_id] = sh_uh[local_id];
+    vh[global_id] = sh_vh[local_id];
+  }
+
   // === LEFT ===
   if (local_j == 1) 
   {
-    int left_id = SH_ID(local_i, 0);
-    int interior_id = SH_ID(local_i, 1);
-
-    sh_h[left_id] = sh_h[interior_id];
-    sh_uh[left_id] = -sh_uh[interior_id];
-    sh_vh[left_id] =  sh_vh[interior_id];
-
     int global_id = ID_2D(0, j - 1);
     int local_id = SH_ID(local_i, local_j - 1);
 
@@ -207,13 +210,6 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const floa
   // === RIGHT ===
   if (local_j == blockDim_x) 
   {
-    int right_id = SH_ID(local_i, blockDim_x + 1);
-    int interior_id = SH_ID(local_i, blockDim_x);
-
-    sh_h[right_id] = sh_h[interior_id];
-    sh_uh[right_id] = -sh_uh[interior_id];
-    sh_vh[right_id] =  sh_vh[interior_id];
-
     int global_id = ID_2D(0, j + 1);
     int local_id = SH_ID(local_i, local_j + 1);
 
@@ -230,13 +226,6 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const floa
   // === BOTTOM ===
   if (local_i == 1) 
   {
-    int bottom_id = SH_ID(0, local_j);
-    int interior_id = SH_ID(1, local_j);
-
-    sh_h[bottom_id] = sh_h[interior_id];
-    sh_uh[bottom_id] = sh_uh[interior_id];
-    sh_vh[bottom_id] = -sh_vh[interior_id];
-
     int global_id = ID_2D(i - 1, 0);
     int local_id = SH_ID(local_i - 1, local_j);
 
@@ -253,13 +242,6 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const floa
   // === TOP ===
   if (local_i == blockDim_y) 
   {
-    int top_id = SH_ID(blockDim_y + 1, local_j);
-    int interior_id = SH_ID(blockDim_y, local_j);
-
-    sh_h[top_id] = sh_h[interior_id];
-    sh_uh[top_id] = sh_uh[interior_id];
-    sh_vh[top_id] = -sh_vh[interior_id];
-
     int global_id = ID_2D(i + 1, 0);
     int local_id = SH_ID(local_i + 1, local_j);
 
@@ -273,6 +255,58 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const floa
   }
 
   #undef ID_2D
+  #undef SH_ID
+}
+// ****************************************************************************** //
+
+__device__ void applyReflectiveBCs(float* sh_h, float* sh_uh, float* sh_vh, int local_i, int local_j, int blockDim_x, int blockDim_y)
+{
+  #define SH_ID(i, j) ((i) * (blockDim.x + 2) + (j))
+
+  // Left boundary: reflect uh
+  if (local_j == 1) 
+  {
+    int left_id = SH_ID(local_i, 0);
+    int interior_id = SH_ID(local_i, 1);
+
+    sh_h[left_id] = sh_h[interior_id];
+    sh_uh[left_id] = -sh_uh[interior_id];
+    sh_vh[left_id] =  sh_vh[interior_id];
+  }
+
+  // Right boundary: reflect uh
+  if (local_j == blockDim_x) 
+  {
+    int right_id = SH_ID(local_i, blockDim_x + 1);
+    int interior_id = SH_ID(local_i, blockDim_x);
+
+    sh_h[right_id] = sh_h[interior_id];
+    sh_uh[right_id] = -sh_uh[interior_id];
+    sh_vh[right_id] =  sh_vh[interior_id];
+  }
+
+  // Bottom boundary: reflect vh
+  if (local_i == 1) 
+  {
+    int bottom_id = SH_ID(0, local_j);
+    int interior_id = SH_ID(1, local_j);
+
+    sh_h[bottom_id] = sh_h[interior_id];
+    sh_uh[bottom_id] = sh_uh[interior_id];
+    sh_vh[bottom_id] = -sh_vh[interior_id];
+  }
+
+  // Top boundary: reflect vh
+  if (local_i == blockDim_y) 
+  {
+    int top_id = SH_ID(blockDim_y + 1, local_j);
+    int interior_id = SH_ID(blockDim_y, local_j);
+
+    sh_h[top_id] = sh_h[interior_id];
+    sh_uh[top_id] = sh_uh[interior_id];
+    sh_vh[top_id] = -sh_vh[interior_id];
+  }
+
   #undef SH_ID
 }
 // ****************************************************************************************************************** //
@@ -296,6 +330,9 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
   float *sh_guh = sh_fuh + (blockDim.y + 2) * (blockDim.x + 2);
   float *sh_fvh = sh_guh + (blockDim.y + 2) * (blockDim.x + 2);
   float *sh_gvh = sh_fvh + (blockDim.y + 2) * (blockDim.x + 2);
+  float *sh_hm  = sh_gvh + (blockDim.y + 2) * (blockDim.x + 2);
+  float *sh_uhm =  sh_hm + (blockDim.y + 2) * (blockDim.x + 2);
+  float *sh_vhm = sh_uhm + (blockDim.y + 2) * (blockDim.x + 2);
 
   #define SH_ID(i, j) ((i) * (blockDim.x + 2) + (j)) 
   #define ID_2D(i, j) ((i) * (nx + 2) + (j))
@@ -311,20 +348,21 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
   }
   __syncthreads();
 
-  haloExchange(sh_h, sh_uh, sh_vh, h, uh, vh, i, j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
-  __syncthreads();
-
   float programRuntime = 0.0f;
-  float g = 9.81f;
-  float g_half = 0.5f * g;
 
   while (programRuntime < finalRuntime)
   {
     programRuntime += dt;
 
+    haloExchange(sh_h, sh_uh, sh_vh, h, uh, vh, i, j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
+    __syncthreads();
+
     if (i < ny + 2 && j < nx + 2)
     {
       int local_id = SH_ID(local_i, local_j);
+
+      float g = 9.81f;
+      float g_half = 0.5f * g;
 
       float h_val  = sh_h[local_id];
       float uh_val = sh_uh[local_id];
@@ -346,7 +384,6 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
       sh_guh[local_id] = uv * inv_h;
       sh_gvh[local_id] = __fmaf_rn(vh2, inv_h, g_half * h2);
     }
-
     __syncthreads();
 
     if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
@@ -387,43 +424,36 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
       float gvh_b = sh_gvh[local_id_bottom];
       float gvh_t = sh_gvh[local_id_top];
 
-      float new_h  = __fmaf_rn(-lambda_x, (fh_r - fh_l),
+      sh_hm[local_id]  = __fmaf_rn(-lambda_x, (fh_r - fh_l),
                        __fmaf_rn(-lambda_y, (gh_t - gh_b),
                        0.25f * (h_l + h_r + h_b + h_t)));
 
-      float new_uh = __fmaf_rn(-lambda_x, (fuh_r - fuh_l),
+      sh_uhm[local_id] = __fmaf_rn(-lambda_x, (fuh_r - fuh_l),
                        __fmaf_rn(-lambda_y, (guh_t - guh_b),
                        0.25f * (uh_l + uh_r + uh_b + uh_t)));
 
-      float new_vh = __fmaf_rn(-lambda_x, (fvh_r - fvh_l),
+      sh_vhm[local_id] = __fmaf_rn(-lambda_x, (fvh_r - fvh_l),
                        __fmaf_rn(-lambda_y, (gvh_t - gvh_b),
                        0.25f * (vh_l + vh_r + vh_b + vh_t)));
-
-      sh_h[local_id]  = new_h;
-      sh_uh[local_id] = new_uh;
-      sh_vh[local_id] = new_vh;
     }
-
     __syncthreads();
 
-    // At the END of each time step (before haloExchange)
-    if (i < ny + 2 && j < nx + 2) 
+    if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
     {
-      int global_id = ID_2D(i, j);
-      int local_id = SH_ID(local_i, local_j);
+      local_id = SH_ID(local_i, local_j);
 
-      h[global_id]  = sh_h[local_id];
-      uh[global_id] = sh_uh[local_id];
-      vh[global_id] = sh_vh[local_id];
+      sh_h[local_id] = sh_hm[local_id];
+      sh_uh[local_id] = sh_uhm[local_id];
+      sh_vh[local_id] = sh_vhm[local_id];
     }
     __syncthreads();
 
-    haloExchange(sh_h, sh_uh, sh_vh, h, uh, vh, i, j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
+    applyReflectiveBCs(sh_h, sh_uh, sh_vh, local_i, local_j, blockDim.x, blockDim.y);
     __syncthreads();
   }
 
   // Write final result to global memory
-  if (i < ny + 2 && j < nx + 2)
+  if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
   {
     int global_id = ID_2D(i, j);
     int local_id = SH_ID(local_i, local_j);
@@ -499,13 +529,13 @@ int main ( int argc, char *argv[] )
   float lambda_y = 0.5f * dt / dy;
 
   // Define the block and grid sizes
-  int dimx = 32;
-  int dimy = 24;
+  int dimx = 16;
+  int dimy = 16;
   dim3 blockSize(dimx, dimy);
   dim3 gridSize((nx + 2 + blockSize.x - 1) / blockSize.x, (ny + 2 + blockSize.y - 1) / blockSize.y);
 
   // Calculate shared memory size
-  size_t sharedMemSize = ((9 * (blockSize.x+2) * (blockSize.y+2) * sizeof(float)) + 127) & ~127;
+  size_t sharedMemSize = ((12 * (blockSize.x+2) * (blockSize.y+2) * sizeof(float)) + 127) & ~127;
 
   int boundaryBlockSize = 1024;
   int gridSizeY = (ny + boundaryBlockSize - 1) / boundaryBlockSize; 
