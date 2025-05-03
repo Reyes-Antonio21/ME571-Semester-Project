@@ -301,7 +301,7 @@ __device__ void applyReflectiveBCs(float* sh_h, float* sh_uh, float* sh_vh, int 
 }
 // ****************************************************************************************************************** //
 
-__device__ void writeGlobalToInterior(float* d_mem, const float* sh_mem, int i, int j, int local_i, int local_j, int nx, int ny, int blockDim_x, int blockDim_y)
+__device__ void writeGlobalToInterior(const float* d_mem, float* sh_mem, int i, int j, int local_i, int local_j, int nx, int ny, int blockDim_x, int blockDim_y)
 {
   #define SH_ID(i, j) ((i) * (blockDim.x + 2) + (j)) 
   #define ID_2D(i, j) ((i) * (nx + 2) + (j))
@@ -311,7 +311,7 @@ __device__ void writeGlobalToInterior(float* d_mem, const float* sh_mem, int i, 
     int global_id = ID_2D(i, j);
     int local_id = SH_ID(local_i, local_j);
 
-    sh_mem[local_id]  = d_mem[global_id];
+    sh_mem[local_id] = d_mem[global_id];
   }
 
   #undef SH_ID
