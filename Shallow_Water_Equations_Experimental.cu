@@ -196,7 +196,7 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const floa
 
     if (global_id >= 0) 
     {
-      int global_id = ID_2D(i, global_id_j);
+      int global_id = ID_2D(i, j - 1);
 
       sh_h[local_id]  = h[global_id];
       sh_uh[local_id] = uh[global_id];
@@ -219,7 +219,7 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const floa
 
     if (global_id < nx + 2) 
     {
-      int global_id = ID_2D(i, global_id_j);
+      int global_id = ID_2D(i, j + 1);
 
       sh_h[local_id]  = h[global_id];
       sh_uh[local_id] = uh[global_id];
@@ -242,7 +242,7 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const floa
 
     if (global_id >= 0) 
     {
-      int global_id = ID_2D(global_id_i, j);
+      int global_id = ID_2D(i - 1, j);
 
       sh_h[local_id]  = h[global_id];
       sh_uh[local_id] = uh[global_id];
@@ -265,7 +265,7 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const floa
 
     if (global_id < ny + 2) 
     { 
-      int global_id = ID_2D(global_id_i, j);
+      int global_id = ID_2D(i + 1, j);
       sh_h[local_id]  = h[global_id];
       sh_uh[local_id] = uh[global_id];
       sh_vh[local_id] = vh[global_id];
@@ -300,7 +300,7 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
   #define SH_ID(i, j) ((i) * (blockDim.x + 2) + (j)) 
   #define ID_2D(i, j) ((i) * (nx + 2) + (j))
 
-  if (i < ny + 2 && j < nx + 2)
+  if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
   {
     int global_id = ID_2D(i, j);
     int local_id = SH_ID(local_i, local_j);
