@@ -306,12 +306,15 @@ __device__ void writeGlobalToInterior(const float* d_mem, float* sh_mem, int i, 
   #define SH_ID(i, j) ((i) * (blockDim.x + 2) + (j)) 
   #define ID_2D(i, j) ((i) * (nx + 2) + (j))
 
-  if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
+  if (local_i > 0 && local_i < blockDim_y - 1 && local_j > 0 && local_j < blockDim_x - 1)
   {
-    int global_id = ID_2D(i, j);
-    int local_id = SH_ID(local_i, local_j);
+    if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
+    {
+      int global_id = ID_2D(i, j);
+      int local_id = SH_ID(local_i, local_j);
 
-    sh_mem[local_id] = d_mem[global_id];
+      sh_mem[local_id] = d_mem[global_id];
+    }
   }
 
   #undef SH_ID
@@ -324,15 +327,17 @@ __device__ void writeInteriorToGlobal(float* d_mem, const float* sh_mem, int i, 
   #define SH_ID(i, j) ((i) * (blockDim.x + 2) + (j)) 
   #define ID_2D(i, j) ((i) * (nx + 2) + (j))
 
-  // Only write interior threads
-  if (local_i > 0 && local_i < blockDim_y + 1 && local_j > 0 && local_j < blockDim_x + 1)
+  if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
   {
-    int global_id = ID_2D(i, j);
-    int local_id = SH_ID(local_i, local_j);
+    if (local_i > 0 && local_i < blockDim_y - 1 && local_j > 0 && local_j < blockDim_x - 1)
+    {
+      int global_id = ID_2D(i, j);
+      int local_id = SH_ID(local_i, local_j);
 
-    d_mem[global_id] = sh_mem[local_id];
+      d_mem[global_id] = sh_mem[local_id];
+    }
   }
-
+  
   #undef SH_ID
   #undef ID_2D
 }
@@ -634,6 +639,8 @@ int main ( int argc, char *argv[] )
     applyBottomBoundary<<<gridSizeX, boundaryBlockSize>>>(d_h, d_uh, d_vh, nx, ny);
 
     applyTopBoundary<<<gridSizeX, boundaryBlockSize>>>(d_h, d_uh, d_vh, nx, ny);
+
+    cudaDeviceSynchronize();
 
     if(k == 1 && nx == 200)
     {
