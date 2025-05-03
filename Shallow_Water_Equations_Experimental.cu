@@ -301,6 +301,25 @@ __device__ void applyReflectiveBCs(float* sh_h, float* sh_uh, float* sh_vh, int 
 }
 // ****************************************************************************************************************** //
 
+__device__ void writeInteriorToGlobal(float* d_mem, const float* sh_mem, int i, int j, int local_i, int local_j, int nx, int ny, int blockDim_x, int blockDim_y)
+{
+  #define SH_ID(i, j) ((i) * (blockDim.x + 2) + (j)) 
+  #define ID_2D(i, j) ((i) * (nx + 2) + (j))
+
+  // Only write interior threads
+  if (local_i > 0 && local_i < blockDim_y + 1 && local_j > 0 && local_j < blockDim_x + 1)
+  {
+    int global_id = ID_2D(i, j);
+    int local_id = SH_ID(local_i, local_j);
+
+    d_mem[global_id] = sh_mem[local_id];
+  }
+
+  #undef SH_ID
+  #undef ID_2D
+}
+
+
 __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh, float *__restrict__ vh, float lambda_x, float lambda_y, int nx, int ny, float dt, float finalRuntime)
 {
   unsigned int i = blockIdx.y * blockDim.y + threadIdx.y + 1;
@@ -441,27 +460,15 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     applyReflectiveBCs(sh_h, sh_uh, sh_vh, local_i, local_j, blockDim.x, blockDim.y);
     __syncthreads();
 
-    if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1) 
-    {
-      int global_id = ID_2D(i, j);
-      int local_id = SH_ID(local_i, local_j);
-
-      h[global_id]  = sh_h[local_id];
-      uh[global_id] = sh_uh[local_id];
-      vh[global_id] = sh_vh[local_id];
-    }
+    writeInteriorToGlobal(h, sh_h, i, j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
+    writeInteriorToGlobal(uh, sh_uh, i, j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
+    writeInteriorToGlobal(vh, sh_vh, i, j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
+    __syncthreads();
   }
 
-  // Write final result to global memory
-  if (i > 0 && i < ny + 1 && j > 0 && j < nx + 1)
-  {
-    int global_id = ID_2D(i, j);
-    int local_id = SH_ID(local_i, local_j);
-
-    h[global_id]  = sh_h[local_id];
-    uh[global_id] = sh_uh[local_id];
-    vh[global_id] = sh_vh[local_id];
-  }
+  writeInteriorToGlobal(h, sh_h, i, j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
+  writeInteriorToGlobal(uh, sh_uh, i, j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
+  writeInteriorToGlobal(vh, sh_vh, i, j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);  
 
   #undef ID_2D
   #undef SH_ID
@@ -529,8 +536,8 @@ int main ( int argc, char *argv[] )
   float lambda_y = 0.5f * dt / dy;
 
   // Define the block and grid sizes
-  int dimx = 16;
-  int dimy = 16;
+  int dimx = 32;
+  int dimy = 20;
   dim3 blockSize(dimx, dimy);
   dim3 gridSize((nx + 2 + blockSize.x - 1) / blockSize.x, (ny + 2 + blockSize.y - 1) / blockSize.y);
 
