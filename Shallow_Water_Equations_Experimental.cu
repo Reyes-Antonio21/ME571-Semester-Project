@@ -294,8 +294,8 @@ __device__ void writeGlobalMemToSharedMem(float* sh_mem, const float *__restrict
   # define ID_2D(i, j) ((i) * (nx + 2) + (j))
 
   // Compute global memory indices with +1 offset for ghost cells
-  int global_i = global_i + 1;
-  int global_j = global_j + 1;
+  global_i = global_i + 1;
+  global_j = global_j + 1;
 
   // === Load interior cell ===
   sh_mem[SH_ID(local_i + 1, local_j + 1)] = d_mem[ID_2D(global_i, global_j)];
@@ -339,8 +339,8 @@ __device__ void writeSharedMemToGlobalMem(const float *__restrict__ sh_mem, floa
   # define ID_2D(i, j) ((i) * (nx + 2) + (j))
 
   // Compute global offset into the interior (skip global ghost layer)
-  int global_i = global_i + 1;
-  int global_j = global_j + 1;
+  global_i = global_i + 1;
+  global_j = global_j + 1;
 
   // Compute shared memory interior location (skip shared memory halo layer)
   int local_i_offset = local_i + 1;
