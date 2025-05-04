@@ -335,17 +335,17 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
   extern __shared__ float sharedmemory[];
 
   float *sh_h   = sharedmemory;
-  float *sh_uh  = sh_h   + (blockDim.y + 2) * (blockDim.x + 2);
-  float *sh_vh  = sh_uh  + (blockDim.y + 2) * (blockDim.x + 2);
-  float *sh_fh  = sh_vh  + (blockDim.y + 2) * (blockDim.x + 2);
-  float *sh_gh  = sh_fh  + (blockDim.y + 2) * (blockDim.x + 2);
-  float *sh_fuh = sh_gh  + (blockDim.y + 2) * (blockDim.x + 2);
-  float *sh_guh = sh_fuh + (blockDim.y + 2) * (blockDim.x + 2);
-  float *sh_fvh = sh_guh + (blockDim.y + 2) * (blockDim.x + 2);
-  float *sh_gvh = sh_fvh + (blockDim.y + 2) * (blockDim.x + 2);
-  float *sh_hm  = sh_gvh + (blockDim.y + 2) * (blockDim.x + 2);
-  float *sh_uhm =  sh_hm + (blockDim.y + 2) * (blockDim.x + 2);
-  float *sh_vhm = sh_uhm + (blockDim.y + 2) * (blockDim.x + 2);
+  float *sh_uh  = sh_h   + (blockDim.y) * (blockDim.x);
+  float *sh_vh  = sh_uh  + (blockDim.y) * (blockDim.x);
+  float *sh_fh  = sh_vh  + (blockDim.y) * (blockDim.x);
+  float *sh_gh  = sh_fh  + (blockDim.y) * (blockDim.x);
+  float *sh_fuh = sh_gh  + (blockDim.y) * (blockDim.x);
+  float *sh_guh = sh_fuh + (blockDim.y) * (blockDim.x);
+  float *sh_fvh = sh_guh + (blockDim.y) * (blockDim.x);
+  float *sh_gvh = sh_fvh + (blockDim.y) * (blockDim.x);
+  float *sh_hm  = sh_gvh + (blockDim.y) * (blockDim.x);
+  float *sh_uhm =  sh_hm + (blockDim.y) * (blockDim.x);
+  float *sh_vhm = sh_uhm + (blockDim.y) * (blockDim.x);
 
   #define SH_ID(local_i, local_j) ((local_i) * (blockDim.x + 2) + (local_j)) 
   #define ID_2D(global_i, global_j) ((global_i) * (nx + 2) + (global_j))
@@ -456,7 +456,7 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
       sh_vh[local_id] = sh_vhm[local_id];
     }
     __syncthreads();
-    
+
     applyReflectiveBCs(sh_h, sh_uh, sh_vh, local_i, local_j, blockDim.x, blockDim.y, blockIdx.x, blockIdx.y, gridDim.x, gridDim.y);
     __syncthreads();
 
