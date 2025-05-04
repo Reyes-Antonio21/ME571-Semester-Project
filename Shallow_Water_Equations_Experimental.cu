@@ -282,7 +282,7 @@ __device__ void applyReflectiveBCs(float* sh_h, float* sh_uh, float* sh_vh, int 
 }
 // ****************************************************************************************************************** //
 
-__device__ void writeGlobalMemToSharedMem(float* sh_mem, const float* __restrict__ d_mem, int nx, int ny, int global_i, int global_j, int local_i, int local_j)
+__device__ void writeGlobalMemToSharedMem(float* sh_mem, const float *__restrict__ d_mem, int nx, int ny, int global_i, int global_j, int local_i, int local_j)
 {
   // Define shared and global indexing macros
   # define SH_ID(i, j) ((i) * (blockDim.x + 2) + (j))
@@ -324,10 +324,10 @@ __device__ void writeGlobalMemToSharedMem(float* sh_mem, const float* __restrict
 }
 // ****************************************************************************************************************** //
 
-__device__ void writeSharedMemToGlobalMem(const float* __restrict__ sh_mem, float* d_mem, int nx, int ny, int global_i, int global_j, int local_i, int local_j)
+__device__ void writeSharedMemToGlobalMem(const float *__restrict__ sh_mem, float* d_mem, int nx, int ny, int global_i, int global_j, int local_i, int local_j)
 {
   # define SH_ID(i, j) ((i) * (blockDim.x + 2) + (j))
-  # define ID_2D(i, j) ((i) * (nx + 2) + (j))  // global domain includes ghost cells
+  # define ID_2D(i, j) ((i) * (nx + 2) + (j))
 
   // Compute block offset (global start index for this block)
   int block_offset_x = blockIdx.x * blockDim.x;
@@ -415,9 +415,10 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     haloExchange(sh_h, sh_uh, sh_vh, h, uh, vh, nx, ny, global_i, global_j, local_i, local_j);
     __syncthreads();
 
+    // === Compute Fluxes (write only to interior region) ===
     if (local_i < blockDim.y && local_j < blockDim.x)
     {
-      int local_id = SH_ID(local_i, local_j);
+      int local_id = SH_ID(local_i + 1, local_j + 1);  // corrected offset
 
       float g = 9.81f;
       float g_half = 0.5f * g;
@@ -444,13 +445,14 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     }
     __syncthreads();
 
+    // === Compute Updated Values Using Stencil ===
     if (local_i > 0 && local_i < blockDim.y - 1 && local_j > 0 && local_j < blockDim.x - 1)
     {
-      int local_id = SH_ID(local_i, local_j);
-      int local_id_left   = SH_ID(local_i, local_j - 1);
-      int local_id_right  = SH_ID(local_i, local_j + 1);
-      int local_id_bottom = SH_ID(local_i - 1, local_j);
-      int local_id_top    = SH_ID(local_i + 1, local_j);
+      int local_id = SH_ID(local_i + 1, local_j + 1);  // offset center
+      int local_id_left   = SH_ID(local_i + 1, local_j);     // left neighbor
+      int local_id_right  = SH_ID(local_i + 1, local_j + 2); // right neighbor
+      int local_id_bottom = SH_ID(local_i, local_j + 1);     // bottom neighbor
+      int local_id_top    = SH_ID(local_i + 2, local_j + 1); // top neighbor
 
       float h_l  = sh_h[local_id_left];
       float h_r  = sh_h[local_id_right];
@@ -482,29 +484,31 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
       float gvh_b = sh_gvh[local_id_bottom];
       float gvh_t = sh_gvh[local_id_top];
 
-      sh_hm[local_id]  = __fmaf_rn(-lambda_x, (fh_r - fh_l),
-                       __fmaf_rn(-lambda_y, (gh_t - gh_b),
-                       0.25f * (h_l + h_r + h_b + h_t)));
+      sh_hm[local_id] = __fmaf_rn(-lambda_x, (fh_r - fh_l),
+                        __fmaf_rn(-lambda_y, (gh_t - gh_b),
+                        0.25f * (h_l + h_r + h_b + h_t)));
 
       sh_uhm[local_id] = __fmaf_rn(-lambda_x, (fuh_r - fuh_l),
-                       __fmaf_rn(-lambda_y, (guh_t - guh_b),
-                       0.25f * (uh_l + uh_r + uh_b + uh_t)));
+                        __fmaf_rn(-lambda_y, (guh_t - guh_b),
+                        0.25f * (uh_l + uh_r + uh_b + uh_t)));
 
       sh_vhm[local_id] = __fmaf_rn(-lambda_x, (fvh_r - fvh_l),
-                       __fmaf_rn(-lambda_y, (gvh_t - gvh_b),
-                       0.25f * (vh_l + vh_r + vh_b + vh_t)));
+                        __fmaf_rn(-lambda_y, (gvh_t - gvh_b),
+                        0.25f * (vh_l + vh_r + vh_b + vh_t)));
     }
     __syncthreads();
 
+    // === Update Interior Shared Memory Values ===
     if (local_i > 0 && local_i < blockDim.y - 1 && local_j > 0 && local_j < blockDim.x - 1)
     {
-      int local_id = SH_ID(local_i, local_j);
+      int local_id = SH_ID(local_i + 1, local_j + 1);  // use +1 offset for shared memory
 
-      sh_h[local_id] = sh_hm[local_id];
+      sh_h[local_id]  = sh_hm[local_id];
       sh_uh[local_id] = sh_uhm[local_id];
       sh_vh[local_id] = sh_vhm[local_id];
     }
     __syncthreads();
+
     
     applyReflectiveBCs(sh_h, sh_uh, sh_vh, local_i, local_j);
     __syncthreads();
