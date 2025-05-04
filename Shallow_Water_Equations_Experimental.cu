@@ -366,7 +366,7 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     haloExchange(sh_h, sh_uh, sh_vh, h, uh, vh, nx, ny, global_i, global_j, local_i, local_j, blockDim.x, blockDim.y);
     __syncthreads();
 
-    if (local_i < blockDim.y && local_j < blockDim.x)
+    if (local_i > 0 && local_i < blockDim.y - 1 && local_j > 0 && local_j < blockDim.x - 1)
     {
       int local_id = SH_ID(local_i, local_j);
 
