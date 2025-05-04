@@ -512,7 +512,7 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     }
     __syncthreads();
     
-    applyReflectiveBCs(sh_h, sh_uh, sh_vh, local_i, local_j)
+    applyReflectiveBCs(sh_h, sh_uh, sh_vh, local_i, local_j);
     __syncthreads();
 
     writeSharedMemToGlobalMem(sh_h, h, nx, ny, global_i, global_j, local_i, local_j);
