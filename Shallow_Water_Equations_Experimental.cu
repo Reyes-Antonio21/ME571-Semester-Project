@@ -592,7 +592,7 @@ int main ( int argc, char *argv[] )
 
   // Define the block and grid sizes
   int dimx = 32;
-  int dimy = 20;
+  int dimy = 16;
   dim3 blockSize(dimx, dimy);
   dim3 gridSize((nx + 2 + blockSize.x - 1) / blockSize.x, (ny + 2 + blockSize.y - 1) / blockSize.y);
 
