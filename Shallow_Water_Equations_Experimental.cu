@@ -178,53 +178,59 @@ __global__ void applyTopBoundary(float *h, float *uh, float *vh, int nx, int ny)
 
 __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const float* h, const float* uh, const float* vh, int nx, int ny, int global_i, int global_j, int local_i, int local_j)
 {
-  #define ID_2D(i, j) ((i) * (nx + 2) + (j))
-  #define SH_ID(i, j) ((i) * (blockDim.x + 2) + (j))
-
+  // Global memory layout includes halos: (nx+2) × (ny+2) total size
+  // Define index calculations for global and shared memory
+  # define ID_2D(i, j) ((i) * (nx + 2) + (j))
+  # define SH_ID(i, j) ((i) * (blockDim.x + 2) + (j))
+  
   // === LEFT HALO ===
-  if (local_j == 0 && global_j > 0) // avoid accessing global_j - 1 < 0
-  {
-    int global_id = ID_2D(global_i, global_j - 1);
-    int local_id  = SH_ID(local_i + 1, 0);
-
-    sh_h[local_id]  = h[global_id];
-    sh_uh[local_id] = uh[global_id];
-    sh_vh[local_id] = vh[global_id];
-  }
-
-  // === RIGHT HALO ===
-  if (local_j == blockDim.x - 1 && global_j < nx - 1)
-  {
-    int global_id = ID_2D(global_i, global_j + 1);
-    int local_id  = SH_ID(local_i + 1, blockDim.x + 1);
-
-    sh_h[local_id]  = h[global_id];
-    sh_uh[local_id] = uh[global_id];
-    sh_vh[local_id] = vh[global_id];
-  }
-
-  // === BOTTOM HALO ===
-  if (local_i == 0 && global_i > 0)
-  {
-    int global_id = ID_2D(global_i - 1, global_j);
-    int local_id  = SH_ID(0, local_j + 1);
-
-    sh_h[local_id]  = h[global_id];
-    sh_uh[local_id] = uh[global_id];
-    sh_vh[local_id] = vh[global_id];
-  }
-
-  // === TOP HALO ===
-  if (local_i == blockDim.y - 1 && global_i < ny - 1)
-  {
+  if (local_j == 0 && global_j > 0) {
+    // For the left halo, we need data from the cell to the left (global_j-1)
+    // In global memory, we need to add 1 to account for the halo offset
     int global_id = ID_2D(global_i + 1, global_j);
-    int local_id  = SH_ID(blockDim.y + 1, local_j + 1);
-
+    int local_id  = SH_ID(local_i, 0);
+    
     sh_h[local_id]  = h[global_id];
     sh_uh[local_id] = uh[global_id];
     sh_vh[local_id] = vh[global_id];
   }
-
+  
+  // === RIGHT HALO ===
+  if (local_j == blockDim.x - 1 && global_j < nx - 1) {
+    // For the right halo, we need data from the cell to the right (global_j+1)
+    // In global memory, we need to add 1+1 to account for the halo offset and the +1
+    int global_id = ID_2D(global_i + 1, global_j + 2);
+    int local_id  = SH_ID(local_i, blockDim.x + 1);
+    
+    sh_h[local_id]  = h[global_id];
+    sh_uh[local_id] = uh[global_id];
+    sh_vh[local_id] = vh[global_id];
+  }
+  
+  // === BOTTOM HALO ===
+  if (local_i == 0 && global_i > 0) {
+    // For the bottom halo, we need data from the cell below (global_i-1)
+    // In global memory, we need to add 1 to j for the halo offset
+    int global_id = ID_2D(global_i, global_j + 1);
+    int local_id  = SH_ID(0, local_j);
+    
+    sh_h[local_id]  = h[global_id];
+    sh_uh[local_id] = uh[global_id];
+    sh_vh[local_id] = vh[global_id];
+  }
+  
+  // === TOP HALO ===
+  if (local_i == blockDim.y - 1 && global_i < ny - 1) {
+    // For the top halo, we need data from the cell above (global_i+1)
+    // In global memory, we need to add 1+1 to i for the halo offset and the +1
+    int global_id = ID_2D(global_i + 2, global_j + 1);
+    int local_id  = SH_ID(blockDim.y + 1, local_j);
+    
+    sh_h[local_id]  = h[global_id];
+    sh_uh[local_id] = uh[global_id];
+    sh_vh[local_id] = vh[global_id];
+  }
+  
   #undef ID_2D
   #undef SH_ID
 }
