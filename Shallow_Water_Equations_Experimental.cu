@@ -179,7 +179,7 @@ __global__ void applyTopBoundary(float *h, float *uh, float *vh, int nx, int ny)
 __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const float* h, const float* uh, const float* vh, int nx, int ny, int global_i, int global_j, int local_i, int local_j, int blockDim_x, int blockDim_y)
 {
   #define ID_2D(i, j) ((i) * (nx + 2) + (j))
-  #define SH_ID(i, j) ((i) * (blockDim_x + 2) + (j))
+  #define SH_ID(i, j) ((i) * (blockDim_x) + (j))
 
   // === LEFT HALO ===
   if (local_j == 0 && global_j > 0)
@@ -232,7 +232,7 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const floa
 
 __device__ void applyReflectiveBCs(float* sh_h, float* sh_uh, float* sh_vh, int local_i, int local_j, int blockDim_x, int blockDim_y, int blockIdx_x, int blockIdx_y, int gridDim_x, int gridDim_y)
 {
-  #define SH_ID(i, j) ((i) * (blockDim_x + 2) + (j))
+  #define SH_ID(i, j) ((i) * (blockDim_x) + (j))
 
   // LEFT PHYSICAL BOUNDARY
   if (blockIdx_x == 0 && local_j == 0)
@@ -347,7 +347,7 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
   float *sh_uhm =  sh_hm + (blockDim.y) * (blockDim.x);
   float *sh_vhm = sh_uhm + (blockDim.y) * (blockDim.x);
 
-  #define SH_ID(local_i, local_j) ((local_i) * (blockDim.x + 2) + (local_j)) 
+  #define SH_ID(local_i, local_j) ((local_i) * (blockDim.x) + (local_j)) 
   #define ID_2D(global_i, global_j) ((global_i) * (nx + 2) + (global_j))
 
   __syncthreads();
