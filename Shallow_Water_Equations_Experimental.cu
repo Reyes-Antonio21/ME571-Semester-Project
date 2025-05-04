@@ -176,125 +176,106 @@ __global__ void applyTopBoundary(float *h, float *uh, float *vh, int nx, int ny)
 }
 // ****************************************************************************** //
 
-__device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const float* h, const float* uh, const float* vh, int global_i, int global_j, int local_i, int local_j, int nx, int ny, int blockDim_x, int blockDim_y)
+__device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const float* h, const float* uh, const float* vh, int nx, int ny, int global_i, int global_j, int local_i, int local_j, int blockDim_x, int blockDim_y)
 {
-  #define SH_ID(local_i, local_j) ((local_i) * (blockDim.x + 2) + (local_j)) 
-  #define ID_2D(global_i, global_j) ((global_i) * (nx + 2) + (global_j))
+  #define ID_2D(i, j) ((i) * (nx + 2) + (j))
+  #define SH_ID(i, j) ((i) * (blockDim_x + 2) + (j))
 
-  // === LEFT ===
-  if (local_j == 1)
+  // === LEFT HALO ===
+  if (local_j == 0 && global_j > 0)
   {
-    int global_id = ID_2D(0, global_j - 1);
-    int local_id = SH_ID(local_i, local_j - 1);
+    int global_id = ID_2D(global_i, global_j - 1);
+    int local_id  = SH_ID(local_i, 0);
 
-    if (global_id >= 0) 
-    {
-      int global_id = ID_2D(global_i, global_j - 1);
-
-      sh_h[local_id]  = h[global_id];
-      sh_uh[local_id] = uh[global_id];
-      sh_vh[local_id] = vh[global_id];
-    }
+    sh_h[local_id]  = h[global_id];
+    sh_uh[local_id] = uh[global_id];
+    sh_vh[local_id] = vh[global_id];
   }
 
-  // === RIGHT ===
-  if (local_j == blockDim_x) 
+  // === RIGHT HALO ===
+  if (local_j == blockDim_x - 1 && global_j < nx + 1)
   {
-    int global_id = ID_2D(0, global_j + 1);
-    int local_id = SH_ID(local_i, local_j + 1);
+    int global_id = ID_2D(global_i, global_j + 1);
+    int local_id  = SH_ID(local_i, blockDim_x + 1);
 
-    if (global_id < nx + 2) 
-    {
-      int global_id = ID_2D(global_i, global_j + 1);
-
-      sh_h[local_id]  = h[global_id];
-      sh_uh[local_id] = uh[global_id];
-      sh_vh[local_id] = vh[global_id];
-    }
+    sh_h[local_id]  = h[global_id];
+    sh_uh[local_id] = uh[global_id];
+    sh_vh[local_id] = vh[global_id];
   }
 
-  // === BOTTOM ===
-  if (local_i == 1) 
+  // === BOTTOM HALO ===
+  if (local_i == 0 && global_i > 0)
   {
-    int global_id = ID_2D(global_i - 1, 0);
-    int local_id = SH_ID(local_i - 1, local_j);
+    int global_id = ID_2D(global_i - 1, global_j);
+    int local_id  = SH_ID(0, local_j);
 
-    if (global_id >= 0) 
-    {
-      int global_id = ID_2D(global_i - 1, global_j);
-
-      sh_h[local_id]  = h[global_id];
-      sh_uh[local_id] = uh[global_id];
-      sh_vh[local_id] = vh[global_id];
-    }
+    sh_h[local_id]  = h[global_id];
+    sh_uh[local_id] = uh[global_id];
+    sh_vh[local_id] = vh[global_id];
   }
 
-  // === TOP ===
-  if (local_i == blockDim_y) 
+  // === TOP HALO ===
+  if (local_i == blockDim_y - 1 && global_i < ny + 1)
   {
-    int global_id = ID_2D(global_i + 1, 0);
-    int local_id = SH_ID(local_i + 1, local_j);
+    int global_id = ID_2D(global_i + 1, global_j);
+    int local_id  = SH_ID(blockDim_y + 1, local_j);
 
-    if (global_id < ny + 2) 
-    { 
-      int global_id = ID_2D(global_i + 1, global_j);
-      sh_h[local_id]  = h[global_id];
-      sh_uh[local_id] = uh[global_id];
-      sh_vh[local_id] = vh[global_id];
-    }
+    sh_h[local_id]  = h[global_id];
+    sh_uh[local_id] = uh[global_id];
+    sh_vh[local_id] = vh[global_id];
   }
 
   #undef ID_2D
   #undef SH_ID
 }
-// ****************************************************************************** //
+// ****************************************************************************************************************** //
 
-__device__ void applyReflectiveBCs(float* sh_h, float* sh_uh, float* sh_vh, int local_i, int local_j, int blockDim_x, int blockDim_y)
+__device__ void applyReflectiveBCs(float* sh_h, float* sh_uh, float* sh_vh, int local_i, int local_j, int blockDim_x, int blockDim_y, int blockIdx_x, int blockIdx_y, int gridDim_x, int gridDim_y)
 {
-  #define SH_ID(local_i, local_j) ((local_i) * (blockDim.x + 2) + (local_j))
+  #define SH_ID(i, j) ((i) * (blockDim_x + 2) + (j))
 
-  // Left boundary: reflect uh
-  if (local_j == 1) 
+  // LEFT PHYSICAL BOUNDARY
+  if (blockIdx_x == 0 && local_j == 0)
   {
-    int left_id = SH_ID(local_i, 0);
+    int halo_id     = SH_ID(local_i, 0);
     int interior_id = SH_ID(local_i, 1);
 
-    sh_h[left_id] = sh_h[interior_id];
-    sh_uh[left_id] = -sh_uh[interior_id];
-    sh_vh[left_id] =  sh_vh[interior_id];
+    sh_h[halo_id]  = sh_h[interior_id];
+    sh_uh[halo_id] = -sh_uh[interior_id];
+    sh_vh[halo_id] =  sh_vh[interior_id];
   }
 
-  // Right boundary: reflect uh
-  if (local_j == blockDim_x) 
+  // RIGHT PHYSICAL BOUNDARY
+  if (blockIdx_x == gridDim_x - 1 && local_j == blockDim_x - 1)
   {
-    int right_id = SH_ID(local_i, blockDim_x + 1);
+    int halo_id     = SH_ID(local_i, blockDim_x + 1);
     int interior_id = SH_ID(local_i, blockDim_x);
 
-    sh_h[right_id] = sh_h[interior_id];
-    sh_uh[right_id] = -sh_uh[interior_id];
-    sh_vh[right_id] =  sh_vh[interior_id];
+    sh_h[halo_id]  = sh_h[interior_id];
+    sh_uh[halo_id] = -sh_uh[interior_id];
+    sh_vh[halo_id] =  sh_vh[interior_id];
   }
 
-  // Bottom boundary: reflect vh
-  if (local_i == 1) 
+  // BOTTOM PHYSICAL BOUNDARY
+  if (blockIdx_y == 0 && local_i == 0)
   {
-    int bottom_id = SH_ID(0, local_j);
+    int halo_id     = SH_ID(0, local_j);
     int interior_id = SH_ID(1, local_j);
 
-    sh_h[bottom_id] = sh_h[interior_id];
-    sh_uh[bottom_id] = sh_uh[interior_id];
-    sh_vh[bottom_id] = -sh_vh[interior_id];
+    sh_h[halo_id]  = sh_h[interior_id];
+    sh_uh[halo_id] =  sh_uh[interior_id];
+    sh_vh[halo_id] = -sh_vh[interior_id];
   }
 
-  // Top boundary: reflect vh
-  if (local_i == blockDim_y) 
+  // TOP PHYSICAL BOUNDARY
+  if (blockIdx_y == gridDim_y - 1 && local_i == blockDim_y - 1)
   {
-    int top_id = SH_ID(blockDim_y + 1, local_j);
+    int halo_id     = SH_ID(blockDim_y + 1, local_j);
     int interior_id = SH_ID(blockDim_y, local_j);
 
-    sh_h[top_id] = sh_h[interior_id];
-    sh_uh[top_id] = sh_uh[interior_id];
-    sh_vh[top_id] = -sh_vh[interior_id];
+    sh_h[halo_id]  = sh_h[interior_id];
+    sh_uh[halo_id] =  sh_uh[interior_id];
+    sh_vh[halo_id] = -sh_vh[interior_id];
   }
 
   #undef SH_ID
@@ -306,7 +287,7 @@ __device__ void writeGlobalToInterior(const float* d_mem, float* sh_mem, int glo
   #define SH_ID(local_i, local_j) ((local_i) * (blockDim.x + 2) + (local_j)) 
   #define ID_2D(global_i, global_j) ((global_i) * (nx + 2) + (global_j))
 
-  if (local_i > 0 && local_i < blockDim_y - 1 && local_j > 0 && local_j < blockDim_x - 1)
+  if (local_i > 0 && local_i < blockDim_y - 2 && local_j > 0 && local_j < blockDim_x - 2)
   {
     if (global_i > 0 && global_i < ny + 1 && global_j > 0 && global_j < nx + 1)
     {
@@ -329,7 +310,7 @@ __device__ void writeInteriorToGlobal(float* d_mem, const float* sh_mem, int glo
 
   if (global_i > 0 && global_i < ny + 1 && global_j > 0 && global_j < nx + 1)
   {
-    if (local_i > 0 && local_i < blockDim_y - 1 && local_j > 0 && local_j < blockDim_x - 1)
+    if (local_i > 0 && local_i < blockDim_y - 2 && local_j > 0 && local_j < blockDim_x - 2)
     {
       int global_id = ID_2D(global_i, global_j);
       int local_id = SH_ID(local_i, local_j);
@@ -345,11 +326,11 @@ __device__ void writeInteriorToGlobal(float* d_mem, const float* sh_mem, int glo
 
 __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh, float *__restrict__ vh, float lambda_x, float lambda_y, int nx, int ny, float dt, float finalRuntime)
 {
-  unsigned int global_i = blockIdx.y * blockDim.y + threadIdx.y + 1;
-  unsigned int global_j = blockIdx.x * blockDim.x + threadIdx.x + 1;
+  unsigned int global_i = blockIdx.y * blockDim.y + threadIdx.y;
+  unsigned int global_j = blockIdx.x * blockDim.x + threadIdx.x;
 
-  unsigned int local_i = threadIdx.y + 1;
-  unsigned int local_j = threadIdx.x + 1;
+  unsigned int local_i = threadIdx.y;
+  unsigned int local_j = threadIdx.x;
 
   extern __shared__ float sharedmemory[];
 
@@ -382,10 +363,10 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     writeGlobalToInterior(vh, sh_vh, global_i, global_j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
     __syncthreads();
 
-    haloExchange(sh_h, sh_uh, sh_vh, h, uh, vh, global_i, global_j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
+    haloExchange(sh_h, sh_uh, sh_vh, h, uh, vh, nx, ny, global_i, global_j, local_i, local_j, blockDim.x, blockDim.y);
     __syncthreads();
 
-    if (global_i < ny + 2 && global_j < nx + 2)
+    if (local_i < blockDim.y && local_j < blockDim.x)
     {
       int local_id = SH_ID(local_i, local_j);
 
@@ -414,7 +395,7 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     }
     __syncthreads();
 
-    if (global_i > 0 && global_i < ny + 1 && global_j > 0 && global_j < nx + 1)
+    if (local_i > 0 && local_i < blockDim.y - 1 && local_j > 0 && local_j < blockDim.x - 1)
     {
       int local_id = SH_ID(local_i, local_j);
       int local_id_left   = SH_ID(local_i, local_j - 1);
@@ -466,7 +447,7 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     }
     __syncthreads();
 
-    if (global_i > 0 && global_i < ny + 1 && global_j > 0 && global_j < nx + 1)
+    if (local_i > 0 && local_i < blockDim.y - 1 && local_j > 0 && local_j < blockDim.x - 1)
     {
       int local_id = SH_ID(local_i, local_j);
 
@@ -475,8 +456,8 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
       sh_vh[local_id] = sh_vhm[local_id];
     }
     __syncthreads();
-
-    applyReflectiveBCs(sh_h, sh_uh, sh_vh, local_i, local_j, blockDim.x, blockDim.y);
+    
+    applyReflectiveBCs(sh_h, sh_uh, sh_vh, local_i, local_j, blockDim.x, blockDim.y, blockIdx.x, blockIdx.y, gridDim.x, gridDim.y);
     __syncthreads();
 
     writeInteriorToGlobal(h, sh_h, global_i, global_j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
@@ -668,7 +649,7 @@ int main ( int argc, char *argv[] )
       printf("CUDA Error launching shallowWaterSolver: %s\n", cudaGetErrorString(err));
     }
 
-    cudaDeviceSynchronize();  // Wait for kernel to finish
+    cudaDeviceSynchronize();
 
     // stop timer
     auto end_time = std::chrono::steady_clock::now();
