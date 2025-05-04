@@ -178,53 +178,59 @@ __global__ void applyTopBoundary(float *h, float *uh, float *vh, int nx, int ny)
 
 __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const float* h, const float* uh, const float* vh, int nx, int ny, int global_i, int global_j, int local_i, int local_j)
 {
-  #define ID_2D(i, j) ((i) * (nx + 2) + (j))
-  #define SH_ID(i, j) ((i) * (blockDim.x + 2) + (j))
-
+  // Global memory layout includes halos: (nx+2) × (ny+2) total size
+  // Define index calculations for global and shared memory
+  # define ID_2D(i, j) ((i) * (nx + 2) + (j))
+  # define SH_ID(i, j) ((i) * (blockDim.x + 2) + (j))
+  
   // === LEFT HALO ===
-  if (local_j == 0 && global_j > 0) // avoid accessing global_j - 1 < 0
-  {
-    int global_id = ID_2D(global_i, global_j - 1);
-    int local_id  = SH_ID(local_i + 1, 0);
-
-    sh_h[local_id]  = h[global_id];
-    sh_uh[local_id] = uh[global_id];
-    sh_vh[local_id] = vh[global_id];
-  }
-
-  // === RIGHT HALO ===
-  if (local_j == blockDim.x - 1 && global_j < nx - 1)
-  {
-    int global_id = ID_2D(global_i, global_j + 1);
-    int local_id  = SH_ID(local_i + 1, blockDim.x + 1);
-
-    sh_h[local_id]  = h[global_id];
-    sh_uh[local_id] = uh[global_id];
-    sh_vh[local_id] = vh[global_id];
-  }
-
-  // === BOTTOM HALO ===
-  if (local_i == 0 && global_i > 0)
-  {
-    int global_id = ID_2D(global_i - 1, global_j);
-    int local_id  = SH_ID(0, local_j + 1);
-
-    sh_h[local_id]  = h[global_id];
-    sh_uh[local_id] = uh[global_id];
-    sh_vh[local_id] = vh[global_id];
-  }
-
-  // === TOP HALO ===
-  if (local_i == blockDim.y - 1 && global_i < ny - 1)
-  {
+  if (local_j == 0 && global_j > 0) {
+    // For the left halo, we need data from the cell to the left (global_j-1)
+    // In global memory, we need to add 1 to account for the halo offset
     int global_id = ID_2D(global_i + 1, global_j);
-    int local_id  = SH_ID(blockDim.y + 1, local_j + 1);
-
+    int local_id  = SH_ID(local_i, 0);
+    
     sh_h[local_id]  = h[global_id];
     sh_uh[local_id] = uh[global_id];
     sh_vh[local_id] = vh[global_id];
   }
-
+  
+  // === RIGHT HALO ===
+  if (local_j == blockDim.x - 1 && global_j < nx - 1) {
+    // For the right halo, we need data from the cell to the right (global_j+1)
+    // In global memory, we need to add 1+1 to account for the halo offset and the +1
+    int global_id = ID_2D(global_i + 1, global_j + 2);
+    int local_id  = SH_ID(local_i, blockDim.x + 1);
+    
+    sh_h[local_id]  = h[global_id];
+    sh_uh[local_id] = uh[global_id];
+    sh_vh[local_id] = vh[global_id];
+  }
+  
+  // === BOTTOM HALO ===
+  if (local_i == 0 && global_i > 0) {
+    // For the bottom halo, we need data from the cell below (global_i-1)
+    // In global memory, we need to add 1 to j for the halo offset
+    int global_id = ID_2D(global_i, global_j + 1);
+    int local_id  = SH_ID(0, local_j);
+    
+    sh_h[local_id]  = h[global_id];
+    sh_uh[local_id] = uh[global_id];
+    sh_vh[local_id] = vh[global_id];
+  }
+  
+  // === TOP HALO ===
+  if (local_i == blockDim.y - 1 && global_i < ny - 1) {
+    // For the top halo, we need data from the cell above (global_i+1)
+    // In global memory, we need to add 1+1 to i for the halo offset and the +1
+    int global_id = ID_2D(global_i + 2, global_j + 1);
+    int local_id  = SH_ID(blockDim.y + 1, local_j);
+    
+    sh_h[local_id]  = h[global_id];
+    sh_uh[local_id] = uh[global_id];
+    sh_vh[local_id] = vh[global_id];
+  }
+  
   #undef ID_2D
   #undef SH_ID
 }
@@ -284,39 +290,42 @@ __device__ void applyReflectiveBCs(float* sh_h, float* sh_uh, float* sh_vh, int 
 
 __device__ void writeGlobalMemToSharedMem(float* sh_mem, const float *__restrict__ d_mem, int nx, int ny, int global_i, int global_j, int local_i, int local_j)
 {
-  // Define shared and global indexing macros
   # define SH_ID(i, j) ((i) * (blockDim.x + 2) + (j))
-  # define ID_2D(i, j) ((i) * (nx + 2) + (j))  // global memory includes ghost layers
+  # define ID_2D(i, j) ((i) * (nx + 2) + (j))
 
-  // Compute block offset in global domain
+  // Compute global memory indices with +1 offset for ghost cells
+  int global_i = global_i + 1;
+  int global_j = global_j + 1;
+
+  // === Load interior cell ===
+  sh_mem[SH_ID(local_i + 1, local_j + 1)] = d_mem[ID_2D(global_i, global_j)];
+
+  // === Compute block offsets for boundary checks ===
   int block_offset_x = blockIdx.x * blockDim.x;
   int block_offset_y = blockIdx.y * blockDim.y;
 
-  // === Load interior cell (always safe) ===
-  sh_mem[SH_ID(local_i + 1, local_j + 1)] = d_mem[ID_2D(global_i, global_j)];
-
-  // === LEFT halo: handled by threadIdx.x == 0 in left-edge blocks ===
-  if (threadIdx.x == 0 && block_offset_x == 0 && global_j > 0)
+  // === LEFT HALO ===
+  if (threadIdx.x == 0 && block_offset_x == 0 && global_j == 0)
   {
-      sh_mem[SH_ID(local_i + 1, 0)] = d_mem[ID_2D(global_i, global_j - 1)];
+    sh_mem[SH_ID(local_i + 1, 0)] = d_mem[ID_2D(global_i, 0)];
   }
 
-  // === RIGHT halo: handled by threadIdx.x == blockDim.x - 1 in right-edge blocks ===
-  if (threadIdx.x == blockDim.x - 1 && (block_offset_x + blockDim.x >= nx) && global_j < nx + 1)
+  // === RIGHT HALO ===
+  if ((block_offset_x + blockDim.x) >= nx && threadIdx.x == blockDim.x - 1 && global_j == nx - 1)
   {
-      sh_mem[SH_ID(local_i + 1, blockDim.x + 1)] = d_mem[ID_2D(global_i, global_j + 1)];
+    sh_mem[SH_ID(local_i + 1, blockDim.x + 1)] = d_mem[ID_2D(global_i, nx + 1)];
   }
 
-  // === TOP halo: handled by threadIdx.y == 0 in top-edge blocks ===
-  if (threadIdx.y == 0 && block_offset_y == 0 && global_i > 0)
+  // === TOP HALO ===
+  if (threadIdx.y == 0 && block_offset_y == 0 && global_i == 0)
   {
-      sh_mem[SH_ID(0, local_j + 1)] = d_mem[ID_2D(global_i - 1, global_j)];
+    sh_mem[SH_ID(0, local_j + 1)] = d_mem[ID_2D(0, global_j)];
   }
 
-  // === BOTTOM halo: handled by threadIdx.y == blockDim.y - 1 in bottom-edge blocks ===
-  if (threadIdx.y == blockDim.y - 1 && (block_offset_y + blockDim.y >= ny) && global_i < ny + 1)
+  // === BOTTOM HALO ===
+  if ((block_offset_y + blockDim.y) >= ny && threadIdx.y == blockDim.y - 1 && global_i == ny - 1)
   {
-      sh_mem[SH_ID(blockDim.y + 1, local_j + 1)] = d_mem[ID_2D(global_i + 1, global_j)];
+    sh_mem[SH_ID(blockDim.y + 1, local_j + 1)] = d_mem[ID_2D(ny + 1, global_j)];
   }
 
   #undef SH_ID
@@ -329,43 +338,45 @@ __device__ void writeSharedMemToGlobalMem(const float *__restrict__ sh_mem, floa
   # define SH_ID(i, j) ((i) * (blockDim.x + 2) + (j))
   # define ID_2D(i, j) ((i) * (nx + 2) + (j))
 
-  // Compute block offset (global start index for this block)
+  // Compute global offset into the interior (skip global ghost layer)
+  int global_i = global_i + 1;
+  int global_j = global_j + 1;
+
+  // Compute shared memory interior location (skip shared memory halo layer)
+  int local_i_offset = local_i + 1;
+  int local_j_offset = local_j + 1;
+
+  // Write interior shared memory back to global memory interior
+  d_mem[ID_2D(global_i, global_j)] = sh_mem[SH_ID(local_i_offset, local_j_offset)];
+
+  // === Global Boundary Ghost Cell Writes (Optional) ===
+  // Only execute if thread is on boundary and block lies at physical edge
+
   int block_offset_x = blockIdx.x * blockDim.x;
   int block_offset_y = blockIdx.y * blockDim.y;
 
-  // === Write interior cell back to global memory ===
-  d_mem[ID_2D(global_i, global_j)] = sh_mem[SH_ID(local_i + 1, local_j + 1)];
-
-  // === LEFT global boundary ghost write ===
-  if (block_offset_x == 0 && threadIdx.x == 0 && global_j > 0)
+  // LEFT boundary ghost
+  if (block_offset_x == 0 && threadIdx.x == 0 && global_j == 0)
   {
-    int global_id = ID_2D(global_i, 0);
-    int sh_id     = SH_ID(local_i + 1, 0);
-    d_mem[global_id] = sh_mem[sh_id];
+    d_mem[ID_2D(global_i, 0)] = sh_mem[SH_ID(local_i_offset, 0)];
   }
 
-  // === RIGHT global boundary ghost write ===
-  if (block_offset_x + blockDim.x >= nx && threadIdx.x == blockDim.x - 1 && global_j < nx + 1)
+  // RIGHT boundary ghost
+  if ((block_offset_x + blockDim.x) >= nx && threadIdx.x == blockDim.x - 1 && global_j == nx - 1)
   {
-    int global_id = ID_2D(global_i, nx + 1);
-    int sh_id     = SH_ID(local_i + 1, blockDim.x + 1);
-    d_mem[global_id] = sh_mem[sh_id];
+    d_mem[ID_2D(global_i, nx + 1)] = sh_mem[SH_ID(local_i_offset, blockDim.x + 1)];
   }
 
-  // === TOP global boundary ghost write ===
-  if (block_offset_y == 0 && threadIdx.y == 0 && global_i > 0)
+  // TOP boundary ghost
+  if (block_offset_y == 0 && threadIdx.y == 0 && global_i == 0)
   {
-    int global_id = ID_2D(0, global_j);
-    int sh_id     = SH_ID(0, local_j + 1);
-    d_mem[global_id] = sh_mem[sh_id];
+    d_mem[ID_2D(0, global_j)] = sh_mem[SH_ID(0, local_j_offset)];
   }
 
-  // === BOTTOM global boundary ghost write ===
-  if (block_offset_y + blockDim.y >= ny && threadIdx.y == blockDim.y - 1 && global_i < ny + 1)
+  // BOTTOM boundary ghost
+  if ((block_offset_y + blockDim.y) >= ny && threadIdx.y == blockDim.y - 1 && global_i == ny - 1)
   {
-    int global_id = ID_2D(ny + 1, global_j);
-    int sh_id     = SH_ID(blockDim.y + 1, local_j + 1);
-    d_mem[global_id] = sh_mem[sh_id];
+    d_mem[ID_2D(ny + 1, global_j)] = sh_mem[SH_ID(blockDim.y + 1, local_j_offset)];
   }
 
   #undef SH_ID
