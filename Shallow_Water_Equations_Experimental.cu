@@ -389,8 +389,8 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
   unsigned int global_i = blockIdx.y * blockDim.y + threadIdx.y;
   unsigned int global_j = blockIdx.x * blockDim.x + threadIdx.x;
 
-  unsigned int local_i = threadIdx.y + 1;
-  unsigned int local_j = threadIdx.x + 1;
+  unsigned int local_i = threadIdx.y;
+  unsigned int local_j = threadIdx.x;
 
   extern __shared__ float sharedmemory[];
 
