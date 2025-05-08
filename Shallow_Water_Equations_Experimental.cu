@@ -358,7 +358,7 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
   __syncthreads();
 
   // === Compute Fluxes (write only to interior region) ===
-  if (local_i >= 1 && local_i < blockDim.y && local_j >= 1 && local_j < blockDim.x)
+  if (local_i >= 1 && local_i <= blockDim.y && local_j >= 1 && local_j <= blockDim.x)
   {
     int local_id = SH_ID(local_i, local_j);
 
