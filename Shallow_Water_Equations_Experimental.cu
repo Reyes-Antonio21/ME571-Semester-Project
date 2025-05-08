@@ -178,18 +178,17 @@ __global__ void applyTopBoundary(float *h, float *uh, float *vh, int nx, int ny)
 
 __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const float* h, const float* uh, const float* vh, int nx, int ny, int global_i, int global_j, int local_i, int local_j)
 {
-  // Global memory layout includes halos: (nx+2) × (ny+2)
+  // Global memory layout includes halos: (nx+2) × (ny+2) total size
   // Define index calculations for global and shared memory
   # define ID_2D(i, j) ((i) * (nx + 2) + (j))
   # define SH_ID(i, j) ((i) * (blockDim.x + 2) + (j))
-
+  
   // === LEFT HALO ===
-  if (local_j == 0 && global_j > 0) 
-  {
+  if (local_j == 0 && global_j > 0) {
     // For the left halo, we need data from the cell to the left (global_j-1)
     // In global memory, we need to add 1 to account for the halo offset
-    int global_id = ID_2D(global_i, global_j - 1);
-    int local_id  = SH_ID(local_i - 1, 0);
+    int global_id = ID_2D(global_i + 1, global_j);
+    int local_id  = SH_ID(local_i, 0);
     
     sh_h[local_id]  = h[global_id];
     sh_uh[local_id] = uh[global_id];
@@ -200,7 +199,7 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const floa
   if (local_j == blockDim.x - 1 && global_j < nx - 1) {
     // For the right halo, we need data from the cell to the right (global_j+1)
     // In global memory, we need to add 1+1 to account for the halo offset and the +1
-    int global_id = ID_2D(global_i, global_j + 1);
+    int global_id = ID_2D(global_i + 1, global_j + 2);
     int local_id  = SH_ID(local_i, blockDim.x + 1);
     
     sh_h[local_id]  = h[global_id];
@@ -212,7 +211,7 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const floa
   if (local_i == 0 && global_i > 0) {
     // For the bottom halo, we need data from the cell below (global_i-1)
     // In global memory, we need to add 1 to j for the halo offset
-    int global_id = ID_2D(global_i - 1, global_j);
+    int global_id = ID_2D(global_i, global_j + 1);
     int local_id  = SH_ID(0, local_j);
     
     sh_h[local_id]  = h[global_id];
@@ -224,7 +223,7 @@ __device__ void haloExchange(float* sh_h, float* sh_uh, float* sh_vh, const floa
   if (local_i == blockDim.y - 1 && global_i < ny - 1) {
     // For the top halo, we need data from the cell above (global_i+1)
     // In global memory, we need to add 1+1 to i for the halo offset and the +1
-    int global_id = ID_2D(global_i + 1, global_j);
+    int global_id = ID_2D(global_i + 2, global_j + 1);
     int local_id  = SH_ID(blockDim.y + 1, local_j);
     
     sh_h[local_id]  = h[global_id];
@@ -294,8 +293,12 @@ __device__ void writeGlobalMemToSharedMem(float* sh_mem, const float *__restrict
   # define SH_ID(i, j) ((i) * (blockDim.x + 2) + (j))
   # define ID_2D(i, j) ((i) * (nx + 2) + (j))
 
+  // Compute global memory indices with +1 offset for ghost cells
+  global_i = global_i + 1;
+  global_j = global_j + 1;
+
   // === Load interior cell ===
-  sh_mem[SH_ID(local_i, local_j)] = d_mem[ID_2D(global_i, global_j)];
+  sh_mem[SH_ID(local_i + 1, local_j + 1)] = d_mem[ID_2D(global_i, global_j)];
 
   // === Compute block offsets for boundary checks ===
   int block_offset_x = blockIdx.x * blockDim.x;
@@ -335,8 +338,16 @@ __device__ void writeSharedMemToGlobalMem(const float *__restrict__ sh_mem, floa
   # define SH_ID(i, j) ((i) * (blockDim.x + 2) + (j))
   # define ID_2D(i, j) ((i) * (nx + 2) + (j))
 
+  // Compute global offset into the interior (skip global ghost layer)
+  global_i = global_i + 1;
+  global_j = global_j + 1;
+
+  // Compute shared memory interior location (skip shared memory halo layer)
+  int local_i_offset = local_i + 1;
+  int local_j_offset = local_j + 1;
+
   // Write interior shared memory back to global memory interior
-  d_mem[ID_2D(global_i, global_j)] = sh_mem[SH_ID(local_i, local_j)];
+  d_mem[ID_2D(global_i, global_j)] = sh_mem[SH_ID(local_i_offset, local_j_offset)];
 
   // === Global Boundary Ghost Cell Writes (Optional) ===
   // Only execute if thread is on boundary and block lies at physical edge
@@ -347,25 +358,25 @@ __device__ void writeSharedMemToGlobalMem(const float *__restrict__ sh_mem, floa
   // LEFT boundary ghost
   if (block_offset_x == 0 && threadIdx.x == 0 && global_j == 0)
   {
-    d_mem[ID_2D(global_i, 0)] = sh_mem[SH_ID(local_i, 0)];
+    d_mem[ID_2D(global_i, 0)] = sh_mem[SH_ID(local_i_offset, 0)];
   }
 
   // RIGHT boundary ghost
   if ((block_offset_x + blockDim.x) >= nx && threadIdx.x == blockDim.x - 1 && global_j == nx - 1)
   {
-    d_mem[ID_2D(global_i, nx + 1)] = sh_mem[SH_ID(local_i, blockDim.x + 1)];
+    d_mem[ID_2D(global_i, nx + 1)] = sh_mem[SH_ID(local_i_offset, blockDim.x + 1)];
   }
 
   // TOP boundary ghost
   if (block_offset_y == 0 && threadIdx.y == 0 && global_i == 0)
   {
-    d_mem[ID_2D(0, global_j)] = sh_mem[SH_ID(0, local_j)];
+    d_mem[ID_2D(0, global_j)] = sh_mem[SH_ID(0, local_j_offset)];
   }
 
   // BOTTOM boundary ghost
   if ((block_offset_y + blockDim.y) >= ny && threadIdx.y == blockDim.y - 1 && global_i == ny - 1)
   {
-    d_mem[ID_2D(ny + 1, global_j)] = sh_mem[SH_ID(blockDim.y + 1, local_j)];
+    d_mem[ID_2D(ny + 1, global_j)] = sh_mem[SH_ID(blockDim.y + 1, local_j_offset)];
   }
 
   #undef SH_ID
@@ -375,11 +386,11 @@ __device__ void writeSharedMemToGlobalMem(const float *__restrict__ sh_mem, floa
 
 __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh, float *__restrict__ vh, float lambda_x, float lambda_y, int nx, int ny, float dt, float finalRuntime)
 {
-  unsigned int global_i = blockIdx.y * blockDim.y + threadIdx.y + 1;
-  unsigned int global_j = blockIdx.x * blockDim.x + threadIdx.x + 1;
+  unsigned int global_i = blockIdx.y * blockDim.y + threadIdx.y;
+  unsigned int global_j = blockIdx.x * blockDim.x + threadIdx.x;
 
-  unsigned int local_i = threadIdx.y + 1;
-  unsigned int local_j = threadIdx.x + 1;
+  unsigned int local_i = threadIdx.y;
+  unsigned int local_j = threadIdx.x;
 
   extern __shared__ float sharedmemory[];
 
@@ -415,7 +426,7 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     // === Compute Fluxes (write only to interior region) ===
     if (local_i < blockDim.y && local_j < blockDim.x)
     {
-      int local_id = SH_ID(local_i, local_j);
+      int local_id = SH_ID(local_i + 1, local_j + 1);  // corrected offset
 
       float g = 9.81f;
       float g_half = 0.5f * g;
@@ -448,11 +459,11 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     // === Compute Updated Values Using Stencil ===
     if (local_i > 0 && local_i < blockDim.y - 1 && local_j > 0 && local_j < blockDim.x - 1)
     {
-      int local_id = SH_ID(local_i, local_j);
-      int local_id_left   = SH_ID(local_i, local_j - 1);
-      int local_id_right  = SH_ID(local_i, local_j + 1);
-      int local_id_bottom = SH_ID(local_i - 1, local_j);
-      int local_id_top    = SH_ID(local_i + 1, local_j);
+      int local_id = SH_ID(local_i + 1, local_j + 1);  // offset center
+      int local_id_left   = SH_ID(local_i + 1, local_j);     // left neighbor
+      int local_id_right  = SH_ID(local_i + 1, local_j + 2); // right neighbor
+      int local_id_bottom = SH_ID(local_i, local_j + 1);     // bottom neighbor
+      int local_id_top    = SH_ID(local_i + 2, local_j + 1); // top neighbor
 
       float h_l  = sh_h[local_id_left];
       float h_r  = sh_h[local_id_right];
@@ -501,7 +512,7 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     // === Update Interior Shared Memory Values ===
     if (local_i > 0 && local_i < blockDim.y - 1 && local_j > 0 && local_j < blockDim.x - 1)
     {
-      int local_id = SH_ID(local_i, local_j);
+      int local_id = SH_ID(local_i + 1, local_j + 1);  // use +1 offset for shared memory
 
       sh_h[local_id]  = sh_hm[local_id];
       sh_uh[local_id] = sh_uhm[local_id];
