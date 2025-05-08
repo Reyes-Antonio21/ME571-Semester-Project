@@ -278,30 +278,30 @@ __device__ void writeGlobalMemToSharedMem(float* sh_mem, const float *__restrict
   # define ID_2D(i, j) ((i) * (nx + 2) + (j))
 
   // === Load Interior Cell ===
-  sh_mem[SH_ID(local_i, local_j)] = d_mem[ID_2D(global_i, global_j, nx)];
+  sh_mem[SH_ID(local_i, local_j)] = d_mem[ID_2D(global_i, global_j)];
 
   // === LEFT Halo ===
   if (threadIdx.x == 0 && global_j > 0)
   {
-    sh_mem[SH_ID(local_i, 0)] = d_mem[ID_2D(global_i, global_j - 1, nx)];
+    sh_mem[SH_ID(local_i, 0)] = d_mem[ID_2D(global_i, global_j - 1)];
   }
 
   // === RIGHT Halo ===
   if (threadIdx.x == blockDim.x - 1 && global_j < nx - 1)
   {
-    sh_mem[SH_ID(local_i, blockDim.x + 1)] = d_mem[ID_2D(global_i, global_j + 1, nx)];
+    sh_mem[SH_ID(local_i, blockDim.x + 1)] = d_mem[ID_2D(global_i, global_j + 1)];
   }
 
   // === TOP Halo ===
   if (threadIdx.y == 0 && global_i > 0)
   {
-    sh_mem[SH_ID(0, local_j)] = d_mem[ID_2D(global_i - 1, global_j, nx)];
+    sh_mem[SH_ID(0, local_j)] = d_mem[ID_2D(global_i - 1, global_j)];
   }
 
   // === BOTTOM Halo ===
   if (threadIdx.y == blockDim.y - 1 && global_i < ny - 1)
   {
-    sh_mem[SH_ID(blockDim.y + 1, local_j)] = d_mem[ID_2D(global_i + 1, global_j, nx)];
+    sh_mem[SH_ID(blockDim.y + 1, local_j)] = d_mem[ID_2D(global_i + 1, global_j)];
   }
 
   #undef SH_ID
@@ -317,7 +317,7 @@ __device__ void writeSharedMemToGlobalMem(const float *__restrict__ sh_mem, floa
   // Only write valid interior global domain values
   if (global_i > 0 && global_i < ny + 1 && global_j > 0 && global_j < nx + 1)
   {
-    d_mem[ID_2D(global_i, global_j, nx)] = sh_mem[SH_ID(local_i, local_j)];
+    d_mem[ID_2D(global_i, global_j)] = sh_mem[SH_ID(local_i, local_j)];
   }
 
   #undef SH_ID
@@ -367,7 +367,7 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     // === Compute Fluxes (write only to interior region) ===
     if (threadIdx.y < blockDim.y && threadIdx.x < blockDim.x)
     {
-      int local_id = SH_ID(local_i, local_j);  // corrected offset
+      int local_id = SH_ID(local_i, local_j);
 
       float g = 9.81f;
       float g_half = 0.5f * g;
