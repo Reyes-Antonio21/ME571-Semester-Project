@@ -347,25 +347,25 @@ __device__ void writeSharedMemToGlobalMem(const float *__restrict__ sh_mem, floa
   // LEFT boundary ghost
   if (block_offset_x == 0 && threadIdx.x == 0 && global_j == 0)
   {
-    d_mem[ID_2D(global_i, 0)] = sh_mem[SH_ID(local_i_offset, 0)];
+    d_mem[ID_2D(global_i, 0)] = sh_mem[SH_ID(local_i, 0)];
   }
 
   // RIGHT boundary ghost
   if ((block_offset_x + blockDim.x) >= nx && threadIdx.x == blockDim.x - 1 && global_j == nx - 1)
   {
-    d_mem[ID_2D(global_i, nx + 1)] = sh_mem[SH_ID(local_i_offset, blockDim.x + 1)];
+    d_mem[ID_2D(global_i, nx + 1)] = sh_mem[SH_ID(local_i, blockDim.x + 1)];
   }
 
   // TOP boundary ghost
   if (block_offset_y == 0 && threadIdx.y == 0 && global_i == 0)
   {
-    d_mem[ID_2D(0, global_j)] = sh_mem[SH_ID(0, local_j_offset)];
+    d_mem[ID_2D(0, global_j)] = sh_mem[SH_ID(0, local_j)];
   }
 
   // BOTTOM boundary ghost
   if ((block_offset_y + blockDim.y) >= ny && threadIdx.y == blockDim.y - 1 && global_i == ny - 1)
   {
-    d_mem[ID_2D(ny + 1, global_j)] = sh_mem[SH_ID(blockDim.y + 1, local_j_offset)];
+    d_mem[ID_2D(ny + 1, global_j)] = sh_mem[SH_ID(blockDim.y + 1, local_j)];
   }
 
   #undef SH_ID
