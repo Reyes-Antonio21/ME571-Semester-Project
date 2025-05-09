@@ -6,63 +6,68 @@
 #define BLOCK_WITH_HALO (BLOCK_SIZE + 2 * HALO)
 #define GRID_DIM 3
 
-#define IDX2D(i, j, stride) ((i) * (stride) + (j))
+#define IDX2D(i, j) ((i) * (nx + 2) + (j))
 
-__device__ int SH_ID(int i, int j, int stride) {
-    return i * stride + j;
+__device__ int SH_ID(int i, int j) 
+{
+    return i * (blockDim.x + 2) + j;
 }
-__device__ int ID_2D(int i, int j, int stride) {
-    return i * stride + j;
+__device__ int ID_2D(int i, int j) 
+{
+    return i * (nx + 2) + j;
 }
 
 __device__ void haloExchange(
-    float* sh_h, const float* h,
-    int i, int j, int local_i, int local_j,
-    int nx, int ny, int blockDim_x, int blockDim_y)
+    float* sh_h, const float* h, int global_i, int global_j, int local_i, int local_j, int nx, int ny)
 {
-    int global_width = nx + 2;
-    int local_width = blockDim_x + 2;
-
     // === LEFT halo ===
-    if (local_j == 1) {
+    if (local_j == 1) 
+    {
         int global_id_j = j - 1;
-        int local_id = SH_ID(local_i, local_j - 1, local_width);
+        int local_id = SH_ID(local_i, local_j - 1);
 
-        if (global_id_j >= 0) {
-            int global_id = ID_2D(i, global_id_j, global_width);
+        if (global_id_j >= 0) 
+        {
+            int global_id = ID_2D(i, global_id_j);
             sh_h[local_id] = h[global_id];
         }
     }
 
     // === RIGHT halo ===
-    if (local_j == blockDim_x) {
+    if (local_j == blockDim.x) 
+    {
         int global_id_j = j + 1;
-        int local_id = SH_ID(local_i, local_j + 1, local_width);
+        int local_id = SH_ID(local_i, local_j + 1);
 
-        if (global_id_j < nx + 2) {
-            int global_id = ID_2D(i, global_id_j, global_width);
+        if (global_id_j < nx + 2) 
+        {
+            int global_id = ID_2D(i, global_id_j);
             sh_h[local_id] = h[global_id];
         }
     }
 
     // === BOTTOM halo ===
-    if (local_i == 1) {
+    if (local_i == 1) 
+    {
         int global_id_i = i - 1;
-        int local_id = SH_ID(local_i - 1, local_j, local_width);
+        int local_id = SH_ID(local_i - 1, local_j);
 
-        if (global_id_i >= 0) {
-            int global_id = ID_2D(global_id_i, j, global_width);
+        if (global_id_i >= 0) 
+        {
+            int global_id = ID_2D(global_id_i, j);
             sh_h[local_id] = h[global_id];
         }
     }
 
     // === TOP halo ===
-    if (local_i == blockDim_y) {
+    if (local_i == blockDim.y) 
+    {
         int global_id_i = i + 1;
-        int local_id = SH_ID(local_i + 1, local_j, local_width);
+        int local_id = SH_ID(local_i + 1, local_j);
 
-        if (global_id_i < ny + 2) {
-            int global_id = ID_2D(global_id_i, j, global_width);
+        if (global_id_i < ny + 2) 
+        {
+            int global_id = ID_2D(global_id_i, j);
             sh_h[local_id] = h[global_id];
         }
     }
@@ -77,16 +82,13 @@ __global__ void testHaloKernel(float *h, float *h_result, int nx, int ny) {
 
     extern __shared__ float sh_h[];
 
-    int global_width = nx + 2;
-    int local_width = blockDim.x + 2;
-
-    int global_id = ID_2D(global_i, global_j, global_width);
-    int local_id = SH_ID(local_i, local_j, local_width);
+    int global_id = ID_2D(global_i, global_j);
+    int local_id = SH_ID(local_i, local_j);
 
     sh_h[local_id] = h[global_id];
     __syncthreads();
 
-    haloExchange(sh_h, h, global_i, global_j, local_i, local_j, nx, ny, blockDim.x, blockDim.y);
+    haloExchange(sh_h, h, global_i, global_j, local_i, local_j, nx, ny);
     __syncthreads();
 
     // Write interior
@@ -94,23 +96,23 @@ __global__ void testHaloKernel(float *h, float *h_result, int nx, int ny) {
 
     // Write halo if thread is on boundary
     if (threadIdx.x == 0) {
-        int global_id_left = ID_2D(global_i, global_j - 1, global_width);
-        int local_id_left = SH_ID(local_i, local_j - 1, local_width);
+        int global_id_left = ID_2D(global_i, global_j - 1);
+        int local_id_left = SH_ID(local_i, local_j - 1);
         if (global_j - 1 >= 0) h_result[global_id_left] = sh_h[local_id_left];
     }
     if (threadIdx.x == blockDim.x - 1) {
-        int global_id_right = ID_2D(global_i, global_j + 1, global_width);
-        int local_id_right = SH_ID(local_i, local_j + 1, local_width);
+        int global_id_right = ID_2D(global_i, global_j + 1);
+        int local_id_right = SH_ID(local_i, local_j + 1);
         if (global_j + 1 < nx + 2) h_result[global_id_right] = sh_h[local_id_right];
     }
     if (threadIdx.y == 0) {
-        int global_id_bottom = ID_2D(global_i - 1, global_j, global_width);
-        int local_id_bottom = SH_ID(local_i - 1, local_j, local_width);
+        int global_id_bottom = ID_2D(global_i - 1, global_j);
+        int local_id_bottom = SH_ID(local_i - 1, local_j);
         if (global_i - 1 >= 0) h_result[global_id_bottom] = sh_h[local_id_bottom];
     }
     if (threadIdx.y == blockDim.y - 1) {
-        int global_id_top = ID_2D(global_i + 1, global_j, global_width);
-        int local_id_top = SH_ID(local_i + 1, local_j, local_width);
+        int global_id_top = ID_2D(global_i + 1, global_j);
+        int local_id_top = SH_ID(local_i + 1, local_j);
         if (global_i + 1 < ny + 2) h_result[global_id_top] = sh_h[local_id_top];
     }
 }
@@ -126,7 +128,7 @@ int main() {
     for (int i = 0; i < ny + 2; ++i) {
         for (int j = 0; j < nx + 2; ++j) {
             int block_id = (i - 1) / BLOCK_SIZE * GRID_DIM + (j - 1) / BLOCK_SIZE;
-            h_h[IDX2D(i, j, nx + 2)] = (i == 0 || j == 0 || i == ny + 1 || j == nx + 1) ? -1.0f : block_id;
+            h_h[IDX2D(i, j)] = (i == 0 || j == 0 || i == ny + 1 || j == nx + 1) ? -1.0f : block_id;
         }
     }
 
@@ -139,7 +141,7 @@ int main() {
     printf("Before halo exchange:\n");
     for (int i = 0; i < ny + 2; ++i) {
         for (int j = 0; j < nx + 2; ++j) {
-            printf("%5.1f ", h_h[IDX2D(i, j, nx + 2)]);
+            printf("%5.1f ", h_h[IDX2D(i, j)]);
         }
         printf("\n");
     }
@@ -154,7 +156,7 @@ int main() {
     printf("\nAfter halo exchange (global view):\n");
     for (int i = 0; i < ny + 2; ++i) {
         for (int j = 0; j < nx + 2; ++j) {
-            printf("%5.1f ", h_result[IDX2D(i, j, nx + 2)]);
+            printf("%5.1f ", h_result[IDX2D(i, j)]);
         }
         printf("\n");
     }
@@ -167,7 +169,7 @@ int main() {
                 for (int tx = 0; tx < BLOCK_WITH_HALO; ++tx) {
                     int gi = by * BLOCK_SIZE + ty;
                     int gj = bx * BLOCK_SIZE + tx;
-                    printf("%5.1f ", h_result[IDX2D(gi, gj, nx + 2)]);
+                    printf("%5.1f ", h_result[IDX2D(gi, gj)]);
                 }
                 printf("\n");
             }
