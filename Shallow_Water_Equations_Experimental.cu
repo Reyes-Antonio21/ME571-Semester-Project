@@ -458,7 +458,6 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     }
     __syncthreads();
 
-    
     applyReflectiveBCs(sh_h, sh_uh, sh_vh, local_i, local_j);
     __syncthreads();
 
@@ -466,11 +465,7 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     writeSharedMemToGlobalMem(sh_uh, uh, nx, ny, global_i, global_j, local_i, local_j);
     writeSharedMemToGlobalMem(sh_vh, vh, nx, ny, global_i, global_j, local_i, local_j);
     __syncthreads();
-  }
-
-  writeGlobalMemToSharedMem(sh_h, h, nx, ny, global_i, global_j, local_i, local_j);
-  writeGlobalMemToSharedMem(sh_uh, uh, nx, ny, global_i, global_j, local_i, local_j);
-  writeGlobalMemToSharedMem(sh_vh, vh, nx, ny, global_i, global_j, local_i, local_j);  
+  } 
 
   # undef ID_2D
   # undef SH_ID

@@ -457,7 +457,6 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
       sh_vh[local_id] = sh_vhm[local_id];
     }
     __syncthreads();
-
     
     applyReflectiveBCs(sh_h, sh_uh, sh_vh, local_i, local_j);
     __syncthreads();
@@ -466,26 +465,10 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     writeSharedMemToGlobalMem(sh_uh, uh, nx, ny, global_i, global_j, local_i, local_j);
     writeSharedMemToGlobalMem(sh_vh, vh, nx, ny, global_i, global_j, local_i, local_j);
     __syncthreads();
-  }
-
-  writeGlobalMemToSharedMem(sh_h, h, nx, ny, global_i, global_j, local_i, local_j);
-  writeGlobalMemToSharedMem(sh_uh, uh, nx, ny, global_i, global_j, local_i, local_j);
-  writeGlobalMemToSharedMem(sh_vh, vh, nx, ny, global_i, global_j, local_i, local_j);  
+  }  
 
   # undef ID_2D
   # undef SH_ID
-}
-// ****************************************************************************************************************** //
-
-void checkOccupancy() 
-{
-  int minGridSize = 0;
-  int blockSize = 0;
-  
-  cudaOccupancyMaxPotentialBlockSize(&minGridSize, &blockSize, shallowWaterSolver, 0, 0);
-
-  std::cout << "Recommended block size: " << blockSize << std::endl;
-  std::cout << "Minimum grid size: " << minGridSize << std::endl;
 }
 // ****************************************************************************************************************** //
 
@@ -607,10 +590,8 @@ int main ( int argc, char *argv[] )
   printf ( "\n" );
   printf ( "SHALLOW_WATER_2D\n" );
   printf ( "\n" );
-
-  checkOccupancy();
   
-  for(k = 1; k < 6; k++)
+  for(k = 1; k < 11; k++)
   {
     // Apply the initial conditions.
     initializeInterior<<<gridSize, blockSize>>>(d_x, d_y, d_h, d_uh, d_vh, nx, ny, dx, dy, x_length);
@@ -625,32 +606,12 @@ int main ( int argc, char *argv[] )
 
     cudaDeviceSynchronize();
 
-    if(k == 1 && nx == 200)
-    {
-      cudaMemcpy(h, d_h, (nx+2) * (ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost);
-      cudaMemcpy(uh, d_uh, (nx+2) * (ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost);
-      cudaMemcpy(vh, d_vh, (nx+2) * (ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost);
-
-      cudaMemcpy(x, d_x, nx * sizeof ( float ), cudaMemcpyDeviceToHost);
-      cudaMemcpy(y, d_y, ny * sizeof ( float ), cudaMemcpyDeviceToHost);
-
-      // Write initial condition to a file
-      writeResults(h, uh, vh, x, y, 0.000000, nx, ny);
-    }
-
     // ******************************************************************** COMPUTATION SECTION ******************************************************************** //
 
     // start program timer
     auto start_time = std::chrono::steady_clock::now();
 
     shallowWaterSolver<<<gridSize, blockSize, sharedMemSize>>>(d_h, d_uh, d_vh, lambda_x, lambda_y, nx, ny, dt, finalRuntime);
-
-    cudaError_t err = cudaGetLastError();
-    if (err != cudaSuccess) 
-    {
-      printf("CUDA Error launching shallowWaterSolver: %s\n", cudaGetErrorString(err));
-    }
-
     cudaDeviceSynchronize();
 
     // stop timer
@@ -659,16 +620,6 @@ int main ( int argc, char *argv[] )
 
     // Print out the results
     printf("Problem size: %d, Iteration: %d, Elapsed time: %f s\n", nx, k, time_elapsed);
-
-    if(k == 1 && nx == 200)
-    {
-      cudaMemcpy(h, d_h, (nx+2) * (ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost);
-      cudaMemcpy(uh, d_uh, (nx+2) * (ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost);
-      cudaMemcpy(vh, d_vh, (nx+2) * (ny+2) * sizeof ( float ), cudaMemcpyDeviceToHost);
-
-      // Write initial condition to a file
-      writeResults(h, uh, vh, x, y, 0.500000, nx, ny);
-    }
   }
 
   // ******************************************************************** DEALLOCATE MEMORY ******************************************************************** //

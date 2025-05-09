@@ -4,7 +4,7 @@
 #SBATCH -c 1
 #SBATCH -N 1
 #SBATCH -p gpu-v100
-#SBATCH -t 05:00:00
+#SBATCH -t 01:30:00
 #SBATCH --gres=gpu:1
 #SBATCH --exclusive
 
@@ -17,7 +17,7 @@ CFL=0.5
 output_file="Shallow_Water_Equations_Cuda_Shared_Total_Runtime_Performance.csv"
 
 # CSV Header
-echo "Problem size,Time steps,Iteration,Elapsed time (s),Host-device transfer time (s),Device-host transfer time (s)" > $output_file
+echo "Problem size,Iteration,Elapsed time (s)" > $output_file
 
 # Loop over problem sizes
 for nx in 200 300 400 500 600 700 800 900 1000 1100 1200 1300 1400 1500 1600 1700 1800 1900 2000 \
@@ -37,13 +37,10 @@ do
     echo "$output" | grep "Problem size" | while read -r line; do
         # Extract values using awk
         problem_size=$(echo "$line" | awk -F'[:,]' '{print $2}' | tr -d ' ')
-        time_steps=$(echo "$line" | awk -F'[:,]' '{print $4}' | tr -d ' ')
-        iterations=$(echo "$line" | awk -F'[:,]' '{print $6}' | tr -d ' ')
-        elapsed_time=$(echo "$line" | awk -F'[:,]' '{print $8}' | tr -d ' s')
-        transfer_time_hd=$(echo "$line" | awk -F'[:,]' '{print $10}' | tr -d ' s')
-        transfer_time_dh=$(echo "$line" | awk -F'[:,]' '{print $12}' | tr -d ' s')
+        iteration=$(echo "$line" | awk -F'[:,]' '{print $4}' | tr -d ' ')
+        elapsed_time=$(echo "$line" | awk -F'[:,]' '{print $6}' | tr -d ' s')
 
         # Append to CSV
-        echo "$problem_size,$time_steps,$iterations,$elapsed_time,$transfer_time_hd,$transfer_time_dh" >> $output_file
+        echo "$problem_size,$iteration,$elapsed_time" >> $output_file
     done
 done
