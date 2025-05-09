@@ -309,6 +309,25 @@ __device__ void writeGlobalMemToSharedMem(float* sh_mem, const float *__restrict
 }
 // ****************************************************************************************************************** //
 
+__device__ void persistentSharedMemToGlobalMem(const float *__restrict__ sh_mem, float* d_mem, int nx, int ny, int global_i, int global_j, int local_i, int local_j)
+{
+  # define SH_ID(i, j) ((i) * (blockDim.x + 2) + (j))
+  # define ID_2D(i, j) ((i) * (nx + 2) + (j))
+
+  // Only write valid interior global domain values
+  if (local_i >= 0 && local_i =< blockDim.y && local_j >= 0 && local_j =< blockDim.x)
+  {
+    if (global_i > 0 && global_i < ny + 1 && global_j > 0 && global_j < nx + 1)
+    {
+      d_mem[ID_2D(global_i, global_j)] = sh_mem[SH_ID(local_i, local_j)];
+    }
+  }
+
+  #undef SH_ID
+  #undef ID_2D
+}
+// ****************************************************************************************************************** //
+
 __device__ void writeSharedMemToGlobalMem(const float *__restrict__ sh_mem, float* d_mem, int nx, int ny, int global_i, int global_j, int local_i, int local_j)
 {
   # define SH_ID(i, j) ((i) * (blockDim.x + 2) + (j))
@@ -464,11 +483,15 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     }
     __syncthreads();
 
-    writeSharedMemToGlobalMem(sh_h, h, nx, ny, global_i, global_j, local_i, local_j);
-    writeSharedMemToGlobalMem(sh_uh, uh, nx, ny, global_i, global_j, local_i, local_j);
-    writeSharedMemToGlobalMem(sh_vh, vh, nx, ny, global_i, global_j, local_i, local_j);
+    persistentSharedMemToGlobalMem(sh_h, h, nx, ny, global_i, global_j, local_i, local_j);
+    persistentSharedMemToGlobalMem(sh_uh, uh, nx, ny, global_i, global_j, local_i, local_j);
+    persistentSharedMemToGlobalMem(sh_vh, vh, nx, ny, global_i, global_j, local_i, local_j);
     __syncthreads();
   }
+
+  writeSharedMemToGlobalMem(sh_h, h, nx, ny, global_i, global_j, local_i, local_j);
+  writeSharedMemToGlobalMem(sh_uh, uh, nx, ny, global_i, global_j, local_i, local_j);
+  writeSharedMemToGlobalMem(sh_vh, vh, nx, ny, global_i, global_j, local_i, local_j);
 
   # undef ID_2D
   # undef SH_ID
