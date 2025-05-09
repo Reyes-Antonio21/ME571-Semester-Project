@@ -24,6 +24,9 @@ swep_2d_tk: Shallow_Water_Equations_Timed_Kernel.cu
 swep_2d_tt: Shallow_Water_Equations_Timed_Total.cu
 	$(CUDACC) -O3 --use_fast_math -arch=sm_70 -o swep_2d_tt Shallow_Water_Equations_Timed_Total.cu
 
+swep_2d_st: Shallow_Water_Equations_Shared_Timed_Total.cu
+	$(CUDACC) -O3 --use_fast_math -arch=sm_70 -o swep_2d_st Shallow_Water_Equations_Shared_Timed_Total.cu
+
 swep_2d_ex: Shallow_Water_Equations_Experimental.cu
 	$(CUDACC) -O3 --use_fast_math -arch=sm_70 -Xptxas -v -o swep_2d_ex Shallow_Water_Equations_Experimental.cu
 
