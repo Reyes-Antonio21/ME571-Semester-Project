@@ -362,7 +362,7 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     __syncthreads();
 
     // === Compute Fluxes (write only to interior region) ===
-    if (local_i >= 1 && local_i < blockDim.y && local_j >= 1 && local_j < blockDim.x)
+    if (local_i > 0 && local_i < blockDim.y + 1 && local_j > 0 && local_j < blockDim.x + 1)
     {
       int local_id = SH_ID(local_i, local_j);
 
@@ -395,7 +395,7 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     __syncthreads();
 
     // === Compute Updated Values Using Stencil ===
-    if (local_i >= 1 && local_i < blockDim.y && local_j >= 1 && local_j < blockDim.x)
+    if (local_i > 0 && local_i < blockDim.y + 1 && local_j > 0 && local_j < blockDim.x + 1)
     {
       int local_id = SH_ID(local_i, local_j);
       int local_id_left   = SH_ID(local_i, local_j - 1);
@@ -448,7 +448,7 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     __syncthreads();
 
     // === Update Interior Shared Memory Values ===
-    if (local_i >= 1 && local_i < blockDim.y && local_j >= 1 && local_j < blockDim.x)
+    if (local_i > 0 && local_i < blockDim.y + 1 && local_j > 0 && local_j < blockDim.x + 1)
     {
       int local_id = SH_ID(local_i, local_j);
 
@@ -458,19 +458,11 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     }
     __syncthreads();
 
-    
-    applyReflectiveBCs(sh_h, sh_uh, sh_vh, local_i, local_j);
-    __syncthreads();
-
     writeSharedMemToGlobalMem(sh_h, h, nx, ny, global_i, global_j, local_i, local_j);
     writeSharedMemToGlobalMem(sh_uh, uh, nx, ny, global_i, global_j, local_i, local_j);
     writeSharedMemToGlobalMem(sh_vh, vh, nx, ny, global_i, global_j, local_i, local_j);
     __syncthreads();
   }
-
-  writeGlobalMemToSharedMem(sh_h, h, nx, ny, global_i, global_j, local_i, local_j);
-  writeGlobalMemToSharedMem(sh_uh, uh, nx, ny, global_i, global_j, local_i, local_j);
-  writeGlobalMemToSharedMem(sh_vh, vh, nx, ny, global_i, global_j, local_i, local_j);  
 
   # undef ID_2D
   # undef SH_ID
