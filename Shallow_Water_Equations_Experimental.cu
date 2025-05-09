@@ -315,7 +315,7 @@ __device__ void persistentSharedMemToGlobalMem(const float *__restrict__ sh_mem,
   # define ID_2D(i, j) ((i) * (nx + 2) + (j))
 
   // Only write valid interior global domain values
-  if (local_i > 0 && local_i < blockDim.y && local_j > 0 && local_j < blockDim.x)
+  if (local_i >= 0 && local_i <= blockDim.y && local_j >= 0 && local_j <= blockDim.x)
   {
     if (global_i > 0 && global_i < ny + 1 && global_j > 0 && global_j < nx + 1)
     {
