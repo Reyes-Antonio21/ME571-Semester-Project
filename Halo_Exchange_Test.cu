@@ -8,8 +8,7 @@
 
 #define IDX2D(i, j) ((i) * (nx + 2) + (j))
 
-__device__ void haloExchange(
-    float* sh_h, const float* h, int global_i, int global_j, int local_i, int local_j, int nx, int ny)
+__device__ void haloExchange(float* sh_h, const float* h, int global_i, int global_j, int local_i, int local_j, int nx, int ny)
 {
     # define SH_ID(local_i, local_j) ((local_i) * (blockDim.x + 2) + (local_j)) 
     # define ID_2D(global_i, global_j) ((global_i) * (nx + 2) + (global_j))
