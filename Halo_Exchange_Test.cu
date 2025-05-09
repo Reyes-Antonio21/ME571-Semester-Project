@@ -23,12 +23,12 @@ __device__ void haloExchange(
     // === LEFT halo ===
     if (local_j == 1) 
     {
-        int global_id_j = j - 1;
+        int global_id_j = global_j - 1;
         int local_id = SH_ID(local_i, local_j - 1);
 
         if (global_id_j >= 0) 
         {
-            int global_id = ID_2D(i, global_id_j);
+            int global_id = ID_2D(global_i, global_id_j);
             sh_h[local_id] = h[global_id];
         }
     }
@@ -36,12 +36,12 @@ __device__ void haloExchange(
     // === RIGHT halo ===
     if (local_j == blockDim.x) 
     {
-        int global_id_j = j + 1;
+        int global_id_j = global_j + 1;
         int local_id = SH_ID(local_i, local_j + 1);
 
         if (global_id_j < nx + 2) 
         {
-            int global_id = ID_2D(i, global_id_j);
+            int global_id = ID_2D(global_i, global_id_j);
             sh_h[local_id] = h[global_id];
         }
     }
@@ -49,12 +49,12 @@ __device__ void haloExchange(
     // === BOTTOM halo ===
     if (local_i == 1) 
     {
-        int global_id_i = i - 1;
+        int global_id_i = global_i - 1;
         int local_id = SH_ID(local_i - 1, local_j);
 
         if (global_id_i >= 0) 
         {
-            int global_id = ID_2D(global_id_i, j);
+            int global_id = ID_2D(global_id_i, global_j);
             sh_h[local_id] = h[global_id];
         }
     }
@@ -62,18 +62,19 @@ __device__ void haloExchange(
     // === TOP halo ===
     if (local_i == blockDim.y) 
     {
-        int global_id_i = i + 1;
+        int global_id_i = global_i + 1;
         int local_id = SH_ID(local_i + 1, local_j);
 
         if (global_id_i < ny + 2) 
         {
-            int global_id = ID_2D(global_id_i, j);
+            int global_id = ID_2D(global_id_i, global_j);
             sh_h[local_id] = h[global_id];
         }
     }
 }
 
-__global__ void testHaloKernel(float *h, float *h_result, int nx, int ny) {
+__global__ void testHaloKernel(float *h, float *h_result, int nx, int ny) 
+{
     int global_i = blockIdx.y * blockDim.y + threadIdx.y + 1;
     int global_j = blockIdx.x * blockDim.x + threadIdx.x + 1;
 
