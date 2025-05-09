@@ -367,11 +367,8 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     writeGlobalMemToSharedMem(sh_vh, vh, nx, ny, global_i, global_j, local_i, local_j);
     __syncthreads();
 
-    haloExchange(sh_h, sh_uh, sh_vh, h, uh, vh, nx, ny, global_i, global_j, local_i, local_j);
-    __syncthreads();
-
     // === Compute Fluxes (write only to interior region) ===
-    if (local_i >= 0 && local_i < blockDim.y + 1 && local_j >= 0 && local_j < blockDim.x + 1)
+    if (local_i > 0 && local_i < blockDim.y && local_j > 0 && local_j < blockDim.x)
     {
       int local_id = SH_ID(local_i, local_j);
 
@@ -398,6 +395,9 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
       sh_guh[local_id] = uv * inv_h;
       sh_gvh[local_id] = __fmaf_rn(vh2, inv_h, g_half * h2);
     }
+    __syncthreads();
+
+    haloExchange(sh_h, sh_uh, sh_vh, h, uh, vh, nx, ny, global_i, global_j, local_i, local_j);
     __syncthreads();
 
     // === Compute Updated Values Using Stencil ===
