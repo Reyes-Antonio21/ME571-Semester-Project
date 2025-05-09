@@ -8,18 +8,12 @@
 
 #define IDX2D(i, j) ((i) * (nx + 2) + (j))
 
-__device__ int SH_ID(int i, int j) 
-{
-    return i * (blockDim.x + 2) + j;
-}
-__device__ int ID_2D(int i, int j) 
-{
-    return i * (nx + 2) + j;
-}
-
 __device__ void haloExchange(
     float* sh_h, const float* h, int global_i, int global_j, int local_i, int local_j, int nx, int ny)
 {
+    # define SH_ID(local_i, local_j) ((local_i) * (blockDim.x + 2) + (local_j)) 
+    # define ID_2D(global_i, global_j) ((global_i) * (nx + 2) + (global_j))
+
     // === LEFT halo ===
     if (local_j == 1) 
     {
@@ -71,10 +65,16 @@ __device__ void haloExchange(
             sh_h[local_id] = h[global_id];
         }
     }
+
+    # undef ID_2D
+    # undef SH_ID
 }
 
 __global__ void testHaloKernel(float *h, float *h_result, int nx, int ny) 
 {
+    # define SH_ID(local_i, local_j) ((local_i) * (blockDim.x + 2) + (local_j)) 
+    # define ID_2D(global_i, global_j) ((global_i) * (nx + 2) + (global_j))
+
     int global_i = blockIdx.y * blockDim.y + threadIdx.y + 1;
     int global_j = blockIdx.x * blockDim.x + threadIdx.x + 1;
 
@@ -116,6 +116,9 @@ __global__ void testHaloKernel(float *h, float *h_result, int nx, int ny)
         int local_id_top = SH_ID(local_i + 1, local_j);
         if (global_i + 1 < ny + 2) h_result[global_id_top] = sh_h[local_id_top];
     }
+
+    # undef ID_2D
+    # undef SH_ID
 }
 
 int main() {
