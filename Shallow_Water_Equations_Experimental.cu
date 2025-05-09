@@ -315,7 +315,7 @@ __device__ void persistentSharedMemToGlobalMem(const float *__restrict__ sh_mem,
   # define ID_2D(i, j) ((i) * (nx + 2) + (j))
 
   // Only write valid interior global domain values
-  if (local_i >= 0 && local_i <= blockDim.y && local_j >= 0 && local_j <= blockDim.x)
+  if (local_i > 0 && local_i < blockDim.y && local_j > 0 && local_j < blockDim.x)
   {
     if (global_i > 0 && global_i < ny + 1 && global_j > 0 && global_j < nx + 1)
     {
@@ -386,6 +386,9 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     writeGlobalMemToSharedMem(sh_vh, vh, nx, ny, global_i, global_j, local_i, local_j);
     __syncthreads();
 
+    haloExchange(sh_h, sh_uh, sh_vh, h, uh, vh, nx, ny, global_i, global_j, local_i, local_j);
+    __syncthreads();
+
     // === Compute Fluxes (write only to interior region) ===
     if (local_i > 0 && local_i < blockDim.y && local_j > 0 && local_j < blockDim.x)
     {
@@ -414,9 +417,6 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
       sh_guh[local_id] = uv * inv_h;
       sh_gvh[local_id] = __fmaf_rn(vh2, inv_h, g_half * h2);
     }
-    __syncthreads();
-
-    haloExchange(sh_h, sh_uh, sh_vh, h, uh, vh, nx, ny, global_i, global_j, local_i, local_j);
     __syncthreads();
 
     // === Compute Updated Values Using Stencil ===
