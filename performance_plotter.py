@@ -89,11 +89,11 @@ plt.legend()
 plt.show()
 
 # Fit the model to the data
-poptdthd, pcovdthd = curve_fit(fitFunc2, problemSizept, avgHostDeviceTransfer)
-adthd, bdthd, cdthd = poptdthd[0], poptdthd[1], poptdthd[2]
+poptdthd, pcovdthd = curve_fit(fitFunc1, problemSizept, avgHostDeviceTransfer)
+adthd, bdthd, cdthd, ddthd = poptdthd[0], poptdthd[1], poptdthd[2], poptdthd[3]
 
 # Predict y values
-y_preddthd = fitFunc2(problemSizept, adthd, bdthd, cdthd)
+y_preddthd = fitFunc1(problemSizept, adthd, bdthd, cdthd, ddthd)
 
 # Compute R\u00B2
 ss_resdthd = np.sum((avgHostDeviceTransfer - y_preddthd)**2)
@@ -111,11 +111,11 @@ plt.legend()
 plt.show()
 
 # Fit the model to the data
-poptdtdh, pcovdtdh = curve_fit(fitFunc2, problemSizept, avgDeviceHostTransfer)
-adtdh, bdtdh, cdtdh = poptdtdh[0], poptdtdh[1], poptdtdh[2]
+poptdtdh, pcovdtdh = curve_fit(fitFunc1, problemSizept, avgDeviceHostTransfer)
+adtdh, bdtdh, cdtdh, ddtdh = poptdtdh[0], poptdtdh[1], poptdtdh[2], poptdtdh[3]
 
 # Predict y values
-y_preddtdh = fitFunc2(problemSizept, adtdh, bdtdh, cdtdh)
+y_preddtdh = fitFunc1(problemSizept, adtdh, bdtdh, cdtdh, ddtdh)
 
 # Compute R\u00B2
 ss_resdtdh = np.sum((avgDeviceHostTransfer - y_preddtdh)**2)
