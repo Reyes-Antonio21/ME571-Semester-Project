@@ -178,8 +178,8 @@ __global__ void applyTopBoundary(float *h, float *uh, float *vh, int nx, int ny)
 
 __device__ void haloExchange(float *__restrict__ sh_h, float *__restrict__ sh_uh, float *__restrict__ sh_vh, const float* h, const float* uh, const float* vh, int nx, int ny, int global_i, int global_j, int local_i, int local_j)
 {
-  # define SH_ID(local_i, local_j) (__fmaf_rn(local_i, blockDim.x + 2, local_j))
-  # define ID_2D(global_i, global_j) (__fmaf_rn(global_i, nx + 2, global_j))
+  # define SH_ID(local_i, local_j) (local_i * (blockDim.x + 2) + local_j)
+  # define ID_2D(global_i, global_j) (global_i * (nx + 2) + global_j)
   
   // === LEFT halo ===
   if (local_j == 1) 
@@ -252,7 +252,7 @@ __device__ void haloExchange(float *__restrict__ sh_h, float *__restrict__ sh_uh
 
 __device__ void deviceApplyLeftBoundary(float *__restrict__ sh_h, float *__restrict__ sh_uh, float *__restrict__ sh_vh, int local_i, int local_j)
 {
-  # define SH_ID(local_i, local_j) (__fmaf_rn(local_i, blockDim.x + 2, local_j))
+  # define SH_ID(local_i, local_j) ((local_i) * (blockDim.x + 2) + (local_j))
 
   // LEFT physical boundary
   if (blockIdx.x == 0 && threadIdx.x == 0) 
@@ -271,7 +271,7 @@ __device__ void deviceApplyLeftBoundary(float *__restrict__ sh_h, float *__restr
 
 __device__ void deviceApplyRightBoundary(float *__restrict__ sh_h, float *__restrict__ sh_uh, float *__restrict__ sh_vh, int local_i, int local_j)
 {
-  # define SH_ID(local_i, local_j) (__fmaf_rn(local_i, blockDim.x + 2, local_j))
+  # define SH_ID(local_i, local_j) ((local_i) * (blockDim.x + 2) + (local_j))
 
   // RIGHT physical boundary
   if (blockIdx.x == gridDim.x - 1 && threadIdx.x == blockDim.x - 1) 
@@ -290,7 +290,7 @@ __device__ void deviceApplyRightBoundary(float *__restrict__ sh_h, float *__rest
 
 __device__ void deviceApplyBottomBoundary(float *__restrict__ sh_h, float *__restrict__ sh_uh, float *__restrict__ sh_vh, int local_i, int local_j)
 {
-  # define SH_ID(local_i, local_j) (__fmaf_rn(local_i, blockDim.x + 2, local_j))
+  # define SH_ID(local_i, local_j) ((local_i) * (blockDim.x + 2) + (local_j))
 
   // BOTTOM physical boundary
   if (blockIdx.y == gridDim.y - 1 && threadIdx.y == blockDim.y - 1) 
@@ -309,7 +309,7 @@ __device__ void deviceApplyBottomBoundary(float *__restrict__ sh_h, float *__res
 
 __device__ void deviceApplyTopBoundary(float *__restrict__ sh_h, float *__restrict__ sh_uh, float *__restrict__ sh_vh, int local_i, int local_j)
 {
-  # define SH_ID(local_i, local_j) (__fmaf_rn(local_i, blockDim.x + 2, local_j))
+  # define SH_ID(local_i, local_j) ((local_i) * (blockDim.x + 2) + (local_j))
 
   // TOP physical boundary
   if (blockIdx.y == 0 && threadIdx.y == 0) 
@@ -368,8 +368,8 @@ __device__ void applyReflectiveBCs(float* sh_h, float* sh_uh, float* sh_vh, int 
 
 __device__ void writeGlobalMemToSharedMem(float *__restrict__ sh_mem, const float *__restrict__ d_mem, int nx, int ny, int global_i, int global_j, int local_i, int local_j)
 {
-  # define SH_ID(local_i, local_j) (__fmaf_rn(local_i, blockDim.x + 2, local_j))
-  # define ID_2D(global_i, global_j) (__fmaf_rn(global_i, nx + 2, global_j))
+  # define SH_ID(local_i, local_j) (local_i * (blockDim.x + 2) + local_j)
+  # define ID_2D(global_i, global_j) (global_i * (nx + 2) + global_j)
 
   int global_id = ID_2D(global_i, global_j);
   int local_id = SH_ID(local_i, local_j);
@@ -387,8 +387,8 @@ __device__ void writeGlobalMemToSharedMem(float *__restrict__ sh_mem, const floa
 
 __device__ void writeSharedMemToGlobalMem(const float *__restrict__ sh_mem, float *__restrict__ d_mem, int nx, int ny, int global_i, int global_j, int local_i, int local_j)
 {
-  # define SH_ID(local_i, local_j) (__fmaf_rn(local_i, blockDim.x + 2, local_j))
-  # define ID_2D(global_i, global_j) (__fmaf_rn(global_i, nx + 2, global_j))
+  # define SH_ID(local_i, local_j) (local_i * (blockDim.x + 2) + local_j)
+  # define ID_2D(global_i, global_j) (global_i * (nx + 2) + global_j)
 
   int global_id = ID_2D(global_i, global_j);
   int local_id = SH_ID(local_i, local_j);
@@ -427,8 +427,8 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
   float *sh_uhm =  sh_hm + (blockDim.y + 2) * (blockDim.x + 2);
   float *sh_vhm = sh_uhm + (blockDim.y + 2) * (blockDim.x + 2);
 
-  # define SH_ID(local_i, local_j) (__fmaf_rn(local_i, blockDim.x + 2, local_j))
-  # define ID_2D(global_i, global_j) (__fmaf_rn(global_i, nx + 2, global_j))
+  # define SH_ID(local_i, local_j) (local_i * (blockDim.x + 2) + local_j)
+  # define ID_2D(global_i, global_j) (global_i * (nx + 2) + global_j)
 
   __syncthreads();
 
