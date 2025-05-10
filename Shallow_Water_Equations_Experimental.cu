@@ -363,13 +363,7 @@ __device__ void writeGlobalMemToSharedMem(float *__restrict__ sh_mem, const floa
   int local_id = SH_ID(local_i, local_j);
 
   // === Load Interior Cell ===
-  if (global_i > 0 && global_i < ny + 1 && global_j > 0 && global_j < nx + 1)
-  {
-    if (local_i > 0 && local_i < blockDim.y && local_j > 0 && local_j < blockDim.x)
-    {
-      sh_mem[local_id] = d_mem[global_id];
-    }
-  }
+  sh_mem[local_id] = d_mem[global_id];
 
   # undef SH_ID
   # undef ID_2D
@@ -418,8 +412,8 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
   float *sh_uhm =  sh_hm + (blockDim.y + 2) * (blockDim.x + 2);
   float *sh_vhm = sh_uhm + (blockDim.y + 2) * (blockDim.x + 2);
 
-  # define SH_ID(local_i, local_j) ((local_i) * (blockDim.x + 2) + (local_j)) 
-  # define ID_2D(global_i, global_j) ((global_i) * (nx + 2) + (global_j))
+  # define SH_ID(local_i, local_j) (__fmaf_rn(local_i, blockDim.x + 2, local_j))
+  # define ID_2D(global_i, global_j) (__fmaf_rn(global_i, nx + 2, global_j))
 
   __syncthreads();
 
