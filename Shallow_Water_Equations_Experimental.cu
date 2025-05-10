@@ -328,7 +328,7 @@ __device__ void deviceApplyTopBoundary(float *__restrict__ sh_h, float *__restri
 
 __device__ void applyReflectiveBCs(float* sh_h, float* sh_uh, float* sh_vh, int local_i, int local_j)
 {
-  # define SH_ID(local_i, local_j) ((i) * (blockDim.x + 2) + (j))
+  # define SH_ID(local_i, local_j) ((local_i) * (blockDim.x + 2) + (local_j))
 
   // LEFT physical boundary
   if (blockIdx.x == 0 && threadIdx.x == 0) 
