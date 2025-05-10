@@ -375,7 +375,13 @@ __device__ void writeGlobalMemToSharedMem(float *__restrict__ sh_mem, const floa
   int local_id = SH_ID(local_i, local_j);
 
   // === Load Interior Cell ===
-  sh_mem[local_id] = d_mem[global_id];
+  if (global_i > 0 && global_i < ny + 1 && global_j > 0 && global_j < nx + 1)
+  {
+    if (local_i > 0 && local_i < blockDim.y && local_j > 0 && local_j < blockDim.x)
+    {
+      sh_mem[local_id] = d_mem[global_id];
+    }
+  }
 
   # undef SH_ID
   # undef ID_2D
