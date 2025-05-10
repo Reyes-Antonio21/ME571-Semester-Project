@@ -250,7 +250,7 @@ __device__ void haloExchange(float *__restrict__ sh_h, float *__restrict__ sh_uh
 }
 // ****************************************************************************************************************** //
 
-__device__ void applyLeftBoundary(float *__restrict__ sh_h, float *__restrict__ sh_uh, float *__restrict__ sh_vh, int local_i, int local_j)
+__device__ void deviceApplyLeftBoundary(float *__restrict__ sh_h, float *__restrict__ sh_uh, float *__restrict__ sh_vh, int local_i, int local_j)
 {
   # define SH_ID(i, j) ((i) * (blockDim.x + 2) + (j))
 
@@ -266,7 +266,7 @@ __device__ void applyLeftBoundary(float *__restrict__ sh_h, float *__restrict__ 
 }
 // ****************************************************************************** //
 
-__device__ void applyRightBoundary(float *__restrict__ sh_h, float *__restrict__ sh_uh, float *__restrict__ sh_vh, int local_i, int local_j)
+__device__ void deviceApplyRightBoundary(float *__restrict__ sh_h, float *__restrict__ sh_uh, float *__restrict__ sh_vh, int local_i, int local_j)
 {
   # define SH_ID(i, j) ((i) * (blockDim.x + 2) + (j))
 
@@ -282,7 +282,7 @@ __device__ void applyRightBoundary(float *__restrict__ sh_h, float *__restrict__
 }
 // ****************************************************************************** //
 
-__device__ void applyBottomBoundary(float *__restrict__ sh_h, float *__restrict__ sh_uh, float *__restrict__ sh_vh, int local_i, int local_j)
+__device__ void deviceApplyBottomBoundary(float *__restrict__ sh_h, float *__restrict__ sh_uh, float *__restrict__ sh_vh, int local_i, int local_j)
 {
   # define SH_ID(i, j) ((i) * (blockDim.x + 2) + (j))
 
@@ -298,7 +298,7 @@ __device__ void applyBottomBoundary(float *__restrict__ sh_h, float *__restrict_
 }
 // ****************************************************************************** //
 
-__device__ void applyTopBoundary(float *__restrict__ sh_h, float *__restrict__ sh_uh, float *__restrict__ sh_vh, int local_i, int local_j)
+__device__ void deviceApplyTopBoundary(float *__restrict__ sh_h, float *__restrict__ sh_uh, float *__restrict__ sh_vh, int local_i, int local_j)
 {
   # define SH_ID(i, j) ((i) * (blockDim.x + 2) + (j))
 
@@ -531,10 +531,10 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     }
     __syncthreads();
 
-    applyLeftBoundary(sh_h, sh_uh, sh_vh, local_i, local_j);
-    applyRightBoundary(sh_h, sh_uh, sh_vh, local_i, local_j);
-    applyBottomBoundary(sh_h, sh_uh, sh_vh, local_i, local_j);
-    applyTopBoundary(sh_h, sh_uh, sh_vh, local_i, local_j);
+    deviceApplyLeftBoundary(sh_h, sh_uh, sh_vh, local_i, local_j);
+    deviceApplyRightBoundary(sh_h, sh_uh, sh_vh, local_i, local_j);
+    deviceApplyBottomBoundary(sh_h, sh_uh, sh_vh, local_i, local_j);
+    deviceApplyTopBoundary(sh_h, sh_uh, sh_vh, local_i, local_j);
     __syncthreads();
 
     writeSharedMemToGlobalMem(sh_h, h, nx, ny, global_i, global_j, local_i, local_j);

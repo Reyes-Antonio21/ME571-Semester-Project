@@ -432,7 +432,7 @@ plt.figure(figsize=(16,9))
 
 for problem_size in problemSizemT.unique():
     subset = mTPData[problemSizemT == problem_size]
-    plt.plot(subset['Number of processors'], subset['Avg elapsed time (s)'], marker='.', label=f'Problem Size: {problem_size}')
+    plt.plot(subset['Number of processors'], subset['Avg elapsed time (s)'], marker='.')
 
 plt.xlabel("Number of Processors")
 plt.ylabel("Average Time to Solution (s)")  
