@@ -377,10 +377,7 @@ __device__ void writeGlobalMemToSharedMem(float *__restrict__ sh_mem, const floa
   // === Load Interior Cell ===
   if (global_i > 0 && global_i < ny + 1 && global_j > 0 && global_j < nx + 1)
   {
-    if (local_i > 0 && local_i < blockDim.y && local_j > 0 && local_j < blockDim.x)
-    {
-      sh_mem[local_id] = d_mem[global_id];
-    }
+    sh_mem[local_id] = d_mem[global_id];
   }
 
   # undef SH_ID
@@ -393,16 +390,13 @@ __device__ void writeSharedMemToGlobalMem(const float *__restrict__ sh_mem, floa
   # define SH_ID(local_i, local_j) (__fmaf_rn(local_i, blockDim.x + 2, local_j))
   # define ID_2D(global_i, global_j) (__fmaf_rn(global_i, nx + 2, global_j))
 
+  int global_id = ID_2D(global_i, global_j);
+  int local_id = SH_ID(local_i, local_j);
+
   // Only write valid interior global domain values
   if (global_i > 0 && global_i < ny + 1 && global_j > 0 && global_j < nx + 1)
   {
-    if (local_i > 0 && local_i < blockDim.y && local_j > 0 && local_j < blockDim.x)
-    {
-      int global_id = ID_2D(global_i, global_j);
-      int local_id = SH_ID(local_i, local_j);
-
-      d_mem[global_id] = sh_mem[local_id];
-    }
+    d_mem[global_id] = sh_mem[local_id];
   }
 
   #undef SH_ID
