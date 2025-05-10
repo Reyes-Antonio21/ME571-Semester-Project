@@ -361,19 +361,19 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
       float vh_t = sh_vh[local_id_top];
 
       float fh_l = sh_fh[local_id_left];
-      float fh_r = sh_fh[local_id];  // Note: using current cell's flux, not right neighbor
+      float fh_r = sh_fh[local_id_right];  // Note: using current cell's flux, not right neighbor
       float gh_b = sh_gh[local_id_bottom];
-      float gh_t = sh_gh[local_id];  // Note: using current cell's flux, not top neighbor
+      float gh_t = sh_gh[local_id_top];  // Note: using current cell's flux, not top neighbor
 
       float fuh_l = sh_fuh[local_id_left];
-      float fuh_r = sh_fuh[local_id];  // Note: using current cell's flux, not right neighbor
+      float fuh_r = sh_fuh[local_id_right];  // Note: using current cell's flux, not right neighbor
       float guh_b = sh_guh[local_id_bottom];
-      float guh_t = sh_guh[local_id];  // Note: using current cell's flux, not top neighbor
+      float guh_t = sh_guh[local_id_top];  // Note: using current cell's flux, not top neighbor
 
       float fvh_l = sh_fvh[local_id_left];
-      float fvh_r = sh_fvh[local_id];  // Note: using current cell's flux, not right neighbor
+      float fvh_r = sh_fvh[local_id_right];  // Note: using current cell's flux, not right neighbor
       float gvh_b = sh_gvh[local_id_bottom];
-      float gvh_t = sh_gvh[local_id];  // Note: using current cell's flux, not top neighbor
+      float gvh_t = sh_gvh[local_id_top];  // Note: using current cell's flux, not top neighbor
 
       // Forward-time, Centered-space discretization
       sh_hm[local_id] = sh_h[local_id] - lambda_x * (fh_r - fh_l) - lambda_y * (gh_t - gh_b);
