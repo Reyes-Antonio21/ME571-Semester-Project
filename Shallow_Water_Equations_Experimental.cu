@@ -260,9 +260,9 @@ __device__ void deviceApplyLeftBoundary(float *__restrict__ sh_h, float *__restr
     int local_id_left = SH_ID(local_i, 0);
     int local_id = SH_ID(local_i, 1);
 
-    sh_h [SH_ID(local_i, 0)] = sh_h [SH_ID(local_i, 1)];
-    sh_uh[SH_ID(local_i, 0)] = -1 * sh_uh[SH_ID(local_i, 1)];
-    sh_vh[SH_ID(local_i, 0)] = sh_vh[SH_ID(local_i, 1)];
+    sh_h [local_id_left] = sh_h [local_id];
+    sh_uh[local_id_left] = -1 * sh_uh[local_id];
+    sh_vh[local_id_left] = sh_vh[local_id];
   }
 
   # undef SH_ID
@@ -328,7 +328,7 @@ __device__ void deviceApplyTopBoundary(float *__restrict__ sh_h, float *__restri
 
 __device__ void applyReflectiveBCs(float* sh_h, float* sh_uh, float* sh_vh, int local_i, int local_j)
 {
-  # define SH_ID(local_i, local_j) (__fmaf_rn(local_i, blockDim.x + 2, local_j))
+  # define SH_ID(local_i, local_j) ((i) * (blockDim.x + 2) + (j))
 
   // LEFT physical boundary
   if (blockIdx.x == 0 && threadIdx.x == 0) 
