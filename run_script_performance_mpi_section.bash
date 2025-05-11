@@ -20,7 +20,7 @@ output_file="Shallow_Water_Equations_MPI_Section_Runtime_Performance.csv"
 echo "Problem size,Number of processors,Time steps,Iteration,Elapsed time (s),Avg compute fluxes time (s),Avg compute variables time (s),Avg update variables time (s),Avg apply boundary conditions time (s),Avg data transfer time (s)" > $output_file
 
 # Problem sizes
-for nx in 6600
+for nx in 5000
 do
     # Compute dt
     dx=$(echo "$xlen / $nx" | bc -l)

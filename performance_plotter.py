@@ -102,14 +102,6 @@ r_squareddthd = 1 - (ss_resdthd / ss_totdthd)
 
 print(f"R\u00B2 Host-Device Transfer Time: {r_squareddthd:.4f}")
 
-plt.figure(figsize=(12,7))
-plt.plot(problemSizect, y_preddthd * 1000, color = 'green', label= f'Host-Device Data Transfer Curve Fit, a = {adthd:.4e}, b = {bdthd:.4e}, c = {cdthd:.4e}, d = {ddthd:.4e}')
-plt.scatter(problemSizect, avgHostDeviceTransfer * 1000, color = 'blue', marker = '.', label = 'Average Host-Device Data Transfer Time')
-plt.xlabel("Problem Size")
-plt.ylabel("Host-Device Data Transfer Time (ms)")
-plt.legend()
-plt.show()
-
 # Fit the model to the data
 poptdtdh, pcovdtdh = curve_fit(fitFunc1, problemSizect, avgDeviceHostTransfer)
 adtdh, bdtdh, cdtdh, ddtdh = poptdtdh[0], poptdtdh[1], poptdtdh[2], poptdtdh[3]
@@ -124,12 +116,21 @@ r_squareddtdh = 1 - (ss_resdtdh / ss_totdtdh)
 
 print(f"R\u00B2 Device-Host Transfer Time: {r_squareddtdh:.4f}")
 
-plt.figure(figsize=(12,7))
-plt.plot(problemSizect, y_preddtdh * 1000, color = 'green', label= f'Device Data Transfer Curve Fit, a = {adtdh:.4e}, b = {bdtdh:.4e}, c = {cdtdh:.4e}, d = {ddtdh:.4e}')
-plt.scatter(problemSizect, avgDeviceHostTransfer * 1000, color = 'blue', marker = '.', label = 'Average Host-Device Data Transfer Time')
-plt.xlabel("Problem Size")
-plt.ylabel("Device-Host Data Transfer Time (ms)")
-plt.legend()
+fig, axes = plt.subplots(2, 1, figsize=(12, 7))
+
+axes[0].plot(problemSizect, y_preddthd * 1000, color = 'green', label= f'Host-Device Data Transfer Curve Fit, a = {adthd:.4e}, b = {bdthd:.4e}, c = {cdthd:.4e}, d = {ddthd:.4e}')
+axes[0].scatter(problemSizect, avgHostDeviceTransfer * 1000, color = 'blue', marker = '.', label = 'Average Host-Device Data Transfer Time')
+axes[0].set_xlabel("Problem Size")
+axes[0].set_ylabel("Host-Device Data Transfer Time (ms)")
+axes[0].legend()
+
+axes[1].plot(problemSizect, y_preddtdh * 1000, color = 'pink', label= f'Device-Host Data Transfer Curve Fit, a = {adtdh:.4e}, b = {bdtdh:.4e}, c = {cdtdh:.4e}, d = {ddtdh:.4e}')
+axes[1].scatter(problemSizect, avgDeviceHostTransfer * 1000, color = 'red', marker = '.', label = 'Average Device-Host Data Transfer Time')
+axes[1].set_xlabel("Problem Size")
+axes[1].set_ylabel("Device-Host Data Transfer Time (ms)")
+axes[1].legend()
+
+plt.tight_layout()
 plt.show()
 
 # -------------------------------------------------------------- parallel kernel performance --------------------------------------------------------------
@@ -735,7 +736,7 @@ problemSizect = problemSizect.iloc[:minLen7]
 
 # Speedup Comparison
 speedupsc = avgSerialElapsedTime1 / avgParallelElapsedTimect
-plt.figure(figsize=(10,6))
+plt.figure(figsize=(12, 7))
 plt.scatter(problemSizest1, speedupsc, color = 'blue', marker = '.')    
 plt.xlabel("Problem Size (N)")
 plt.ylabel("Average Speedup") 
@@ -860,7 +861,7 @@ avgParallelElapsedTimemt6 = avgParallelElapsedTimemt6.iloc[:minLen13].reset_inde
 problemSizemt6 = problemSizemt6.iloc[:minLen14].reset_index(drop=True)
 
 speedupsm = avgSerialElapsedTime2/avgParallelElapsedTimemt6
-plt.figure(figsize=(10,6))
+plt.figure(figsize=(12, 7))
 plt.scatter(problemSizest2, speedupsm, color = 'blue', marker = '.')    
 plt.xlabel("Problem Size (N)")
 plt.ylabel("Average Speedup") 
@@ -900,26 +901,22 @@ minLen16 = min(len(problemSizect), len(problemSizemt7))
 avgParallelElapsedTimect = avgParallelElapsedTimect.iloc[:minLen15]
 problemSizect = problemSizect.iloc[:minLen16]
 
-avgPowerConsumptionct = 200 * avgParallelElapsedTimect
+avgPowerConsumptionct = 215 * avgParallelElapsedTimect
 pTPData[avgPowerConsumptionct] = avgPowerConsumptionct
 
 avgParallelElapsedTimemt = avgParallelElapsedTimemt.iloc[:minLen15]
 problemSizemt7 = problemSizemt7.iloc[:minLen16]
 
-fig, axes = plt.subplots(1, 2, figsize=(12, 7))
+fig, axes = plt.subplots(2, 1, figsize=(12, 7))
 
-axes[0].plot(problemSizemt7, avgParallelElapsedTimemt7, marker = '.', color = 'blue')
-axes[0].plot(problemSizect, avgParallelElapsedTimect, marker = '.', color = 'red')
-axes[0].set_xscale('log')
-axes[0].set_yscale('log')
+axes[0].plot(problemSizemt7, avgParallelElapsedTimemt7, marker = '.', color = 'blue', label = 'Average MPI Elapsed Time')
+axes[0].plot(problemSizect, avgParallelElapsedTimect, marker = '.', color = 'red', label = 'Average CUDA Elapsed Time')
 axes[0].set_xlabel("Problem Size (N)")
 axes[0].set_ylabel("Average Time to Solution (s)")
 axes[0].legend()
 
-axes[1].plot(problemSizemt7, avgPowerConsumptionmt, marker = '.', color = 'blue')
-axes[1].plot(problemSizect,avgPowerConsumptionct, marker = '.', color = 'red')
-axes[1].set_xscale('log')
-axes[1].set_yscale('log')
+axes[1].plot(problemSizemt7, avgPowerConsumptionmt, marker = '.', color = 'blue', label = 'Average MPI Energy Consumption')
+axes[1].plot(problemSizect,avgPowerConsumptionct, marker = '.', color = 'red', label = 'Average CUDA Energy Consumption')
 axes[1].set_xlabel("Problem Size (N)")
 axes[1].set_ylabel("Power Consumption (J)")
 axes[1].legend()
