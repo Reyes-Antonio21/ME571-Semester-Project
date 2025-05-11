@@ -667,13 +667,13 @@ avgComputeFluxesss = avgComputeFluxesss.iloc[:minLen1] * 1000
 avgComputeVariablesss = avgComputeVariablesss.iloc[:minLen2] * 1000 
 avgUpdateVariablesss = avgUpdateVariablesss.iloc[:minLen3] * 1000 
 avgApplyBoundaryConditionsss = avgApplyBoundaryConditionsss.iloc[:minLen4] * 1000 
-problemSizess = problemSizess.iloc[:minLen5] * 1000 
+problemSizess = problemSizess.iloc[:minLen5] 
 
 avgComputeFluxesck = avgComputeFluxesck.iloc[:minLen1] * 1000 
 avgComputeVariablesck = avgComputeVariablesck.iloc[:minLen2] * 1000 
 avgUpdateVariablesck = avgUpdateVariablesck.iloc[:minLen3] * 1000 
 avgApplyBoundaryConditionsck = avgApplyBoundaryConditionsck.iloc[:minLen4] * 1000 
-problemSizeck = problemSizeck.iloc[:minLen5] * 1000   
+problemSizeck = problemSizeck.iloc[:minLen5]
 
 # Kernel to serial section comparison
 fig, axs = plt.subplots(2, 2, figsize=(12, 7))
@@ -783,13 +783,13 @@ avgComputeFluxesss = avgComputeFluxesss.iloc[:minLen8].reset_index(drop=True) * 
 avgComputeVariablesss = avgComputeVariablesss.iloc[:minLen9].reset_index(drop=True) * 1000 
 avgUpdateVariablesss = avgUpdateVariablesss.iloc[:minLen10].reset_index(drop=True) * 1000 
 avgApplyBoundaryConditionsss = avgApplyBoundaryConditionsss.iloc[:minLen11].reset_index(drop=True) * 1000 
-problemSizess = problemSizess.iloc[:minLen12].reset_index(drop=True) * 1000 
+problemSizess = problemSizess.iloc[:minLen12].reset_index(drop=True)
 
 avgComputeFluxesms5 = avgComputeFluxesms5.iloc[:minLen8].reset_index(drop=True) * 1000 
 avgComputeVariablesms5 = avgComputeVariablesms5.iloc[:minLen9].reset_index(drop=True) * 1000 
 avgUpdateVariablesms5 = avgUpdateVariablesms5.iloc[:minLen10].reset_index(drop=True) * 1000 
 avgApplyBoundaryConditionsms5 = avgApplyBoundaryConditionsms5.iloc[:minLen11].reset_index(drop=True) * 1000 
-problemSizems5 = problemSizems5.iloc[:minLen12].reset_index(drop=True) * 1000   
+problemSizems5 = problemSizems5.iloc[:minLen12].reset_index(drop=True) 
 
 # Kernel to serial section comparison
 fig, axs = plt.subplots(2, 2, figsize=(12, 7))
