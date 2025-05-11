@@ -444,8 +444,8 @@ plt.show()
 
 # Choose a fixed problem size for strong scaling
 problem_size_to_analyze1 = 200  # Change this to whichever size you want
-problem_size_to_analyze2 = 3000  # Change this to whichever size you want
-problem_size_to_analyze3 = 7800  # Change this to whichever size you want
+problem_size_to_analyze2 = 6400  # Change this to whichever size you want
+problem_size_to_analyze3 = 8000  # Change this to whichever size you want
 
 subset1 = mTPData[problemSizemt == problem_size_to_analyze1]
 subset2 = mTPData[problemSizemt == problem_size_to_analyze2]
@@ -492,32 +492,32 @@ axes[0][2].grid(True)
 axes[0][2].set_ylim(0, 1.1)  # Efficiency should be between 0 and 1
 
 # Panel 1: Elapsed Time
-axes[1][0].plot(subset1['Number of processors'], subset1['Avg elapsed time (s)'], marker='.')
+axes[1][0].plot(subset2['Number of processors'], subset2['Avg elapsed time (s)'], marker='.')
 axes[1][0].set_ylabel('Avg Elapsed Time (s)')
 axes[1][0].grid(True)
 
 # Panel 2: Speedup
-axes[1][1].plot(subset1['Number of processors'], subset1['Speedup'], marker='.', label='Measured Speedup')
+axes[1][1].plot(subset2['Number of processors'], subset2['Speedup'], marker='.', label='Measured Speedup')
 axes[1][1].plot(x, y, linestyle='--', color='gray', label='Ideal Speedup')
 axes[1][1].set_ylabel('Speedup')
 axes[1][1].legend()
 axes[1][1].grid(True)
 
 # Panel 3: Parallel Efficiency
-axes[1][2].plot(subset1['Number of processors'], subset1['Efficiency'], marker='.')
+axes[1][2].plot(subset2['Number of processors'], subset2['Efficiency'], marker='.')
 axes[1][2].plot(x, y1, c = 'k', linestyle = '--', label = 'Ideal Efficiency')
 axes[1][2].set_ylabel('Efficiency')
 axes[1][2].grid(True)
 axes[1][2].set_ylim(0, 1.1)  # Efficiency should be between 0 and 1
 
 # Panel 1: Elapsed Time
-axes[2][0].plot(subset1['Number of processors'], subset1['Avg elapsed time (s)'], marker='.')
+axes[2][0].plot(subset3['Number of processors'], subset3['Avg elapsed time (s)'], marker='.')
 axes[2][0].set_xlabel('Number of Processors')
 axes[2][0].set_ylabel('Avg Elapsed Time (s)')
 axes[2][0].grid(True)
 
 # Panel 2: Speedup
-axes[2][1].plot(subset1['Number of processors'], subset1['Speedup'], marker='.', label='Measured Speedup')
+axes[2][1].plot(subset3['Number of processors'], subset3['Speedup'], marker='.', label='Measured Speedup')
 axes[2][1].plot(x, y, linestyle='--', color='gray', label='Ideal Speedup')
 axes[2][1].set_xlabel('Number of Processors')
 axes[2][1].set_ylabel('Speedup')
@@ -525,7 +525,7 @@ axes[2][1].legend()
 axes[2][1].grid(True)
 
 # Panel 3: Parallel Efficiency
-axes[2][2].plot(subset1['Number of processors'], subset1['Efficiency'], marker='.')
+axes[2][2].plot(subset3['Number of processors'], subset3['Efficiency'], marker='.')
 axes[2][2].plot(x, y1, c = 'k', linestyle = '--', label = 'Ideal Efficiency')
 axes[2][2].set_xlabel('Number of Processors')
 axes[2][2].set_ylabel('Efficiency')
@@ -676,7 +676,7 @@ avgApplyBoundaryConditionsck = avgApplyBoundaryConditionsck.iloc[:minLen4] * 100
 problemSizeck = problemSizeck.iloc[:minLen5] * 1000   
 
 # Kernel to serial section comparison
-fig, axs = plt.subplots(2, 2, figsize=(14, 8))
+fig, axs = plt.subplots(2, 2, figsize=(12, 7))
 
 # ---- Subplot 1 ----
 ax = axs[0, 0]
@@ -742,7 +742,7 @@ plt.ylabel("Average Speedup")
 plt.show() 
 
 # Serial & Parallel Total Runtime Comparison
-fig, axs = plt.subplots(figsize=(10, 6))
+fig, axs = plt.subplots(figsize=(12, 7))
 
 # Parallel to serial comparison
 ax = axs
@@ -779,17 +779,17 @@ minLen11 = min(len(avgApplyBoundaryConditionsss), len(avgApplyBoundaryConditions
 minLen12 = min(len(problemSizess), len(problemSizems5))
 
 # Truncate DataFrames
-avgComputeFluxesss = avgComputeFluxesss.iloc[:minLen8] * 1000 
-avgComputeVariablesss = avgComputeVariablesss.iloc[:minLen9] * 1000 
-avgUpdateVariablesss = avgUpdateVariablesss.iloc[:minLen10] * 1000 
-avgApplyBoundaryConditionsss = avgApplyBoundaryConditionsss.iloc[:minLen11] * 1000 
-problemSizess = problemSizess.iloc[:minLen12] * 1000 
+avgComputeFluxesss = avgComputeFluxesss.iloc[:minLen8].reset_index(drop=True) * 1000 
+avgComputeVariablesss = avgComputeVariablesss.iloc[:minLen9].reset_index(drop=True) * 1000 
+avgUpdateVariablesss = avgUpdateVariablesss.iloc[:minLen10].reset_index(drop=True) * 1000 
+avgApplyBoundaryConditionsss = avgApplyBoundaryConditionsss.iloc[:minLen11].reset_index(drop=True) * 1000 
+problemSizess = problemSizess.iloc[:minLen12].reset_index(drop=True) * 1000 
 
-avgComputeFluxesms5 = avgComputeFluxesms5.iloc[:minLen8] * 1000 
-avgComputeVariablesms5 = avgComputeVariablesms5.iloc[:minLen9] * 1000 
-avgUpdateVariablesms5 = avgUpdateVariablesms5.iloc[:minLen10] * 1000 
-avgApplyBoundaryConditionsms5 = avgApplyBoundaryConditionsms5.iloc[:minLen11] * 1000 
-problemSizems5 = problemSizems5.iloc[:minLen12] * 1000   
+avgComputeFluxesms5 = avgComputeFluxesms5.iloc[:minLen8].reset_index(drop=True) * 1000 
+avgComputeVariablesms5 = avgComputeVariablesms5.iloc[:minLen9].reset_index(drop=True) * 1000 
+avgUpdateVariablesms5 = avgUpdateVariablesms5.iloc[:minLen10].reset_index(drop=True) * 1000 
+avgApplyBoundaryConditionsms5 = avgApplyBoundaryConditionsms5.iloc[:minLen11].reset_index(drop=True) * 1000 
+problemSizems5 = problemSizems5.iloc[:minLen12].reset_index(drop=True) * 1000   
 
 # Kernel to serial section comparison
 fig, axs = plt.subplots(2, 2, figsize=(12, 7))
@@ -853,14 +853,13 @@ minLen13 = min(len(avgParallelElapsedTimemt6), len(avgSerialElapsedTime))
 minLen14 = min(len(problemSizemt6), len(problemSizest))
 
 # Truncate dataframes
-avgSerialElapsedTime2 = avgSerialElapsedTime.iloc[:minLen13]
-problemSizest2 = problemSizest.iloc[:minLen14]
+avgSerialElapsedTime2 = avgSerialElapsedTime.iloc[:minLen13].reset_index(drop=True)
+problemSizest2 = problemSizest.iloc[:minLen14].reset_index(drop=True)
 
-avgParallelElapsedTimemt6 = avgParallelElapsedTimemt6.iloc[:minLen13]
-problemSizemt6 = problemSizemt6.iloc[:minLen14]
+avgParallelElapsedTimemt6 = avgParallelElapsedTimemt6.iloc[:minLen13].reset_index(drop=True)
+problemSizemt6 = problemSizemt6.iloc[:minLen14].reset_index(drop=True)
 
 speedupsm = avgSerialElapsedTime2/avgParallelElapsedTimemt6
-# Speedup Comparison
 plt.figure(figsize=(10,6))
 plt.scatter(problemSizest2, speedupsm, color = 'blue', marker = '.')    
 plt.xlabel("Problem Size (N)")
@@ -868,7 +867,7 @@ plt.ylabel("Average Speedup")
 plt.show() 
 
 # Serial & Parallel Total Runtime Comparison
-fig, axs = plt.subplots(figsize=(10, 6))
+fig, axs = plt.subplots(figsize=(12, 7))
 
 # Parallel to serial comparison
 ax = axs
