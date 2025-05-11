@@ -14,7 +14,7 @@ t_final=0.5
 g=9.81
 h_max=1.4
 CFL=0.5
-output_file="Shallow_Water_Equations_MPI_Section_Runtime_Performance.csv"
+output_file="Shallow_Water_Equations_MPI_Section_Runtime_Performance_Extra.csv"
 
 # Write CSV header
 echo "Problem size,Number of processors,Time steps,Iteration,Elapsed time (s),Avg compute fluxes time (s),Avg compute variables time (s),Avg update variables time (s),Avg apply boundary conditions time (s),Avg data transfer time (s)" > $output_file
