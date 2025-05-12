@@ -78,7 +78,7 @@ ss_respt = np.sum((avgParallelElapsedTimect - y_predpt)**2)
 ss_totpt = np.sum((avgParallelElapsedTimect - np.mean(avgParallelElapsedTimect))**2)
 r_squaredpt = 1 - (ss_respt / ss_totpt)
 
-print(f"R\u00B2 Parallel Elapsed Time: {r_squaredpt:.4f}")
+print(f"R\u00B2 Cuda Elapsed Time: {r_squaredpt:.4f}")
 
 plt.figure(figsize=(12,7))
 plt.plot(problemSizect, y_predpt, color = 'pink', label = f'Elapsed Time Curve Fit, a = {apt:.4e}, b = {bpt:.4e}, c = {cpt:.4e}, d = {dpt:.4e}')
@@ -177,7 +177,7 @@ ss_respk1 = np.sum((avgComputeFluxesck - y_predpk1)**2)
 ss_totpk1 = np.sum((avgComputeFluxesck - np.mean(avgComputeFluxesck))**2)
 r_squaredpk1 = 1 - (ss_respk1 / ss_totpk1)
 
-print(f"R\u00B2: {r_squaredpk1:.4f}")
+print(f"R\u00B2 Cuda Compute Fluxes: {r_squaredpk1:.4f}")
 
 # Fit the model to the data
 poptpk2, pcovpk2 = curve_fit(fitFunc2, problemSizeck, avgComputeVariablesck)
@@ -191,7 +191,7 @@ ss_respk2 = np.sum((avgComputeVariablesck - y_predpk2)**2)
 ss_totpk2 = np.sum((avgComputeVariablesck - np.mean(avgComputeVariablesck))**2)
 r_squaredpk2 = 1 - (ss_respk2 / ss_totpk2)
 
-print(f"R\u00B2: {r_squaredpk2:.4f}")
+print(f"R\u00B2 Cuda Compute Variables: {r_squaredpk2:.4f}")
 
 # Fit the model to the data
 poptpk3, pcovpk3 = curve_fit(fitFunc2, problemSizeck, avgUpdateVariablesck)
@@ -205,7 +205,7 @@ ss_respk3 = np.sum((avgUpdateVariablesck - y_predpk3)**2)
 ss_totpk3 = np.sum((avgUpdateVariablesck - np.mean(avgUpdateVariablesck))**2)
 r_squaredpk3 = 1 - (ss_respk3 / ss_totpk3)
 
-print(f"R\u00B2: {r_squaredpk3:.4f}")
+print(f"R\u00B2 Cuda Update Variables: {r_squaredpk3:.4f}")
 
 # Fit the model to the data
 poptpk4, pcovpk4 = curve_fit(fitFunc2, problemSizeck, avgApplyBoundaryConditionsck)
@@ -219,7 +219,7 @@ ss_respk4 = np.sum((avgApplyBoundaryConditionsck - y_predpk4)**2)
 ss_totpk4 = np.sum((avgApplyBoundaryConditionsck - np.mean(avgApplyBoundaryConditionsck))**2)
 r_squaredpk4 = 1 - (ss_respk4 / ss_totpk4)
 
-print(f"R\u00B2: {r_squaredpk4:.4f}")
+print(f"R\u00B2 Cuda Apply Boundary Conditions: {r_squaredpk4:.4f}")
 
 plt.figure(figsize=(12,7))
 plt.plot(problemSizeck, y_predpk1 * 1000, color = 'purple', label= f'Compute Fluxes Curve Fit, a = {apk1:.4e}, b = {bpk1:.4e}, c = {cpk1:.4e}')
@@ -271,7 +271,7 @@ ss_resst1 = np.sum((avgSerialElapsedTime - y_predst1)**2)
 ss_totst1 = np.sum((avgSerialElapsedTime - np.mean(avgSerialElapsedTime))**2)
 r_squaredst1 = 1 - (ss_resst1 / ss_totst1)
 
-print(f"R\u00B2: {r_squaredst1:.4f}")
+print(f"R\u00B2 Serial Elapsed Time: {r_squaredst1:.4f}")
 
 # Fit the model to the data
 poptst2, pcovst2 = curve_fit(fitFunc4, problemSizest, avgSerialElapsedTime)
@@ -285,7 +285,7 @@ ss_resst2 = np.sum((avgSerialElapsedTime - y_predst2)**2)
 ss_totst2 = np.sum((avgSerialElapsedTime - np.mean(avgSerialElapsedTime))**2)
 r_squaredst2 = 1 - (ss_resst2 / ss_totst2)
 
-print(f"R\u00B2: {r_squaredst2:.4f}")
+print(f"R\u00B2 Flop Performance Model: {r_squaredst2:.4f}")
 
 plt.figure(figsize=(12,7))
 plt.plot(problemSizest, y_predst1, color = 'pink', label= f'Elapsed Time Curve Fit, a = {ast1:.4e}, b = {bst1:.4e}, c = {cst1:.4e}, d = {dst1:.4e}')
@@ -348,7 +348,7 @@ ss_resss1 = np.sum((avgComputeFluxesss - y_predss1)**2)
 ss_totss1 = np.sum((avgComputeFluxesss - np.mean(avgComputeFluxesss))**2)
 r_squaredss1 = 1 - (ss_resss1 / ss_totss1)
 
-print(f"R\u00B2: {r_squaredss1:.4f}")
+print(f"R\u00B2 Serial Compute Fluxes: {r_squaredss1:.4f}")
 
 # Fit the model to the data
 poptss2, pcovss2 = curve_fit(fitFunc2, problemSizess, avgComputeVariablesss)
@@ -362,7 +362,7 @@ ss_resss2 = np.sum((avgComputeVariablesss - y_predss2)**2)
 ss_totss2 = np.sum((avgComputeVariablesss - np.mean(avgComputeVariablesss))**2)
 r_squaredss2 = 1 - (ss_resss2 / ss_totss2)
 
-print(f"R\u00B2: {r_squaredss2:.4f}")
+print(f"R\u00B2 Serial Compute Variables: {r_squaredss2:.4f}")
 
 # Fit the model to the data
 poptss3, pcovss3 = curve_fit(fitFunc2, problemSizess, avgUpdateVariablesss)
@@ -376,7 +376,7 @@ ss_resss3 = np.sum((avgUpdateVariablesss - y_predss3)**2)
 ss_totss3 = np.sum((avgUpdateVariablesss - np.mean(avgUpdateVariablesss))**2)
 r_squaredss3 = 1 - (ss_resss3 / ss_totss3)
 
-print(f"R\u00B2: {r_squaredss3:.4f}")
+print(f"R\u00B2 Serial Update Variables: {r_squaredss3:.4f}")
 
 # Fit the model to the data
 poptss4, pcovss4 = curve_fit(fitFunc2, problemSizess, avgApplyBoundaryConditionsss)
@@ -390,7 +390,7 @@ ss_resss4 = np.sum((avgApplyBoundaryConditionsss - y_predss4)**2)
 ss_totss4 = np.sum((avgApplyBoundaryConditionsss - np.mean(avgApplyBoundaryConditionsss))**2)
 r_squaredss4 = 1 - (ss_resss4 / ss_totss4)
 
-print(f"R\u00B2: {r_squaredss4:.4f}")
+print(f"R\u00B2 Serial Apply Boundary Conditions: {r_squaredss4:.4f}")
 
 plt.figure(figsize=(12,7))
 plt.plot(problemSizess, y_predss1 * 1000, color = 'purple', label= f'Compute Fluxes Curve Fit, a = {ass1:.4e}, b = {bss1:.4e}, c = {css1:.4e}')
@@ -601,7 +601,7 @@ ss_resms41 = np.sum((avgComputeFluxesms4 - y_predms41)**2)
 ss_totms41 = np.sum((avgComputeFluxesms4 - np.mean(avgComputeFluxesms4))**2)
 r_squaredms41 = 1 - (ss_resms41 / ss_totms41)
 
-print(f"R\u00B2: {r_squaredms41:.4f}")
+print(f"R\u00B2 MPI Compute Fluxes: {r_squaredms41:.4f}")
 
 # Fit the model to the data
 poptms42, pcovms42 = curve_fit(fitFunc2, problemSizems4, avgComputeVariablesms4)
@@ -615,7 +615,7 @@ ss_resms42 = np.sum((avgComputeVariablesms4 - y_predms42)**2)
 ss_totms42 = np.sum((avgComputeVariablesms4 - np.mean(avgComputeVariablesms4))**2)
 r_squaredms42 = 1 - (ss_resms42 / ss_totms42)
 
-print(f"R\u00B2: {r_squaredms42:.4f}")
+print(f"R\u00B2 MPI Compute Variables: {r_squaredms42:.4f}")
 
 # Fit the model to the data
 poptms43, pcovms43 = curve_fit(fitFunc2, problemSizems4, avgUpdateVariablesms4)
@@ -629,7 +629,7 @@ ss_resms43 = np.sum((avgUpdateVariablesms4 - y_predms43)**2)
 ss_totms43 = np.sum((avgUpdateVariablesms4 - np.mean(avgUpdateVariablesms4))**2)
 r_squaredms43 = 1 - (ss_resms43 / ss_totms43)
 
-print(f"R\u00B2: {r_squaredms43:.4f}")
+print(f"R\u00B2 MPI Update Variables: {r_squaredms43:.4f}")
 
 # Fit the model to the data
 poptms44, pcovms44 = curve_fit(fitFunc2, problemSizems4, avgApplyBoundaryConditionsms4)
@@ -643,7 +643,7 @@ ss_resms44 = np.sum((avgApplyBoundaryConditionsms4 - y_predms44)**2)
 ss_totms44 = np.sum((avgApplyBoundaryConditionsms4 - np.mean(avgApplyBoundaryConditionsms4))**2)
 r_squaredms44 = 1 - (ss_resms44 / ss_totms44)
 
-print(f"R\u00B2: {r_squaredms44:.4f}")
+print(f"R\u00B2 MPI Apply Boundary Conditions: {r_squaredms44:.4f}")
 
 plt.figure(figsize=(12,7))
 plt.plot(problemSizems4, y_predms41 * 1000, color = 'purple', label= f'Compute Fluxes Curve Fit, a = {ass1:.4e}, b = {bss1:.4e}, c = {css1:.4e}')
