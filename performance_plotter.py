@@ -963,25 +963,21 @@ fig, axes = plt.subplots(3, 2, figsize=(12, 7))
 
 axes[0][0].plot(problemSizemt7, avgParallelElapsedTimemt7, marker = '.', color = 'blue', label = 'Average MPI Elapsed Time')
 axes[0][0].plot(problemSizect7, avgParallelElapsedTimect7, marker = '.', color = 'red', label = 'Average CUDA Elapsed Time')
-axes[0][0].set_xlabel("Problem Size (N)")
 axes[0][0].set_ylabel("Average Time to Solution (s)")
 axes[0][0].legend()
 
 axes[0][1].plot(problemSizemt7, avgPowerConsumptionmt7, marker = '.', color = 'blue', label = 'Average MPI Energy Consumption')
 axes[0][1].plot(problemSizect7,avgPowerConsumptionct7, marker = '.', color = 'red', label = 'Average CUDA Energy Consumption')
-axes[0][1].set_xlabel("Problem Size (N)")
 axes[0][1].set_ylabel("Power Consumption (J)")
 axes[0][1].legend()
 
 axes[1][0].plot(problemSizemt8, avgParallelElapsedTimemt8, marker = '.', color = 'blue', label = 'Average MPI Elapsed Time')
 axes[1][0].plot(problemSizect8, avgParallelElapsedTimect8, marker = '.', color = 'red', label = 'Average CUDA Elapsed Time')
-axes[1][0].set_xlabel("Problem Size (N)")
 axes[1][0].set_ylabel("Average Time to Solution (s)")
 axes[1][0].legend()
 
 axes[1][1].plot(problemSizemt8, avgPowerConsumptionmt8, marker = '.', color = 'blue', label = 'Average MPI Energy Consumption')
 axes[1][1].plot(problemSizect8,avgPowerConsumptionct8, marker = '.', color = 'red', label = 'Average CUDA Energy Consumption')
-axes[1][1].set_xlabel("Problem Size (N)")
 axes[1][1].set_ylabel("Power Consumption (J)")
 axes[1][1].legend()
 
