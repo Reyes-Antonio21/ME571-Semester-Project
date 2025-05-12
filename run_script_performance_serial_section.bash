@@ -13,13 +13,13 @@ t_final=0.5
 g=9.81
 h_max=1.4
 CFL=0.5
-output_file="Shallow_Water_Equations_Serial_Section_Runtime_Performance.csv"
+output_file="Shallow_Water_Equations_Serial_Section_Runtime_Performance_Extra.csv"
 
 # Write CSV header (once)
 echo "Problem size,Time steps,Iteration,Elapsed time (s),Avg compute fluxes time (s),Avg compute variables time (s),Avg update variables time (s),Avg apply boundary conditions time (s)" > $output_file
 
 # Problem size loop
-for nx in 1300 1400 2000 2100 2400 2800 7200 7600 8000
+for nx in 7200 7600
 do
     # Compute dt using CFL condition
     dx=$(echo "$xlen / $nx" | bc -l)
