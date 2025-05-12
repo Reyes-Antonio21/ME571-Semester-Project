@@ -22,7 +22,7 @@ def fitFunc3(x, a, b):
 # Note: The coefficients are determined from the total number of FLOPs within each respective section for a general problem size, N. 
 # The expression was simplied to the form shown below.
 def fitFunc4(x, d):
-    return d *(67.0 * x ** 3 + 104.0 * x ** 2 + 77.0 * x)
+    return d *(78.0 * x ** 3 + 96.0 * x ** 2 + 66.0 * x)
 
 # Power Law Fit
 def fitFunc5(x, a, b):
