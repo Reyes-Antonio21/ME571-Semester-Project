@@ -893,6 +893,7 @@ plt.tight_layout()
 plt.show()
 
 # -------------------------------------------------------------- CUDA Total to MPI Total performance comparison --------------------------------------------------------------
+# Assign CUDA baseline arrays
 avgParallelElapsedTimect7 = avgParallelElapsedTimect
 avgParallelElapsedTimect8 = avgParallelElapsedTimect
 avgParallelElapsedTimect9 = avgParallelElapsedTimect
@@ -901,105 +902,111 @@ problemSizect7 = problemSizect
 problemSizect8 = problemSizect
 problemSizect9 = problemSizect
 
-number_of_processors_to_analyzemt1 = 12  # Change this to whichever size you want
+# Processor counts
+number_of_processors_to_analyzemt1 = 12
 number_of_processors_to_analyzemt2 = 24
 number_of_processors_to_analyzemt3 = 48
 
-subset7 = mTPData[numberOfProcessorsmt == number_of_processors_to_analyzemt1]
-subset8 = mTPData[numberOfProcessorsmt == number_of_processors_to_analyzemt2]
-subset9 = mTPData[numberOfProcessorsmt == number_of_processors_to_analyzemt3]
-
-# Sort by problem size
-subset7 = subset7.sort_values(by='Problem size') 
+# Filter and compute MPI data
+subset7 = mTPData[numberOfProcessorsmt == number_of_processors_to_analyzemt1].sort_values(by='Problem size')
+subset7 = subset7[subset7['Problem size'] != 16000]
 subset7['Avg power consumption'] = 6.25 * subset7['Number of processors'] * subset7['Avg elapsed time (s)']
 problemSizemt7 = subset7['Problem size']
 avgParallelElapsedTimemt7 = subset7['Avg elapsed time (s)']
 avgPowerConsumptionmt7 = subset7['Avg power consumption']
 
-# Sort by problem size
-subset8 = subset8.sort_values(by='Problem size') 
+subset8 = mTPData[numberOfProcessorsmt == number_of_processors_to_analyzemt2].sort_values(by='Problem size')
+subset8 = subset8[subset8['Problem size'] != 16000]
 subset8['Avg power consumption'] = 6.25 * subset8['Number of processors'] * subset8['Avg elapsed time (s)']
 problemSizemt8 = subset8['Problem size']
 avgParallelElapsedTimemt8 = subset8['Avg elapsed time (s)']
 avgPowerConsumptionmt8 = subset8['Avg power consumption']
 
-# Sort by problem size
-subset9 = subset9.sort_values(by='Problem size') 
+subset9 = mTPData[numberOfProcessorsmt == number_of_processors_to_analyzemt3].sort_values(by='Problem size')
+subset9 = subset9[subset9['Problem size'] != 16000]
 subset9['Avg power consumption'] = 6.25 * subset9['Number of processors'] * subset9['Avg elapsed time (s)']
 problemSizemt9 = subset9['Problem size']
 avgParallelElapsedTimemt9 = subset9['Avg elapsed time (s)']
 avgPowerConsumptionmt9 = subset9['Avg power consumption']
 
-#Find Minimum Length
+# Calculate power consumption for CUDA (constant 215 W)
+avgPowerConsumptionct7 = 215 * avgParallelElapsedTimect7
+avgPowerConsumptionct8 = 215 * avgParallelElapsedTimect8
+avgPowerConsumptionct9 = 215 * avgParallelElapsedTimect9
+
+# Find minimum lengths for truncation
 minLen15 = min(len(avgParallelElapsedTimect7), len(avgParallelElapsedTimemt7))
 minLen16 = min(len(problemSizect7), len(problemSizemt7))
+minLen17 = min(len(problemSizect7), len(avgPowerConsumptionct7))
+minLen18 = min(len(problemSizemt7), len(avgPowerConsumptionmt7))
 
-minLen17 = min(len(avgParallelElapsedTimect8), len(avgParallelElapsedTimemt8))
-minLen18 = min(len(problemSizect8), len(problemSizemt8))
+minLen19 = min(len(avgParallelElapsedTimect8), len(avgParallelElapsedTimemt8))
+minLen20 = min(len(problemSizect8), len(problemSizemt8))
+minLen21 = min(len(problemSizect8), len(avgPowerConsumptionct8))
+minLen22 = min(len(problemSizemt8), len(avgPowerConsumptionmt8))
+ 
 
-minLen19 = min(len(avgParallelElapsedTimect9), len(avgParallelElapsedTimemt9))
-minLen20 = min(len(problemSizect9), len(problemSizemt9))
+minLen23 = min(len(avgParallelElapsedTimect9), len(avgParallelElapsedTimemt9))
+minLen24 = min(len(problemSizect9), len(problemSizemt9))
+minLen25 = min(len(problemSizect9), len(avgPowerConsumptionct9))
+minLen26 = min(len(problemSizemt9), len(avgPowerConsumptionmt9))
 
-# Truncate dataframes
+# Truncate all to match
 avgParallelElapsedTimect7 = avgParallelElapsedTimect7.iloc[:minLen15]
 problemSizect7 = problemSizect7.iloc[:minLen16]
-
-avgPowerConsumptionct7 = 215 * avgParallelElapsedTimect7
-pTPData[avgPowerConsumptionct7] = avgPowerConsumptionct7
+avgPowerConsumptionct7 = avgPowerConsumptionct7.iloc[:minLen17]
 
 avgParallelElapsedTimemt7 = avgParallelElapsedTimemt7.iloc[:minLen15]
 problemSizemt7 = problemSizemt7.iloc[:minLen16]
+avgPowerConsumptionmt7 = avgPowerConsumptionmt7.iloc[:minLen18]
 
-# Truncate dataframes
-avgParallelElapsedTimect8 = avgParallelElapsedTimect8.iloc[:minLen17]
-problemSizect8 = problemSizect8.iloc[:minLen18]
+avgParallelElapsedTimect8 = avgParallelElapsedTimect8.iloc[:minLen19]
+problemSizect8 = problemSizect8.iloc[:minLen20]
+avgPowerConsumptionct8 = avgPowerConsumptionct8.iloc[:minLen21]
 
-avgPowerConsumptionct8 = 215 * avgParallelElapsedTimect8
-pTPData[avgPowerConsumptionct8] = avgPowerConsumptionct8
+avgParallelElapsedTimemt8 = avgParallelElapsedTimemt8.iloc[:minLen19]
+problemSizemt8 = problemSizemt8.iloc[:minLen20]
+avgPowerConsumptionmt8 = avgPowerConsumptionmt8.iloc[:minLen22]
+                                                     
+avgParallelElapsedTimect9 = avgParallelElapsedTimect9.iloc[:minLen23]
+problemSizect9 = problemSizect9.iloc[:minLen24]
+avgPowerConsumptionct9 = avgPowerConsumptionct9.iloc[:minLen25]
 
-avgParallelElapsedTimemt8 = avgParallelElapsedTimemt8.iloc[:minLen17]
-problemSizemt8 = problemSizemt8.iloc[:minLen18]
+avgParallelElapsedTimemt9 = avgParallelElapsedTimemt9.iloc[:minLen23]
+problemSizemt9 = problemSizemt9.iloc[:minLen24]
+avgPowerConsumptionct9 = avgPowerConsumptionct9.iloc[:minLen26]
 
-# Truncate dataframes
-avgParallelElapsedTimect9 = avgParallelElapsedTimect9.iloc[:minLen19]
-problemSizect9 = problemSizect9.iloc[:minLen20]
-
-avgPowerConsumptionct9 = 215 * avgParallelElapsedTimect9
-pTPData[avgPowerConsumptionct9] = avgPowerConsumptionct9
-
-avgParallelElapsedTimemt9 = avgParallelElapsedTimemt9.iloc[:minLen19]
-problemSizemt9 = problemSizemt9.iloc[:minLen20]
-
+# Plotting
 fig, axes = plt.subplots(3, 2, figsize=(12, 7))
 
-axes[0][0].plot(problemSizemt7, avgParallelElapsedTimemt7, marker = '.', color = 'blue', label = 'Average MPI Elapsed Time')
-axes[0][0].plot(problemSizect7, avgParallelElapsedTimect7, marker = '.', color = 'red', label = 'Average CUDA Elapsed Time')
+axes[0][0].plot(problemSizemt7, avgParallelElapsedTimemt7, marker='.', color='blue', label='Average MPI Elapsed Time')
+axes[0][0].plot(problemSizect7, avgParallelElapsedTimect7, marker='.', color='red', label='Average CUDA Elapsed Time')
 axes[0][0].set_ylabel("Average Time to Solution (s)")
 axes[0][0].legend()
 
-axes[0][1].plot(problemSizemt7, avgPowerConsumptionmt7, marker = '.', color = 'blue', label = 'Average MPI Energy Consumption')
-axes[0][1].plot(problemSizect7,avgPowerConsumptionct7, marker = '.', color = 'red', label = 'Average CUDA Energy Consumption')
+axes[0][1].plot(problemSizemt7, avgPowerConsumptionmt7, marker='.', color='blue', label='Average MPI Energy Consumption')
+axes[0][1].plot(problemSizect7, avgPowerConsumptionct7, marker='.', color='red', label='Average CUDA Energy Consumption')
 axes[0][1].set_ylabel("Power Consumption (J)")
 axes[0][1].legend()
 
-axes[1][0].plot(problemSizemt8, avgParallelElapsedTimemt8, marker = '.', color = 'blue', label = 'Average MPI Elapsed Time')
-axes[1][0].plot(problemSizect8, avgParallelElapsedTimect8, marker = '.', color = 'red', label = 'Average CUDA Elapsed Time')
+axes[1][0].plot(problemSizemt8, avgParallelElapsedTimemt8, marker='.', color='blue', label='Average MPI Elapsed Time')
+axes[1][0].plot(problemSizect8, avgParallelElapsedTimect8, marker='.', color='red', label='Average CUDA Elapsed Time')
 axes[1][0].set_ylabel("Average Time to Solution (s)")
 axes[1][0].legend()
 
-axes[1][1].plot(problemSizemt8, avgPowerConsumptionmt8, marker = '.', color = 'blue', label = 'Average MPI Energy Consumption')
-axes[1][1].plot(problemSizect8,avgPowerConsumptionct8, marker = '.', color = 'red', label = 'Average CUDA Energy Consumption')
+axes[1][1].plot(problemSizemt8, avgPowerConsumptionmt8, marker='.', color='blue', label='Average MPI Energy Consumption')
+axes[1][1].plot(problemSizect8, avgPowerConsumptionct8, marker='.', color='red', label='Average CUDA Energy Consumption')
 axes[1][1].set_ylabel("Power Consumption (J)")
 axes[1][1].legend()
 
-axes[2][0].plot(problemSizemt9, avgParallelElapsedTimemt9, marker = '.', color = 'blue', label = 'Average MPI Elapsed Time')
-axes[2][0].plot(problemSizect9, avgParallelElapsedTimect9, marker = '.', color = 'red', label = 'Average CUDA Elapsed Time')
+axes[2][0].plot(problemSizemt9, avgParallelElapsedTimemt9, marker='.', color='blue', label='Average MPI Elapsed Time')
+axes[2][0].plot(problemSizect9, avgParallelElapsedTimect9, marker='.', color='red', label='Average CUDA Elapsed Time')
 axes[2][0].set_xlabel("Problem Size (N)")
 axes[2][0].set_ylabel("Average Time to Solution (s)")
 axes[2][0].legend()
 
-axes[2][1].plot(problemSizemt9, avgPowerConsumptionmt9, marker = '.', color = 'blue', label = 'Average MPI Energy Consumption')
-axes[2][1].plot(problemSizect9,avgPowerConsumptionct9, marker = '.', color = 'red', label = 'Average CUDA Energy Consumption')
+axes[2][1].plot(problemSizemt9, avgPowerConsumptionmt9, marker='.', color='blue', label='Average MPI Energy Consumption')
+axes[2][1].plot(problemSizect9, avgPowerConsumptionct9, marker='.', color='red', label='Average CUDA Energy Consumption')
 axes[2][1].set_xlabel("Problem Size (N)")
 axes[2][1].set_ylabel("Power Consumption (J)")
 axes[2][1].legend()
