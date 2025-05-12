@@ -19,7 +19,7 @@ output_file="Shallow_Water_Equations_Serial_Section_Runtime_Performance_Extra.cs
 echo "Problem size,Time steps,Iteration,Elapsed time (s),Avg compute fluxes time (s),Avg compute variables time (s),Avg update variables time (s),Avg apply boundary conditions time (s)" > $output_file
 
 # Problem size loop
-for nx in 7200 7600
+for nx in 7600
 do
     # Compute dt using CFL condition
     dx=$(echo "$xlen / $nx" | bc -l)
