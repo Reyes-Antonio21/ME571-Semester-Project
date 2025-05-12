@@ -450,8 +450,8 @@ plt.show()
 
 # Choose a fixed problem size for strong scaling
 problem_size_to_analyze1 = 200  # Change this to whichever size you want
-problem_size_to_analyze2 = 6400  # Change this to whichever size you want
-problem_size_to_analyze3 = 8000  # Change this to whichever size you want
+problem_size_to_analyze2 = 8000  # Change this to whichever size you want
+problem_size_to_analyze3 = 16000  # Change this to whichever size you want
 
 subset1 = mTPData[problemSizemt == problem_size_to_analyze1]
 subset2 = mTPData[problemSizemt == problem_size_to_analyze2]
