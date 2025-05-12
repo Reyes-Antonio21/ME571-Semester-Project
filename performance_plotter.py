@@ -86,6 +86,7 @@ plt.scatter(problemSizect, avgParallelElapsedTimect, color = 'blue', marker = '.
 plt.xlabel("Problem Size")
 plt.ylabel("Average Time to Solution (s)")
 plt.legend()
+plt.tight_layout()
 plt.show()
 
 # Fit the model to the data
@@ -232,6 +233,7 @@ plt.scatter(problemSizeck, avgApplyBoundaryConditionsck * 1000, color = 'red', m
 plt.xlabel("Problem Size")
 plt.ylabel("Average Kernel Execution Time (ms)")
 plt.legend()
+plt.tight_layout()
 plt.show()
 
 # -------------------------------------------------------------- serial total performance -------------------------------------------------------------- 
@@ -291,6 +293,7 @@ plt.scatter(problemSizest, avgSerialElapsedTime, color = 'blue', marker = '.', l
 plt.xlabel("Problem Size")
 plt.ylabel("Average Time to Solution (s)")
 plt.legend()
+plt.tight_layout()
 plt.show()
 
 plt.figure(figsize=(12,7))
@@ -299,6 +302,7 @@ plt.scatter(problemSizest, avgSerialElapsedTime, color = 'blue', marker = '.', l
 plt.xlabel("Problem Size")
 plt.ylabel("Average Time to Solution (s)")
 plt.legend()
+plt.tight_layout()
 plt.show()
 
 # -------------------------------------------------------------- serial section performance --------------------------------------------------------------
@@ -400,6 +404,7 @@ plt.scatter(problemSizess, avgApplyBoundaryConditionsss * 1000, color = 'red', m
 plt.xlabel("Problem Size")
 plt.ylabel("Average Section Execution Time (ms)")
 plt.legend()
+plt.tight_layout()
 plt.show()
 
 # -------------------------------------------------------------- MPI total performance --------------------------------------------------------------
@@ -740,6 +745,7 @@ plt.figure(figsize=(12, 7))
 plt.scatter(problemSizest1, speedupsc, color = 'blue', marker = '.')    
 plt.xlabel("Problem Size (N)")
 plt.ylabel("Average Speedup") 
+plt.tight_layout()
 plt.show() 
 
 # Serial & Parallel Total Runtime Comparison
@@ -754,6 +760,8 @@ ax.set_yscale('log')
 ax.set_xlabel("Problem Size (N)")
 ax.set_ylabel("Average Time to Solution (s)")
 ax.legend()
+
+plt.tight_layout()
 plt.show()
 
 # -------------------------------------------------------------- MPI Section to Serial Section performance comparison --------------------------------------------------------------
@@ -865,6 +873,7 @@ plt.figure(figsize=(12, 7))
 plt.scatter(problemSizest2, speedupsm, color = 'blue', marker = '.')    
 plt.xlabel("Problem Size (N)")
 plt.ylabel("Average Speedup") 
+plt.tight_layout()
 plt.show() 
 
 # Serial & Parallel Total Runtime Comparison
@@ -879,6 +888,8 @@ ax.set_yscale('log')
 ax.set_xlabel("Problem Size (N)")
 ax.set_ylabel("Average Time to Solution (s)")
 ax.legend()
+
+plt.tight_layout()
 plt.show()
 
 # -------------------------------------------------------------- CUDA Total to MPI Total performance comparison --------------------------------------------------------------
