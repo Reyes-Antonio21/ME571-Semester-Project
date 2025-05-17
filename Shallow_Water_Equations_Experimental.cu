@@ -260,7 +260,7 @@ __device__ void deviceApplyLeftBoundary(float *__restrict__ sh_h, float *__restr
     int local_id_left = SH_ID(local_i, 0);
     int local_id = SH_ID(local_i, 1);
 
-    sh_h [local_id_left] = sh_h [local_id];
+    sh_h[local_id_left] = sh_h [local_id];
     sh_uh[local_id_left] = -1 * sh_uh[local_id];
     sh_vh[local_id_left] = sh_vh[local_id];
   }
@@ -279,7 +279,7 @@ __device__ void deviceApplyRightBoundary(float *__restrict__ sh_h, float *__rest
     int local_id_right = SH_ID(local_i, blockDim.x + 1);
     int local_id = SH_ID(local_i, blockDim.x);
 
-    sh_h [local_id_right] = sh_h[local_id];
+    sh_h[local_id_right] = sh_h[local_id];
     sh_uh[local_id_right] = -1 * sh_uh[local_id];
     sh_vh[local_id_right] = sh_vh[local_id];
   }
@@ -298,7 +298,7 @@ __device__ void deviceApplyBottomBoundary(float *__restrict__ sh_h, float *__res
     int local_id_bottom = SH_ID(blockDim.y + 1, local_j);
     int local_id = SH_ID(blockDim.y, local_j);
 
-    sh_h [local_id_bottom] = sh_h[local_id];
+    sh_h[local_id_bottom] = sh_h[local_id];
     sh_uh[local_id_bottom] = sh_uh[local_id];
     sh_vh[local_id_bottom] = -1 * sh_vh[local_id];
   }
@@ -317,7 +317,7 @@ __device__ void deviceApplyTopBoundary(float *__restrict__ sh_h, float *__restri
     int local_id_top = SH_ID(0, local_j);
     int local_id = SH_ID(1, local_j);
 
-    sh_h [local_id_top] = sh_h[local_id];
+    sh_h[local_id_top] = sh_h[local_id];
     sh_uh[local_id_top] = sh_uh[local_id];
     sh_vh[local_id_top] = -1 * sh_vh[local_id];
   }
@@ -337,7 +337,10 @@ __device__ void writeGlobalMemToSharedMem(float *__restrict__ sh_mem, const floa
   // === Load Interior Cell ===
   if (global_i > 0 && global_i < ny + 1 && global_j > 0 && global_j < nx + 1)
   {
-    sh_mem[local_id] = d_mem[global_id];
+    if (local_i > 0 && local_i < blockDim.y && local_j > 0 && local_j < blockDim.x)
+    {
+      sh_mem[local_id] = d_mem[global_id];
+    }
   }
 
   # undef SH_ID
@@ -356,7 +359,10 @@ __device__ void writeSharedMemToGlobalMem(const float *__restrict__ sh_mem, floa
   // Only write valid interior global domain values
   if (global_i > 0 && global_i < ny + 1 && global_j > 0 && global_j < nx + 1)
   {
-    d_mem[global_id] = sh_mem[local_id];
+    if (local_i > 0 && local_i < blockDim.y && local_j > 0 && local_j < blockDim.x)
+    {
+      d_mem[global_id] = sh_mem[local_id];
+    }
   }
 
   #undef SH_ID
