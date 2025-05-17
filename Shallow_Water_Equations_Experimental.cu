@@ -187,7 +187,7 @@ __device__ void haloExchange(float *__restrict__ sh_h, float *__restrict__ sh_uh
     int global_id_j = global_j - 1;
     int local_id = SH_ID(local_i, local_j - 1);
 
-    if (global_id_j >= 0) 
+    if (global_id_j >= 0 && global_i >= 0 && global_i < ny + 2) 
     {
       int global_id = ID_2D(global_i, global_id_j);
 
@@ -203,7 +203,7 @@ __device__ void haloExchange(float *__restrict__ sh_h, float *__restrict__ sh_uh
     int global_id_j = global_j + 1;
     int local_id = SH_ID(local_i, local_j + 1);
 
-    if (global_id_j < nx + 2) 
+    if (global_id_j < nx + 2 && global_i >= 0 && global_i < ny + 2) 
     {
       int global_id = ID_2D(global_i, global_id_j);
 
@@ -219,7 +219,7 @@ __device__ void haloExchange(float *__restrict__ sh_h, float *__restrict__ sh_uh
     int global_id_i = global_i - 1;
     int local_id = SH_ID(local_i - 1, local_j);
 
-    if (global_id_i >= 0) 
+    if (global_id_i >= 0 && global_j >= 0 && global_j < nx + 2) 
     {
       int global_id = ID_2D(global_id_i, global_j);
 
@@ -235,7 +235,7 @@ __device__ void haloExchange(float *__restrict__ sh_h, float *__restrict__ sh_uh
     int global_id_i = global_i + 1;
     int local_id = SH_ID(local_i + 1, local_j);
 
-    if (global_id_i < ny + 2) 
+    if (global_id_i < ny + 2 && global_j >= 0 && global_j < nx + 2) 
     {
       int global_id = ID_2D(global_id_i, global_j);
 
@@ -325,46 +325,6 @@ __device__ void deviceApplyTopBoundary(float *__restrict__ sh_h, float *__restri
   # undef SH_ID
 }
 // ****************************************************************************** //
-
-__device__ void applyReflectiveBCs(float* sh_h, float* sh_uh, float* sh_vh, int local_i, int local_j)
-{
-  # define SH_ID(local_i, local_j) ((local_i) * (blockDim.x + 2) + (local_j))
-
-  // LEFT physical boundary
-  if (blockIdx.x == 0 && threadIdx.x == 0) 
-  {
-  sh_h [SH_ID(local_i, 0)] =      sh_h [SH_ID(local_i, 1)];
-  sh_uh[SH_ID(local_i, 0)] = -1 * sh_uh[SH_ID(local_i, 1)];
-  sh_vh[SH_ID(local_i, 0)] =      sh_vh[SH_ID(local_i, 1)];
-  }
-
-  // RIGHT physical boundary
-  if (blockIdx.x == gridDim.x - 1 && threadIdx.x == blockDim.x - 1) 
-  {
-    sh_h [SH_ID(local_i, blockDim.x + 1)] =     sh_h [SH_ID(local_i, blockDim.x)];
-    sh_uh[SH_ID(local_i, blockDim.x + 1)] = -1 * sh_uh[SH_ID(local_i, blockDim.x)];
-    sh_vh[SH_ID(local_i, blockDim.x + 1)] =      sh_vh[SH_ID(local_i, blockDim.x)];
-  }
-
-  // TOP physical boundary
-  if (blockIdx.y == 0 && threadIdx.y == 0) 
-  {
-    sh_h [SH_ID(0, local_j)] =     sh_h [SH_ID(1, local_j)];
-    sh_uh[SH_ID(0, local_j)] =      sh_uh[SH_ID(1, local_j)];
-    sh_vh[SH_ID(0, local_j)] = -1 * sh_vh[SH_ID(1, local_j)];
-  }
-
-  // BOTTOM physical boundary
-  if (blockIdx.y == gridDim.y - 1 && threadIdx.y == blockDim.y - 1) 
-  {
-    sh_h [SH_ID(blockDim.y + 1, local_j)] =     sh_h [SH_ID(blockDim.y, local_j)];
-    sh_uh[SH_ID(blockDim.y + 1, local_j)] =      sh_uh[SH_ID(blockDim.y, local_j)];
-    sh_vh[SH_ID(blockDim.y + 1, local_j)] = -1 * sh_vh[SH_ID(blockDim.y, local_j)];
-  }
-
-  # undef SH_ID
-}
-// ****************************************************************************************************************** //
 
 __device__ void writeGlobalMemToSharedMem(float *__restrict__ sh_mem, const float *__restrict__ d_mem, int nx, int ny, int global_i, int global_j, int local_i, int local_j)
 {
