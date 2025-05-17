@@ -407,7 +407,7 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     __syncthreads();
 
     // === Compute Fluxes (write only to interior region) ===
-    if (global_i < ny + 2 && global_j < nx + 2)
+    if (local_i < blockDim.y + 2 && local_j < blockDim.x + 2)
     {
       int local_id = SH_ID(local_i, local_j);
 
@@ -437,7 +437,7 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     __syncthreads();
 
     // === Compute Updated Values Using Stencil ===
-    if (global_i > 0 && global_i < ny + 1 && global_j > 0 && global_j < nx + 1)
+    if (local_i > 0 && local_i < blockDim.y && local_j > 0 && local_j < blockDim.x)
     {
       int local_id = SH_ID(local_i, local_j);
       int local_id_left   = SH_ID(local_i, local_j - 1);
@@ -490,7 +490,7 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     __syncthreads();
 
     // === Update Interior Shared Memory Values ===
-    if (global_i > 0 && global_i < ny + 1 && global_j > 0 && global_j < nx + 1)
+    if (local_i > 0 && local_i < blockDim.y && local_j > 0 && local_j < blockDim.x)
     {
       int local_id = SH_ID(local_i, local_j);
 
@@ -579,7 +579,7 @@ int main ( int argc, char *argv[] )
 
   // Define the block and grid sizes
   int dimx = 32;
-  int dimy = 18;
+  int dimy = 24;
   dim3 blockSize(dimx, dimy);
   dim3 gridSize((nx + 2 + blockSize.x - 1) / blockSize.x, (ny + 2 + blockSize.y - 1) / blockSize.y);
 
