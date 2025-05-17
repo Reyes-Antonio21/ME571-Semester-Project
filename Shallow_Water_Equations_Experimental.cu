@@ -178,8 +178,8 @@ __global__ void applyTopBoundary(float *h, float *uh, float *vh, int nx, int ny)
 
 __device__ void haloExchange(float *__restrict__ sh_h, float *__restrict__ sh_uh, float *__restrict__ sh_vh, const float* h, const float* uh, const float* vh, int nx, int ny, int global_i, int global_j, int local_i, int local_j)
 {
-  # define SH_ID(local_i, local_j) (local_i * (blockDim.x + 2) + local_j)
-  # define ID_2D(global_i, global_j) (global_i * (nx + 2) + global_j)
+  # define ID_2D(i, j) ((i) * (nx + 2) + (j))
+  # define SH_ID(i, j) ((i) * (blockDim.x + 2) + (j))
   
   // === LEFT halo ===
   if (local_j == 1) 
@@ -252,17 +252,14 @@ __device__ void haloExchange(float *__restrict__ sh_h, float *__restrict__ sh_uh
 
 __device__ void deviceApplyLeftBoundary(float *__restrict__ sh_h, float *__restrict__ sh_uh, float *__restrict__ sh_vh, int local_i, int local_j)
 {
-  # define SH_ID(local_i, local_j) ((local_i) * (blockDim.x + 2) + (local_j))
+  # define SH_ID(i, j) ((i) * (blockDim.x + 2) + (j))
 
   // LEFT physical boundary
   if (blockIdx.x == 0 && threadIdx.x == 0) 
   {
-    int local_id_left = SH_ID(local_i, 0);
-    int local_id = SH_ID(local_i, 1);
-
-    sh_h[local_id_left] = sh_h [local_id];
-    sh_uh[local_id_left] = -1 * sh_uh[local_id];
-    sh_vh[local_id_left] = sh_vh[local_id];
+  sh_h [SH_ID(local_i, 0)] =     sh_h [SH_ID(local_i, 1)];
+  sh_uh[SH_ID(local_i, 0)] = -1 * sh_uh[SH_ID(local_i, 1)];
+  sh_vh[SH_ID(local_i, 0)] =      sh_vh[SH_ID(local_i, 1)];
   }
 
   # undef SH_ID
@@ -271,17 +268,14 @@ __device__ void deviceApplyLeftBoundary(float *__restrict__ sh_h, float *__restr
 
 __device__ void deviceApplyRightBoundary(float *__restrict__ sh_h, float *__restrict__ sh_uh, float *__restrict__ sh_vh, int local_i, int local_j)
 {
-  # define SH_ID(local_i, local_j) ((local_i) * (blockDim.x + 2) + (local_j))
+  # define SH_ID(i, j) ((i) * (blockDim.x + 2) + (j))
 
   // RIGHT physical boundary
   if (blockIdx.x == gridDim.x - 1 && threadIdx.x == blockDim.x - 1) 
   {
-    int local_id_right = SH_ID(local_i, blockDim.x + 1);
-    int local_id = SH_ID(local_i, blockDim.x);
-
-    sh_h[local_id_right] = sh_h[local_id];
-    sh_uh[local_id_right] = -1 * sh_uh[local_id];
-    sh_vh[local_id_right] = sh_vh[local_id];
+    sh_h [SH_ID(local_i, blockDim.x + 1)] =      sh_h [SH_ID(local_i, blockDim.x)];
+    sh_uh[SH_ID(local_i, blockDim.x + 1)] = -1 * sh_uh[SH_ID(local_i, blockDim.x)];
+    sh_vh[SH_ID(local_i, blockDim.x + 1)] =      sh_vh[SH_ID(local_i, blockDim.x)];
   }
 
   # undef SH_ID
@@ -290,17 +284,14 @@ __device__ void deviceApplyRightBoundary(float *__restrict__ sh_h, float *__rest
 
 __device__ void deviceApplyBottomBoundary(float *__restrict__ sh_h, float *__restrict__ sh_uh, float *__restrict__ sh_vh, int local_i, int local_j)
 {
-  # define SH_ID(local_i, local_j) ((local_i) * (blockDim.x + 2) + (local_j))
+  # define SH_ID(i, j) ((i) * (blockDim.x + 2) + (j))
 
   // BOTTOM physical boundary
   if (blockIdx.y == gridDim.y - 1 && threadIdx.y == blockDim.y - 1) 
   {
-    int local_id_bottom = SH_ID(blockDim.y + 1, local_j);
-    int local_id = SH_ID(blockDim.y, local_j);
-
-    sh_h[local_id_bottom] = sh_h[local_id];
-    sh_uh[local_id_bottom] = sh_uh[local_id];
-    sh_vh[local_id_bottom] = -1 * sh_vh[local_id];
+    sh_h [SH_ID(blockDim.y + 1, local_j)] =     sh_h [SH_ID(blockDim.y, local_j)];
+    sh_uh[SH_ID(blockDim.y + 1, local_j)] =      sh_uh[SH_ID(blockDim.y, local_j)];
+    sh_vh[SH_ID(blockDim.y + 1, local_j)] = -1 * sh_vh[SH_ID(blockDim.y, local_j)];
   }
 
   # undef SH_ID
@@ -309,17 +300,14 @@ __device__ void deviceApplyBottomBoundary(float *__restrict__ sh_h, float *__res
 
 __device__ void deviceApplyTopBoundary(float *__restrict__ sh_h, float *__restrict__ sh_uh, float *__restrict__ sh_vh, int local_i, int local_j)
 {
-  # define SH_ID(local_i, local_j) ((local_i) * (blockDim.x + 2) + (local_j))
+  # define SH_ID(i, j) ((i) * (blockDim.x + 2) + (j))
 
   // TOP physical boundary
   if (blockIdx.y == 0 && threadIdx.y == 0) 
   {
-    int local_id_top = SH_ID(0, local_j);
-    int local_id = SH_ID(1, local_j);
-
-    sh_h[local_id_top] = sh_h[local_id];
-    sh_uh[local_id_top] = sh_uh[local_id];
-    sh_vh[local_id_top] = -1 * sh_vh[local_id];
+    sh_h [SH_ID(0, local_j)] =     sh_h [SH_ID(1, local_j)];
+    sh_uh[SH_ID(0, local_j)] =      sh_uh[SH_ID(1, local_j)];
+    sh_vh[SH_ID(0, local_j)] = -1 * sh_vh[SH_ID(1, local_j)];
   }
 
   # undef SH_ID
@@ -328,18 +316,18 @@ __device__ void deviceApplyTopBoundary(float *__restrict__ sh_h, float *__restri
 
 __device__ void writeGlobalMemToSharedMem(float *__restrict__ sh_mem, const float *__restrict__ d_mem, int nx, int ny, int global_i, int global_j, int local_i, int local_j)
 {
-  # define SH_ID(local_i, local_j) (local_i * (blockDim.x + 2) + local_j)
-  # define ID_2D(global_i, global_j) (global_i * (nx + 2) + global_j)
+  # define SH_ID(i, j) ((i) * (blockDim.x + 2) + (j))
+  # define ID_2D(i, j) ((i) * (nx + 2) + (j))
 
   int global_id = ID_2D(global_i, global_j);
   int local_id = SH_ID(local_i, local_j);
 
   // === Load Interior Cell ===
-  if (global_i > 0 && global_i < ny + 1 && global_j > 0 && global_j < nx + 1)
+  if (local_i > 0 && local_i < blockDim.y && local_j > 0 && local_j < blockDim.x)
   {
-    if (local_i > 0 && local_i < blockDim.y && local_j > 0 && local_j < blockDim.x)
+    if (global_i > 0 && global_i < ny + 1 && global_j > 0 && global_j < nx + 1)
     {
-      sh_mem[local_id] = d_mem[global_id];
+      sh_mem[SH_ID(local_i, local_j)] = d_mem[ID_2D(global_i, global_j)];
     }
   }
 
@@ -350,18 +338,15 @@ __device__ void writeGlobalMemToSharedMem(float *__restrict__ sh_mem, const floa
 
 __device__ void writeSharedMemToGlobalMem(const float *__restrict__ sh_mem, float *__restrict__ d_mem, int nx, int ny, int global_i, int global_j, int local_i, int local_j)
 {
-  # define SH_ID(local_i, local_j) (local_i * (blockDim.x + 2) + local_j)
-  # define ID_2D(global_i, global_j) (global_i * (nx + 2) + global_j)
-
-  int global_id = ID_2D(global_i, global_j);
-  int local_id = SH_ID(local_i, local_j);
+  # define SH_ID(i, j) ((i) * (blockDim.x + 2) + (j))
+  # define ID_2D(i, j) ((i) * (nx + 2) + (j))
 
   // Only write valid interior global domain values
-  if (global_i > 0 && global_i < ny + 1 && global_j > 0 && global_j < nx + 1)
+  if (local_i > 0 && local_i < blockDim.y && local_j > 0 && local_j < blockDim.x)
   {
-    if (local_i > 0 && local_i < blockDim.y && local_j > 0 && local_j < blockDim.x)
+    if (global_i > 0 && global_i < ny + 1 && global_j > 0 && global_j < nx + 1)
     {
-      d_mem[global_id] = sh_mem[local_id];
+      d_mem[ID_2D(global_i, global_j)] = sh_mem[SH_ID(local_i, local_j)];
     }
   }
 
@@ -393,7 +378,7 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
   float *sh_uhm =  sh_hm + (blockDim.y + 2) * (blockDim.x + 2);
   float *sh_vhm = sh_uhm + (blockDim.y + 2) * (blockDim.x + 2);
 
-  # define SH_ID(local_i, local_j) (local_i * (blockDim.x + 2) + local_j)
+  # define SH_ID(local_i, local_j) ((local_i) * (blockDim.x + 2) + (local_j))
   # define ID_2D(global_i, global_j) (global_i * (nx + 2) + global_j)
 
   __syncthreads();
@@ -409,11 +394,8 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     writeGlobalMemToSharedMem(sh_vh, vh, nx, ny, global_i, global_j, local_i, local_j);
     __syncthreads();
 
-    haloExchange(sh_h, sh_uh, sh_vh, h, uh, vh, nx, ny, global_i, global_j, local_i, local_j);
-    __syncthreads();
-
     // === Compute Fluxes (write only to interior region) ===
-    if (local_i < blockDim.y + 2 && local_j < blockDim.x + 2)
+    if (local_i > 0 && local_i < blockDim.y && local_j > 0 && local_j < blockDim.x)
     {
       int local_id = SH_ID(local_i, local_j);
 
@@ -440,6 +422,9 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
       sh_guh[local_id] = uv * inv_h;
       sh_gvh[local_id] = __fmaf_rn(vh2, inv_h, g_half * h2);
     }
+    __syncthreads();
+
+    haloExchange(sh_h, sh_uh, sh_vh, h, uh, vh, nx, ny, global_i, global_j, local_i, local_j);
     __syncthreads();
 
     // === Compute Updated Values Using Stencil ===
@@ -585,7 +570,7 @@ int main ( int argc, char *argv[] )
 
   // Define the block and grid sizes
   int dimx = 32;
-  int dimy = 24;
+  int dimy = 16;
   dim3 blockSize(dimx, dimy);
   dim3 gridSize((nx + 2 + blockSize.x - 1) / blockSize.x, (ny + 2 + blockSize.y - 1) / blockSize.y);
 
