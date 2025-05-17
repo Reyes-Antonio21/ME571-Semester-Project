@@ -187,7 +187,7 @@ __device__ void haloExchange(float *__restrict__ sh_h, float *__restrict__ sh_uh
     int global_id_j = global_j - 1;
     int local_id = SH_ID(local_i, local_j - 1);
 
-    if (global_id_j >= 0 && global_i >= 0 && global_i < ny + 2) 
+    if (global_id_j >= 0) 
     {
       int global_id = ID_2D(global_i, global_id_j);
 
@@ -203,7 +203,7 @@ __device__ void haloExchange(float *__restrict__ sh_h, float *__restrict__ sh_uh
     int global_id_j = global_j + 1;
     int local_id = SH_ID(local_i, local_j + 1);
 
-    if (global_id_j < nx + 2 && global_i >= 0 && global_i < ny + 2) 
+    if (global_id_j < nx + 2) 
     {
       int global_id = ID_2D(global_i, global_id_j);
 
@@ -219,7 +219,7 @@ __device__ void haloExchange(float *__restrict__ sh_h, float *__restrict__ sh_uh
     int global_id_i = global_i - 1;
     int local_id = SH_ID(local_i - 1, local_j);
 
-    if (global_id_i >= 0 && global_j >= 0 && global_j < nx + 2) 
+    if (global_id_i >= 0) 
     {
       int global_id = ID_2D(global_id_i, global_j);
 
@@ -235,7 +235,7 @@ __device__ void haloExchange(float *__restrict__ sh_h, float *__restrict__ sh_uh
     int global_id_i = global_i + 1;
     int local_id = SH_ID(local_i + 1, local_j);
 
-    if (global_id_i < ny + 2 && global_j >= 0 && global_j < nx + 2) 
+    if (global_id_i < ny + 2) 
     {
       int global_id = ID_2D(global_id_i, global_j);
 
