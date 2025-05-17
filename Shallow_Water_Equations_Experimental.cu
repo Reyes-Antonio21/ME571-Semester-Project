@@ -357,9 +357,9 @@ __device__ void writeSharedMemToGlobalMem(const float *__restrict__ sh_mem, floa
   int local_id = SH_ID(local_i, local_j);
 
   // Only write valid interior global domain values
-  if (global_i > 0 && global_i < ny + 1 && global_j > 0 && global_j < nx + 1)
+  if (local_i > 0 && local_i < blockDim.y && local_j > 0 && local_j < blockDim.x)
   {
-    if (local_i > 0 && local_i < blockDim.y && local_j > 0 && local_j < blockDim.x)
+    if (global_i > 0 && global_i < ny + 1 && global_j > 0 && global_j < nx + 1)
     {
       d_mem[global_id] = sh_mem[local_id];
     }
@@ -413,105 +413,96 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     __syncthreads();
 
     // === Compute Fluxes (write only to interior region) ===
-    if (global_i < nx + 2 && global_j < ny + 2)
+    if (local_i < blockDim.y + 2 && local_j < blockDim.x + 2)
     {
-      if (local_i < blockDim.y + 2 && local_j < blockDim.x + 2)
-      {
-        int local_id = SH_ID(local_i, local_j);
+      int local_id = SH_ID(local_i, local_j);
 
-        float g = 9.81f;
-        float g_half = 0.5f * g;
+      float g = 9.81f;
+      float g_half = 0.5f * g;
 
-        float h_val  = sh_h[local_id];
-        float uh_val = sh_uh[local_id];
-        float vh_val = sh_vh[local_id];
+      float h_val  = sh_h[local_id];
+      float uh_val = sh_uh[local_id];
+      float vh_val = sh_vh[local_id];
 
-        float inv_h = 1.0f / h_val;
-        float h2 = h_val * h_val;
+      float inv_h = 1.0f / h_val;
+      float h2 = h_val * h_val;
 
-        sh_fh[local_id] = uh_val;
-        sh_gh[local_id] = vh_val;
+      sh_fh[local_id] = uh_val;
+      sh_gh[local_id] = vh_val;
 
-        float uh2 = uh_val * uh_val;
-        float vh2 = vh_val * vh_val;
-        float uv = uh_val * vh_val;
+      float uh2 = uh_val * uh_val;
+      float vh2 = vh_val * vh_val;
+      float uv = uh_val * vh_val;
 
-        sh_fuh[local_id] = __fmaf_rn(uh2, inv_h, g_half * h2);
-        sh_fvh[local_id] = uv * inv_h;
+      sh_fuh[local_id] = __fmaf_rn(uh2, inv_h, g_half * h2);
+      sh_fvh[local_id] = uv * inv_h;
 
-        sh_guh[local_id] = uv * inv_h;
-        sh_gvh[local_id] = __fmaf_rn(vh2, inv_h, g_half * h2);
-      }
+      sh_guh[local_id] = uv * inv_h;
+      sh_gvh[local_id] = __fmaf_rn(vh2, inv_h, g_half * h2);
     }
     __syncthreads();
 
     // === Compute Updated Values Using Stencil ===
-    if (global_i > 0 && global_i < ny + 1 && global_j > 0 && global_j < nx + 1)
+    if (local_i > 0 && local_i < blockDim.y && local_j > 0 && local_j < blockDim.x)
     {
-      if (local_i > 0 && local_i < blockDim.y && local_j > 0 && local_j < blockDim.x)
-      {
-        int local_id = SH_ID(local_i, local_j);
-        int local_id_left   = SH_ID(local_i, local_j - 1);
-        int local_id_right  = SH_ID(local_i, local_j + 1);
-        int local_id_bottom = SH_ID(local_i - 1, local_j);
-        int local_id_top    = SH_ID(local_i + 1, local_j);
+      int local_id = SH_ID(local_i, local_j);
+      int local_id_left   = SH_ID(local_i, local_j - 1);
+      int local_id_right  = SH_ID(local_i, local_j + 1);
+      int local_id_bottom = SH_ID(local_i - 1, local_j);
+      int local_id_top    = SH_ID(local_i + 1, local_j);
 
-        float h_l  = sh_h[local_id_left];
-        float h_r  = sh_h[local_id_right];
-        float h_b  = sh_h[local_id_bottom];
-        float h_t  = sh_h[local_id_top];
+      float h_l  = sh_h[local_id_left];
+      float h_r  = sh_h[local_id_right];
+      float h_b  = sh_h[local_id_bottom];
+      float h_t  = sh_h[local_id_top];
 
-        float uh_l = sh_uh[local_id_left];
-        float uh_r = sh_uh[local_id_right];
-        float uh_b = sh_uh[local_id_bottom];
-        float uh_t = sh_uh[local_id_top];
+      float uh_l = sh_uh[local_id_left];
+      float uh_r = sh_uh[local_id_right];
+      float uh_b = sh_uh[local_id_bottom];
+      float uh_t = sh_uh[local_id_top];
 
-        float vh_l = sh_vh[local_id_left];
-        float vh_r = sh_vh[local_id_right];
-        float vh_b = sh_vh[local_id_bottom];
-        float vh_t = sh_vh[local_id_top];
+      float vh_l = sh_vh[local_id_left];
+      float vh_r = sh_vh[local_id_right];
+      float vh_b = sh_vh[local_id_bottom];
+      float vh_t = sh_vh[local_id_top];
 
-        float fh_l = sh_fh[local_id_left];
-        float fh_r = sh_fh[local_id_right];
-        float gh_b = sh_gh[local_id_bottom];
-        float gh_t = sh_gh[local_id_top];
+      float fh_l = sh_fh[local_id_left];
+      float fh_r = sh_fh[local_id_right];
+      float gh_b = sh_gh[local_id_bottom];
+      float gh_t = sh_gh[local_id_top];
 
-        float fuh_l = sh_fuh[local_id_left];
-        float fuh_r = sh_fuh[local_id_right];
-        float guh_b = sh_guh[local_id_bottom];
-        float guh_t = sh_guh[local_id_top];
+      float fuh_l = sh_fuh[local_id_left];
+      float fuh_r = sh_fuh[local_id_right];
+      float guh_b = sh_guh[local_id_bottom];
+      float guh_t = sh_guh[local_id_top];
 
-        float fvh_l = sh_fvh[local_id_left];
-        float fvh_r = sh_fvh[local_id_right];
-        float gvh_b = sh_gvh[local_id_bottom];
-        float gvh_t = sh_gvh[local_id_top];
+      float fvh_l = sh_fvh[local_id_left];
+      float fvh_r = sh_fvh[local_id_right];
+      float gvh_b = sh_gvh[local_id_bottom];
+      float gvh_t = sh_gvh[local_id_top];
 
-        sh_hm[local_id] = __fmaf_rn(-lambda_x, (fh_r - fh_l),
-                          __fmaf_rn(-lambda_y, (gh_t - gh_b),
-                          0.25f * (h_l + h_r + h_b + h_t)));
+      sh_hm[local_id] = __fmaf_rn(-lambda_x, (fh_r - fh_l),
+                        __fmaf_rn(-lambda_y, (gh_t - gh_b),
+                        0.25f * (h_l + h_r + h_b + h_t)));
 
-        sh_uhm[local_id] = __fmaf_rn(-lambda_x, (fuh_r - fuh_l),
-                          __fmaf_rn(-lambda_y, (guh_t - guh_b),
-                          0.25f * (uh_l + uh_r + uh_b + uh_t)));
+      sh_uhm[local_id] = __fmaf_rn(-lambda_x, (fuh_r - fuh_l),
+                        __fmaf_rn(-lambda_y, (guh_t - guh_b),
+                        0.25f * (uh_l + uh_r + uh_b + uh_t)));
 
-        sh_vhm[local_id] = __fmaf_rn(-lambda_x, (fvh_r - fvh_l),
-                          __fmaf_rn(-lambda_y, (gvh_t - gvh_b),
-                          0.25f * (vh_l + vh_r + vh_b + vh_t)));
-      }
+      sh_vhm[local_id] = __fmaf_rn(-lambda_x, (fvh_r - fvh_l),
+                        __fmaf_rn(-lambda_y, (gvh_t - gvh_b),
+                        0.25f * (vh_l + vh_r + vh_b + vh_t)));
     }
     __syncthreads();
 
     // === Update Interior Shared Memory Values ===
-    if (global_i > 0 && global_i < ny + 1 && global_j > 0 && global_j < nx + 1)
+    if (local_i > 0 && local_i < blockDim.y && local_j > 0 && local_j < blockDim.x)
     {
-      if (local_i > 0 && local_i < blockDim.y && local_j > 0 && local_j < blockDim.x)
-      {
-        int local_id = SH_ID(local_i, local_j);
+      int local_id = SH_ID(local_i, local_j);
 
-        sh_h[local_id]  = sh_hm[local_id];
-        sh_uh[local_id] = sh_uhm[local_id];
-        sh_vh[local_id] = sh_vhm[local_id];
-      }
+      sh_h[local_id]  = sh_hm[local_id];
+      sh_uh[local_id] = sh_uhm[local_id];
+      sh_vh[local_id] = sh_vhm[local_id];
     }
     __syncthreads();
 
