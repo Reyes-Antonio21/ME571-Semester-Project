@@ -239,7 +239,7 @@ __device__ void writeGlobalMemToSharedMem(float *__restrict__ sh_mem, const floa
   int local_id = SH_ID(local_i, local_j);
 
   // === Load Interior Cell ===
-  if (local_i > 0 && local_i < blockDim.y && local_j > 0 && local_j < blockDim.x)
+  if (local_i > 0 && local_i < blockDim.y + 1 && local_j > 0 && local_j < blockDim.x + 1)
   {
     sh_mem[local_id] = d_mem[global_id];
   }
@@ -258,7 +258,7 @@ __device__ void writeSharedMemToGlobalMem(const float *__restrict__ sh_mem, floa
   int local_id = SH_ID(local_i, local_j);
 
   // Only write valid interior global domain values
-  if (local_i > 0 && local_i < blockDim.y && local_j > 0 && local_j < blockDim.x)
+  if (local_i > 0 && local_i < blockDim.y + 1 && local_j > 0 && local_j < blockDim.x + 1)
   {
     d_mem[global_id] = sh_mem[local_id];
   }
@@ -341,7 +341,7 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     __syncthreads();
 
     // === Compute Updated Values Using Stencil ===
-    if (local_i > 0 && local_i < blockDim.y && local_j > 0 && local_j < blockDim.x)
+    if (local_i > 0 && local_i < blockDim.y + 1 && local_j > 0 && local_j < blockDim.x + 1)
     {
       int local_id = SH_ID(local_i, local_j);
       int local_id_left   = SH_ID(local_i, local_j - 1);
@@ -394,7 +394,7 @@ __global__ void shallowWaterSolver(float *__restrict__ h, float *__restrict__ uh
     __syncthreads();
 
     // === Update Interior Shared Memory Values ===
-    if (local_i > 0 && local_i < blockDim.y && local_j > 0 && local_j < blockDim.x)
+    if (local_i > 0 && local_i < blockDim.y + 1 && local_j > 0 && local_j < blockDim.x + 1)
     {
       int local_id = SH_ID(local_i, local_j);
 
